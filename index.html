@@ -1238,12 +1238,19 @@ svg.lucide {
   color: var(--destructive);
 }
 
-html,body { box-sizing:border-box; width:100%; max-width:none; height:100%; margin:0; }
-html { overflow:hidden; }
-html>body { display:flex; flex-direction:column; min-height:0; height:100vh; height:100dvh; padding:12px; overflow:auto; }
+html,body { box-sizing:border-box; width:100%; max-width:none; margin:0; }
+html>body { padding:0; }
 .campus-page-toolbar { display:flex; flex:0 0 auto; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:12px; }
 #campus-fullscreen-status { flex-basis:100%; }
-#codex-visualization { display:block; width:100%; max-width:none; min-width:0; min-height:0; height:0 !important; flex:1 1 0; margin:0; border:0; }
+#codex-visualization { display:block; width:100%; max-width:none; min-width:0; min-height:0; margin:0; border:0; }
+.campus-page-toolbar { padding:8px; }
+@media (min-width:768px) and (pointer:fine), (min-width:768px) and (pointer:none), (min-width:1025px) {
+  html,body { height:100%; }
+  html { overflow:hidden; }
+  html>body { display:flex; flex-direction:column; min-height:0; height:100vh; height:100dvh; padding:12px; overflow:auto; }
+  .campus-page-toolbar { padding:0; }
+  #codex-visualization { height:0 !important; flex:1 1 0; }
+}
 </style>
 </head>
 <body>
@@ -3462,13 +3469,42 @@ if(e.source===window.parent&amp;&amp;e.data?.type===&#x27;fp-toggle-floor&#x27;)
 html:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]),
 body:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]) { height:100%; margin:0; padding:0; overflow:hidden; }
 .olr-fit-viewer[data-viewport=&quot;true&quot;] { box-sizing:border-box; padding:8px; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] { display:block; height:auto !important; padding:0 4px; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] .olr-fit-toolbar { margin-bottom:8px; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] &gt; section:not([hidden]),
+.olr-fit-viewer[data-layout=&quot;width&quot;] #fc-parking-comparison,
+.olr-fit-viewer[data-layout=&quot;width&quot;] #olr-floor-plans,
+.olr-fit-viewer[data-layout=&quot;width&quot;] .olr-canvas-viewport,
+.olr-fit-viewer[data-layout=&quot;width&quot;] #fc-compare-panel { display:block; flex:none; height:auto; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] .olr-canvas-viewport &gt; svg { height:auto !important; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] #fc-parking-comparison .side-by-side-maps { height:auto; grid-template-columns:minmax(0,1fr); grid-template-rows:auto; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] .side-by-side-maps &gt; div { display:block; }
+.olr-fit-viewer[data-layout=&quot;width&quot;] #fp-detail,
+.olr-fit-viewer[data-layout=&quot;width&quot;] #olr-floor-plans &gt; details { max-height:none; overflow:visible; }
+html:has(.olr-fit-viewer[data-layout=&quot;width&quot;]),
+body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0; padding:0; overflow:visible; }
 &lt;/style&gt;
 &lt;script id=&quot;olr-fit-controls&quot;&gt;
 (() =&gt; {
   const root = document.querySelector(&#x27;.olr-fit-viewer&#x27;);
   if (!root) return;
   const select = root.querySelector(&#x27;[data-fit-size]&#x27;);
+  const fitOption = select.querySelector(&#x27;[value=&quot;1&quot;]&#x27;);
+  const mobile = window.matchMedia?.(&#x27;(max-width: 767px), (max-width: 1024px) and (pointer: coarse)&#x27;);
   let zoom = 1, pending = false;
+  let widthOnly = Boolean(mobile?.matches), parentSized = false, viewportHeight = null;
+  const observedWidths = new WeakMap();
+  function layout() {
+    root.dataset.layout = widthOnly ? &#x27;width&#x27; : &#x27;fit&#x27;;
+    if (fitOption) fitOption.textContent = widthOnly ? &#x27;Fit to width&#x27; : &#x27;Fit to screen&#x27;;
+    if (widthOnly) {
+      root.style.removeProperty(&#x27;height&#x27;);
+      delete root.dataset.viewport;
+    } else if (viewportHeight !== null) {
+      root.dataset.viewport = &#x27;true&#x27;;
+      root.style.height = `${viewportHeight}px`;
+    }
+  }
   function redraw() {
     if (pending) return;
     pending = true;
@@ -3479,7 +3515,11 @@ body:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]) { height:100%; margin:
   }
   window.olrFitCanvas = (svg, dx, dy, top, bottom) =&gt; {
     const stage = svg.parentElement.getBoundingClientRect();
-    if (!(stage.width &gt; 0 &amp;&amp; stage.height &gt; 0)) return null;
+    if (!(stage.width &gt; 0) || (!widthOnly &amp;&amp; !(stage.height &gt; 0))) return null;
+    if (widthOnly) {
+      const width = stage.width * zoom, scale = Math.max(.001, (width - 24) / dx);
+      return {width, height:dy * scale + top + bottom, scale, left:12, top, drawingWidth:width};
+    }
     const width = stage.width * zoom, height = stage.height * zoom;
     const scale = Math.max(.001, Math.min((width - 24) / dx, (height - top - bottom) / dy));
     return {width, height, scale, left:(width - dx * scale) / 2,
@@ -3497,15 +3537,35 @@ body:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]) { height:100%; margin:
   window.addEventListener(&#x27;message&#x27;, event =&gt; {
     if (event.source !== window.parent || event.data?.type !== &#x27;olr-viewport&#x27;) return;
     const height = Number(event.data.height);
-    if (!Number.isFinite(height) || height &lt;= 0) return;
-    root.dataset.viewport = &#x27;true&#x27;;
-    root.style.height = `${height}px`;
+    const nextWidthOnly = event.data.mode === &#x27;width&#x27;;
+    if (!nextWidthOnly &amp;&amp; (!Number.isFinite(height) || height &lt;= 0)) return;
+    const nextHeight = nextWidthOnly ? null : height;
+    const changed = !parentSized || widthOnly !== nextWidthOnly || viewportHeight !== nextHeight;
+    parentSized = true; widthOnly = nextWidthOnly; viewportHeight = nextHeight;
+    if (!changed) return;
+    layout();
     redraw();
   });
+  mobile?.addEventListener(&#x27;change&#x27;, () =&gt; {
+    if (parentSized) return; // The outer page&#x27;s breakpoint is authoritative.
+    widthOnly = mobile.matches;
+    layout(); redraw();
+  });
   if (typeof ResizeObserver === &#x27;function&#x27;) {
-    const observer = new ResizeObserver(redraw);
+    const observer = new ResizeObserver(entries =&gt; {
+      if (!widthOnly) { redraw(); return; }
+      let changed = false;
+      for (const entry of entries) {
+        const width = entry.target.getBoundingClientRect().width;
+        if (observedWidths.get(entry.target) !== width) {
+          observedWidths.set(entry.target, width); changed = true;
+        }
+      }
+      if (changed) redraw();
+    });
     for (const stage of root.querySelectorAll(&#x27;.olr-canvas-viewport&#x27;)) observer.observe(stage);
   }
+  layout();
   window.parent.postMessage({type:&#x27;olr-viewport-ready&#x27;}, &#x27;*&#x27;);
   redraw();
 })();
@@ -4409,19 +4469,24 @@ body:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]) { height:100%; margin:
   let forceNext = false;
   let lastWidth = -1;
   let lastHeight = -1;
+  let lastMode = '';
+  const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
 
   function sendViewport() {
     queued = null;
     const width = Math.floor(frame.clientWidth);
     const height = Math.floor(frame.clientHeight);
     const target = frame.contentWindow;
-    if (!target || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
-    if (!forceNext && width === lastWidth && height === lastHeight) return;
+    const mode = mobile?.matches ? 'width' : 'fit';
+    if (!target || !Number.isFinite(width) || width <= 0) return;
+    if (mode === 'fit' && (!Number.isFinite(height) || height <= 0)) return;
+    if (!forceNext && mode === lastMode && width === lastWidth && (mode === 'width' || height === lastHeight)) return;
     forceNext = false;
     lastWidth = width;
     lastHeight = height;
+    lastMode = mode;
     // The sandbox has an opaque origin; only communicate with this frame.
-    target.postMessage({type:'olr-viewport', height, width}, '*');
+    target.postMessage({type:'olr-viewport', mode, width, ...(mode === 'fit' ? {height} : {})}, '*');
   }
 
   function schedule(force = false) {
@@ -4431,6 +4496,10 @@ body:has(.olr-fit-viewer[data-viewport=&quot;true&quot;]) { height:100%; margin:
   }
 
   frame.addEventListener('load', () => schedule(true));
+  mobile?.addEventListener('change', () => {
+    frame.style.removeProperty('height');
+    schedule(true);
+  });
   window.addEventListener('resize', () => schedule());
   window.addEventListener('pageshow', () => schedule(true));
   window.visualViewport?.addEventListener('resize', () => schedule());
