@@ -3488,6 +3488,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     el(&#x27;line&#x27;,{x1:barX,y1:barY,x2:barX+barLength*scale,y2:barY,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5});
     el(&#x27;text&#x27;,{x:barX+barLength/2*scale,y:barY-6,&#x27;text-anchor&#x27;:&#x27;middle&#x27;}).textContent=`${barLength} ft`;
     el(&#x27;text&#x27;,{x:width-18,y:16,&#x27;text-anchor&#x27;:&#x27;end&#x27;}).textContent=&#x27;↑ plan north&#x27;;
+    window.olrCommitCanvas?.(svg);
   }
   tabs.forEach(tab=&gt;tab.addEventListener(&#x27;click&#x27;,()=&gt;select(tab.dataset.view,true)));
   function toggleMap(){select(lastSingleView===&#x27;shifted&#x27;?&#x27;existing&#x27;:&#x27;shifted&#x27;,true);}
@@ -3536,7 +3537,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   select(view);redrawMaps();
   if(typeof ResizeObserver===&#x27;function&#x27;)new ResizeObserver(scheduleRedraw).observe(root);
   window.addEventListener(&#x27;resize&#x27;,scheduleRedraw);
-  window.addEventListener(&#x27;olr-fit-change&#x27;,()=&gt;{lastRenderedWidth=0;scheduleRedraw();});
+  window.addEventListener(&#x27;olr-fit-change&#x27;,()=&gt;{lastRenderedWidth=0;redrawMaps();});
 })();
 &lt;/script&gt;
 
@@ -3583,7 +3584,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-fit-viewer #fc-parking-comparison &gt; h3 { display:none; }
 .olr-fit-viewer .olr-canvas-viewport,
 .olr-fit-viewer #fc-compare-panel { flex:1 1 0; min-height:0; min-width:0; }
-.olr-fit-viewer .olr-canvas-viewport { overflow:auto; overscroll-behavior:auto; touch-action:pan-y; }
+.olr-fit-viewer .olr-canvas-viewport { overflow:auto; overflow-anchor:none; scroll-behavior:auto; overscroll-behavior:auto; touch-action:pan-y; }
 .olr-fit-viewer[data-zoomed=&quot;true&quot;] .olr-canvas-viewport { cursor:grab; touch-action:none; overscroll-behavior:contain; }
 .olr-fit-viewer .olr-canvas-viewport[data-panning=&quot;true&quot;] { cursor:grabbing; user-select:none; }
 .olr-fit-viewer .olr-canvas-viewport &gt; svg { display:block; max-width:none; width:var(--olr-canvas-width,100%) !important; height:var(--olr-canvas-height,100%) !important; }
@@ -3631,7 +3632,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let widthOnly = Boolean(mobile?.matches), parentSized = false, viewportHeight = null;
   const finite = (value, fallback = 0) =&gt; Number.isFinite(Number(value)) ? Number(value) : fallback;
   const stageState = stage =&gt; {
-    if (!states.has(stage)) states.set(stage, {canvas:null, anchor:null, panFrame:false});
+    if (!states.has(stage)) states.set(stage, {canvas:null, anchor:null});
     return states.get(stage);
   };
   const visible = stage =&gt; {
@@ -3670,18 +3671,15 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   function restorePan(stage) {
     const state = stageState(stage);
-    if (state.panFrame) return;
-    state.panFrame = true;
-    requestAnimationFrame(() =&gt; {
-      state.panFrame = false;
-      const anchor = state.anchor, c = state.canvas;
-      if (!anchor || !c || !visible(stage)) return;
-      // The renderer has now updated the SVG dimensions, so scroll positions will not clamp to its old size.
-      state.anchor = null;
-      stage.scrollLeft = Math.max(0, c.left + anchor.x * c.scale - anchor.screen.x);
-      stage.scrollTop = Math.max(0, c.top + anchor.y * c.scale - anchor.screen.y);
-    });
+    const anchor = state.anchor, c = state.canvas;
+    if (!anchor || !c || !visible(stage)) return;
+    state.anchor = null;
+    stage.scrollLeft = Math.max(0, c.left + anchor.x * c.scale - anchor.screen.x);
+    stage.scrollTop = Math.max(0, c.top + anchor.y * c.scale - anchor.screen.y);
   }
+  // Called at the end of an SVG redraw, after its size and contents are final.
+  // Drawing and focal-point correction must reach the screen in the same frame.
+  window.olrCommitCanvas = svg =&gt; restorePan(svg.parentElement);
   function updateControls() {
     for (const button of root.querySelectorAll(&#x27;[data-map-zoom]&#x27;)) {
       const command = button.dataset.mapZoom;
@@ -3729,7 +3727,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     stage.style?.setProperty(&#x27;--olr-canvas-width&#x27;, `${width}px`);
     stage.style?.setProperty(&#x27;--olr-canvas-height&#x27;, `${height}px`);
     stage.style?.setProperty(&#x27;--olr-stage-height&#x27;, `${baseHeight}px`);
-    if (state.anchor) restorePan(stage);
     return result;
   };
   const command = value =&gt; {
@@ -3763,6 +3760,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   for (const stage of stages) {
     if (!stage.addEventListener) continue;
     let drag = null, pinch = null, nativeGesture = null, dragged = false;
+    const beginTouchDrag = t =&gt; ({x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY});
+    const panTouch = t =&gt; {
+      const dx = t.clientX - drag.x, dy = t.clientY - drag.y;
+      if (Math.hypot(t.clientX - drag.startX,t.clientY - drag.startY) &gt; 4) dragged = true;
+      const state = stageState(stage);
+      // A pinch can end before its queued frame renders. Carry the one-finger
+      // movement into that frame instead of restoring the pre-pinch scroll offset.
+      if (state.anchor) state.anchor = {...state.anchor,screen:{x:state.anchor.screen.x+dx,y:state.anchor.screen.y+dy}};
+      else { stage.scrollLeft -= dx; stage.scrollTop -= dy; }
+      drag.x = t.clientX; drag.y = t.clientY;
+    };
     const local = (x,y) =&gt; { const box = stage.getBoundingClientRect(); return {x:x - finite(box.left), y:y - finite(box.top)}; };
     const touchPair = touches =&gt; {
       const a = touches[0], b = touches[1];
@@ -3832,7 +3840,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       dragged = false;
       if (event.touches.length &gt;= 2) { beginPinch(event.touches); event.preventDefault(); }
       else if (zoom &gt; 1) {
-        const t = event.touches[0]; drag = {x:t.clientX,y:t.clientY,left:stage.scrollLeft,top:stage.scrollTop};
+        drag = beginTouchDrag(event.touches[0]);
       }
     }, {passive:false});
     stage.addEventListener(&#x27;touchmove&#x27;, event =&gt; {
@@ -3842,17 +3850,15 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         event.preventDefault(); dragged = true;
         if (pinch.anchor) setZoom(pinch.zoom * pair.distance / pinch.distance, {stage,anchor:{...pinch.anchor,screen:pair.point}});
       } else if (zoom &gt; 1 &amp;&amp; drag &amp;&amp; event.touches.length === 1) {
-        const t = event.touches[0], dx = t.clientX - drag.x, dy = t.clientY - drag.y;
         event.preventDefault();
-        if (Math.hypot(dx,dy) &gt; 4) dragged = true;
-        stage.scrollLeft = drag.left - dx; stage.scrollTop = drag.top - dy;
+        panTouch(event.touches[0]);
       }
     }, {passive:false});
     const endTouch = event =&gt; {
       pinch = null; drag = null;
       if (event.touches.length &gt;= 2) beginPinch(event.touches);
       else if (zoom &gt; 1 &amp;&amp; event.touches.length === 1) {
-        const t = event.touches[0]; drag = {x:t.clientX,y:t.clientY,left:stage.scrollLeft,top:stage.scrollTop};
+        drag = beginTouchDrag(event.touches[0]);
       }
     };
     stage.addEventListener(&#x27;touchend&#x27;, endTouch);
