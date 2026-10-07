@@ -3200,13 +3200,14 @@ html&gt;body{padding:0}&lt;/style&gt;
   let view=views.includes(saved)?saved:lastSingleView;
   function select(next,save=false){
     next=views.includes(next)?next:lastSingleView;
-    window.olrMapZoom?.remember();
+    const changingView=next!==view;
+    if(changingView)window.olrMapZoom?.remember();
     view=next;
     lastSingleView=view;
     updateFloorControls();
     for(const tab of tabs){const active=tab.dataset.view===view;tab.setAttribute(&#x27;aria-selected&#x27;,String(active));tab.classList.toggle(&#x27;active&#x27;,active);}
     for(const panel of panels)panel.hidden=panel.id!==`fc-${view}-panel`;
-    window.olrMapZoom?.restore();
+    if(changingView)window.olrMapZoom?.restore();
     document.dispatchEvent(new CustomEvent(&#x27;olr-map-view-change&#x27;));
     if(window.olrFitCanvas)requestAnimationFrame(()=&gt;{lastRenderedWidth=0;redrawMaps();});
     if(save)document.getElementById(&#x27;olr-campus-page&#x27;).saveState({modelContent:{campusWithTheaterView:view,campusSingleMapView:lastSingleView},privateContent:null}).catch(()=&gt;{});
@@ -3218,6 +3219,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     const rootWidth=root.getBoundingClientRect().width;
     const [xmin,ymin,xmax,ymax]=parkingDetail?[-225,-10,40,225]:detail?[20,-15,310,225]:data.bbox;
     const fitted=window.olrFitCanvas?.(svg,xmax-xmin,ymax-ymin,18,24);
+    if(window.olrFitCanvas&amp;&amp;!fitted)return;
     const width=fitted?.width??Math.max(280,sideBySide&amp;&amp;rootWidth&gt;=640?(rootWidth-16)/2:rootWidth);
     const scale=fitted?.scale??(width-24)/(xmax-xmin),height=fitted?.height??((ymax-ymin)*scale+42),compact=(fitted?.drawingWidth??width)&lt;560;
     const x=v=&gt;(fitted?.left??12)+(v-xmin)*scale,y=v=&gt;(fitted?.top??18)+(ymax-v)*scale;
@@ -3660,12 +3662,26 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const anchor = state.anchor, c = state.canvas;
     if (!anchor || !c || !visible(stage)) return;
     state.anchor = null;
-    stage.scrollLeft = Math.max(0, c.left + anchor.x * c.scale - anchor.screen.x);
-    stage.scrollTop = Math.max(0, c.top + anchor.y * c.scale - anchor.screen.y);
+    // A newly revealed mobile stage gets its final height from this drawing.
+    // Normalize only now, not against its stale/empty SVG before the redraw.
+    const box = stage.getBoundingClientRect();
+    const screen = anchor.viewport ? {
+      x:anchor.screen.x * box.width / anchor.viewport.width,
+      y:anchor.screen.y * box.height / anchor.viewport.height
+    } : anchor.screen;
+    stage.scrollLeft = Math.max(0, c.left + anchor.x * c.scale - screen.x);
+    stage.scrollTop = Math.max(0, c.top + anchor.y * c.scale - screen.y);
   }
   // Called at the end of an SVG redraw, after its size and contents are final.
   // Drawing and focal-point correction must reach the screen in the same frame.
-  window.olrCommitCanvas = svg =&gt; restorePan(svg.parentElement);
+  window.olrCommitCanvas = svg =&gt; {
+    const stage = svg.parentElement;
+    restorePan(stage);
+    if (visible(stage)) {
+      const box = stage.getBoundingClientRect();
+      stageState(stage).viewport = {width:box.width,height:box.height};
+    }
+  };
   function updateControls() {
     for (const button of root.querySelectorAll(&#x27;[data-map-zoom]&#x27;)) {
       const command = button.dataset.mapZoom;
@@ -3725,12 +3741,18 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     get value() { return zoom; }, min:MIN_ZOOM, max:MAX_ZOOM,
     set:setZoom, in:() =&gt; command(&#x27;in&#x27;), out:() =&gt; command(&#x27;out&#x27;), fit:() =&gt; command(&#x27;fit&#x27;),
     remember() {
-      const stage = stages.find(s =&gt; visible(s) &amp;&amp; stageState(s).canvas);
-      remembered = stage ? anchorAt(stage) : null;
+      const stage = stages.find(s =&gt; visible(s) &amp;&amp; (stageState(s).canvas || stageState(s).anchor));
+      if (!stage) return;
+      const state = stageState(stage), box = stage.getBoundingClientRect();
+      // A tab switch or pinch may still be waiting for its render. Preserve
+      // that intended camera instead of sampling stale scroll/size values.
+      const anchor = state.anchor || anchorAt(stage);
+      if (anchor) remembered = {...anchor,screen:{...anchor.screen},viewport:anchor.viewport || {width:box.width,height:box.height}};
     },
     restore() {
       if (zoom &gt; 1 &amp;&amp; remembered) for (const stage of stages) {
-        if (visible(stage)) stageState(stage).anchor = {...remembered, screen:screenPoint(stage)};
+        if (!visible(stage)) continue;
+        stageState(stage).anchor = {...remembered,screen:{...remembered.screen}};
       }
       redraw();
     },
