@@ -3114,7 +3114,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;div class=&quot;nav nav-pills nav-justified&quot; role=&quot;tablist&quot; aria-label=&quot;Campus comparison&quot;&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link active&quot; id=&quot;fc-shifted-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-shifted-panel&quot; aria-selected=&quot;true&quot; data-view=&quot;shifted&quot;&gt;New&lt;/button&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-existing-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-existing-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;existing&quot;&gt;Current&lt;/button&gt;
-      &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-compare-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-compare-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;compare&quot;&gt;Side by side&lt;/button&gt;
     &lt;/div&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-toggle-map&quot; aria-keyshortcuts=&quot;T&quot; hidden&gt;Switch map · T&lt;/button&gt;
     &lt;div id=&quot;cf-floor-controls&quot; class=&quot;viz-row&quot; role=&quot;group&quot; aria-label=&quot;Building detail&quot;&gt;
@@ -3135,18 +3134,6 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-shifted-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-shifted-tab&quot;&gt;
     &lt;svg class=&quot;campus-map&quot; data-map=&quot;shifted&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-shifted-title fc-shifted-desc&quot;&gt;&lt;/svg&gt;
   &lt;/div&gt;
-  &lt;div id=&quot;fc-compare-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-compare-tab&quot; hidden&gt;
-    &lt;div class=&quot;side-by-side-maps&quot;&gt;
-      &lt;div&gt;
-        &lt;h3&gt;Current&lt;/h3&gt;
-        &lt;div class=&quot;olr-canvas-viewport&quot;&gt;&lt;svg class=&quot;campus-map&quot; data-map=&quot;side-existing&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-side-existing-title fc-side-existing-desc&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div&gt;
-        &lt;h3&gt;New&lt;/h3&gt;
-        &lt;div class=&quot;olr-canvas-viewport&quot;&gt;&lt;svg class=&quot;campus-map&quot; data-map=&quot;side-shifted&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-side-shifted-title fc-side-shifted-desc&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  &lt;/div&gt;
   &lt;div class=&quot;comparison-legend text-small&quot;&gt;
     &lt;span&gt;&lt;i class=&quot;existing-building-key&quot;&gt;&lt;/i&gt;Existing buildings&lt;/span&gt;
     &lt;span&gt;&lt;i class=&quot;paving-key&quot;&gt;&lt;/i&gt;Campus paving&lt;/span&gt;
@@ -3161,8 +3148,6 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;style&gt;
 #fc-parking-comparison .campus-map { display:block; width:100%; overflow:hidden; }
 #fc-parking-comparison .campus-map text { fill:var(--foreground); font-size:12px; font-weight:400; }
-#fc-parking-comparison .side-by-side-maps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-#fc-parking-comparison[data-stack-maps=&quot;true&quot;] .side-by-side-maps { grid-template-columns:minmax(0,1fr); }
 #fc-parking-comparison .comparison-legend { display:flex; flex-wrap:wrap; gap:8px 16px; }
 #fc-parking-comparison .comparison-legend span { display:flex; align-items:center; gap:6px; }
 #fc-parking-comparison .comparison-legend i { display:inline-block; width:17px; height:9px; }
@@ -3181,8 +3166,8 @@ html&gt;body{padding:0}&lt;/style&gt;
   const data=JSON.parse(document.getElementById(&#x27;fc-east-shift-data&#x27;).textContent);
   const tabs=[...root.querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)];
   const panels=[...root.querySelectorAll(&#x27;[role=&quot;tabpanel&quot;]&#x27;)];
-  const views=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;compare&#x27;];
-  const mapKeys=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;side-existing&#x27;,&#x27;side-shifted&#x27;];
+  const views=[&#x27;existing&#x27;,&#x27;shifted&#x27;];
+  const mapKeys=[&#x27;existing&#x27;,&#x27;shifted&#x27;];
   const savedState=window.openai?.widgetState?.modelContent;
   const storyControls=document.getElementById(&#x27;cf-floor-controls&#x27;);
   const storyButtons=[...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
@@ -3211,12 +3196,13 @@ html&gt;body{padding:0}&lt;/style&gt;
   root.toggleBuildings=()=&gt;setCampusFloor(campusFloor?0:lastCampusFloor);
   storyButtons.forEach(button=&gt;button.addEventListener(&#x27;click&#x27;,()=&gt;setCampusFloor(Number(button.dataset.campusFloor))));
   const saved=savedState?.campusWithTheaterView;
-  let view=views.includes(saved)?saved:&#x27;shifted&#x27;;
-  let lastSingleView=[&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(savedState?.campusSingleMapView)?savedState.campusSingleMapView:view===&#x27;existing&#x27;?&#x27;existing&#x27;:&#x27;shifted&#x27;;
+  let lastSingleView=views.includes(savedState?.campusSingleMapView)?savedState.campusSingleMapView:&#x27;shifted&#x27;;
+  let view=views.includes(saved)?saved:lastSingleView;
   function select(next,save=false){
+    next=views.includes(next)?next:lastSingleView;
     window.olrMapZoom?.remember();
     view=next;
-    if(view!==&#x27;compare&#x27;)lastSingleView=view;
+    lastSingleView=view;
     updateFloorControls();
     for(const tab of tabs){const active=tab.dataset.view===view;tab.setAttribute(&#x27;aria-selected&#x27;,String(active));tab.classList.toggle(&#x27;active&#x27;,active);}
     for(const panel of panels)panel.hidden=panel.id!==`fc-${view}-panel`;
@@ -3519,7 +3505,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     if([1,2].includes(state?.lastCampusOverlayFloor))lastCampusFloor=state.lastCampusOverlayFloor;
     if([&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(state?.campusSingleMapView))lastSingleView=state.campusSingleMapView;
-    if(views.includes(state?.campusWithTheaterView))select(state.campusWithTheaterView);
+    if(views.includes(state?.campusWithTheaterView)||state?.campusWithTheaterView===&#x27;compare&#x27;)select(state.campusWithTheaterView);
   });
   let lastRenderedWidth=0,redrawFrame=null;
   function redrawMaps(){
