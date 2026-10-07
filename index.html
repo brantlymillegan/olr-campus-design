@@ -1257,7 +1257,7 @@ html>body { padding:0; }
 <header class="campus-page-toolbar">
   <span>OLR Campus</span>
   <div class="viz-row">
-    <span class="text-small">T switches the active view</span>
+    <span class="text-small">T switches views · F switches stories</span>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
   <span id="campus-fullscreen-status" class="text-small" role="status" aria-live="polite" hidden></span>
@@ -2793,7 +2793,8 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;/script&gt;
 &lt;div id=&quot;olr-campus-page&quot; class=&quot;olr-fit-viewer&quot;&gt;
   &lt;div class=&quot;olr-fit-toolbar&quot;&gt;&lt;div class=&quot;nav nav-pills&quot; role=&quot;tablist&quot; aria-label=&quot;Campus planning views&quot;&gt;
-    &lt;button type=&quot;button&quot; class=&quot;nav-link active&quot; id=&quot;olr-campus-tab&quot; role=&quot;tab&quot; aria-controls=&quot;olr-campus-section&quot; aria-selected=&quot;true&quot; data-page-section=&quot;campus&quot;&gt;Campus plan&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link active&quot; id=&quot;olr-combined-tab&quot; role=&quot;tab&quot; aria-controls=&quot;olr-campus-section&quot; aria-selected=&quot;true&quot; data-page-section=&quot;combined&quot;&gt;Combined&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;olr-campus-tab&quot; role=&quot;tab&quot; aria-controls=&quot;olr-campus-section&quot; aria-selected=&quot;false&quot; data-page-section=&quot;campus&quot;&gt;Campus plan&lt;/button&gt;
     &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;olr-floors-tab&quot; role=&quot;tab&quot; aria-controls=&quot;olr-floors-section&quot; aria-selected=&quot;false&quot; data-page-section=&quot;floors&quot;&gt;Floor plans&lt;/button&gt;
   &lt;/div&gt;
 &lt;label class=&quot;olr-size-control text-small&quot;&gt;Size
@@ -2802,7 +2803,252 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;option value=&quot;1.5&quot;&gt;150%&lt;/option&gt;&lt;option value=&quot;2&quot;&gt;200%&lt;/option&gt;&lt;option value=&quot;3&quot;&gt;300%&lt;/option&gt;
   &lt;/select&gt;
 &lt;/label&gt;&lt;/div&gt;
-  &lt;section id=&quot;olr-campus-section&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;olr-campus-tab&quot;&gt;
+  &lt;section id=&quot;olr-campus-section&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;olr-combined-tab&quot;&gt;
+&lt;script id=&quot;olr-campus-floor-renderer&quot;&gt;
+/* Draw canonical room geometry in the proposed campus footprints.
+ * Local floor-plan y runs south; campus world y runs north. All drawing is
+ * appended to parent. The caller owns view state, zoom, clearing, and controls.
+ */
+(() =&gt; {
+  let serial = 0;
+  window.olrDrawCampusFloors = function ({data, proposal, floor, parent, el, x, y, scale}) {
+    floor = Number(floor);
+    if (![1, 2].includes(floor) || !data || !proposal || !parent || !Number.isFinite(scale) || scale &lt;= 0) return null;
+    const prefix = `olr-campus-floor-${++serial}`;
+    const overlay = el(&#x27;g&#x27;, {&#x27;data-campus-floor-overlay&#x27;: floor}, parent);
+    const defs = el(&#x27;defs&#x27;, {}, overlay);
+    const color = category =&gt; ({
+      classroom: &#x27;color-mix(in srgb,var(--viz-series-2) 22%,var(--background))&#x27;,
+      spare: &#x27;color-mix(in srgb,var(--viz-series-5) 20%,var(--background))&#x27;,
+      special: &#x27;color-mix(in srgb,var(--viz-series-3) 18%,var(--background))&#x27;,
+      office: &#x27;color-mix(in srgb,var(--viz-series-4) 16%,var(--background))&#x27;,
+      toilet: &#x27;color-mix(in srgb,var(--viz-series-1) 18%,var(--background))&#x27;,
+      core: &#x27;var(--background)&#x27;, service: &#x27;var(--muted)&#x27;
+    }[category] || &#x27;var(--background)&#x27;);
+    const number = value =&gt; Number(value).toLocaleString(undefined, {maximumFractionDigits: 2});
+    const areaText = r =&gt; `${Math.round(r.teaching_sf ?? r.area_sf).toLocaleString()} SF${r.teaching_sf ? &#x27; teaching&#x27; : &#x27;&#x27;}`;
+    const dimensions = r =&gt; {
+      const d = r.dimensions_ft || {width: r.rect[2] - r.rect[0], depth: r.rect[3] - r.rect[1]};
+      return `${number(d.width)} × ${number(d.depth)} ft${d.overall ? &#x27; overall&#x27; : &#x27;&#x27;}`;
+    };
+    const description = r =&gt; {
+      const c = r.fixture_counts;
+      const storage = r.storage_rect;
+      const storeArea = storage ? (storage[2] - storage[0]) * (storage[3] - storage[1]) : 0;
+      return `${r.name} · ${areaText(r)} · ${dimensions(r)}` +
+        (storage ? ` · ${Math.round(r.area_sf).toLocaleString()} SF total including ${number(storeArea)} SF storage` : &#x27;&#x27;) +
+        (r.category === &#x27;toilet&#x27; &amp;&amp; c ? ` · ${c.wc} WC · ${c.urinal} urinals · ${c.sink} sinks` : &#x27;&#x27;);
+    };
+    const worldRect = (b, attrs, target = overlay) =&gt; el(&#x27;rect&#x27;, {
+      x: Math.min(x(b[0]), x(b[2])), y: Math.min(y(b[1]), y(b[3])),
+      width: Math.abs(x(b[2]) - x(b[0])), height: Math.abs(y(b[3]) - y(b[1])), ...attrs
+    }, target);
+    // Only the long edges are drawn: both building entrances stay unobstructed.
+    if (proposal.bridge) {
+      const b = proposal.bridge;
+      const bridge = el(&#x27;g&#x27;, {&#x27;data-campus-floor-bridge&#x27;: floor, &#x27;data-tooltip&#x27;: data.bridge?.[`floor${floor}`] || (floor === 1 ? &#x27;Covered walk&#x27; : &#x27;Upper bridge&#x27;)}, overlay);
+      worldRect(b, {fill: &#x27;var(--background)&#x27;}, bridge);
+      for (const yy of [b[1], b[3]]) el(&#x27;line&#x27;, {
+        x1: x(b[0]), y1: y(yy), x2: x(b[2]), y2: y(yy),
+        stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: 1,
+        &#x27;stroke-dasharray&#x27;: floor === 1 ? &#x27;4 3&#x27; : &#x27;none&#x27;, &#x27;data-bridge-edge&#x27;: floor === 1 ? &#x27;covered-walk&#x27; : &#x27;upper-bridge&#x27;
+      }, bridge);
+    }
+    for (const building of data.buildings || []) {
+      const site = building.id === &#x27;b1&#x27; ? proposal.academic : building.id === &#x27;b2&#x27; ? proposal.shared : null;
+      if (!site) continue;
+      const bx = v =&gt; x(site[0] + v), by = v =&gt; y(site[3] - v);
+      const line = (a, b, attrs = {}, target = interior) =&gt; el(&#x27;line&#x27;, {
+        x1: bx(a[0]), y1: by(a[1]), x2: bx(b[0]), y2: by(b[1]),
+        stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .7, &#x27;pointer-events&#x27;: &#x27;none&#x27;, ...attrs
+      }, target);
+      const polygon = (points, attrs = {}, target = interior) =&gt; el(&#x27;polygon&#x27;, {
+        points: points.map(p =&gt; `${bx(p[0])},${by(p[1])}`).join(&#x27; &#x27;), ...attrs
+      }, target);
+      const rect = (b, attrs = {}, target = interior) =&gt; el(&#x27;rect&#x27;, {
+        x: Math.min(bx(b[0]), bx(b[2])), y: Math.min(by(b[1]), by(b[3])),
+        width: Math.abs(bx(b[2]) - bx(b[0])), height: Math.abs(by(b[3]) - by(b[1])), ...attrs
+      }, target);
+      const label = (text, px, py, attrs = {}) =&gt; {
+        const n = el(&#x27;text&#x27;, {x: bx(px), y: by(py), &#x27;text-anchor&#x27;: &#x27;middle&#x27;, &#x27;dominant-baseline&#x27;: &#x27;middle&#x27;,
+          fill: &#x27;var(--foreground)&#x27;, &#x27;font-size&#x27;: 12, &#x27;font-weight&#x27;: 400, &#x27;pointer-events&#x27;: &#x27;none&#x27;, ...attrs}, interior);
+        n.textContent = text;
+        return n;
+      };
+      const group = el(&#x27;g&#x27;, {&#x27;data-campus-floor-building&#x27;: building.id, &#x27;data-building&#x27;: building.id, &#x27;data-floor&#x27;: floor}, overlay);
+      const clipId = `${prefix}-${building.id}`;
+      const clip = el(&#x27;clipPath&#x27;, {id: clipId, clipPathUnits: &#x27;userSpaceOnUse&#x27;}, defs);
+      polygon(building.outline, {}, clip);
+      const interior = el(&#x27;g&#x27;, {&#x27;clip-path&#x27;: `url(#${clipId})`}, group);
+      polygon(building.outline, {fill: &#x27;color-mix(in srgb,var(--foreground) 12%,var(--background))&#x27;, stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.5});
+      for (const c of data.corridors || []) if (c.building === building.id &amp;&amp; c.floor === floor) {
+        rect(c.rect, {fill: &#x27;var(--background)&#x27;, &#x27;data-campus-floor-corridor&#x27;: c.id, &#x27;data-corridor-width&#x27;: c.clear_width});
+      }
+      const rooms = (data.rooms || []).filter(r =&gt; r.building === building.id &amp;&amp; r.floor === floor);
+      for (const r of rooms) {
+        polygon(r.polygon, {fill: color(r.category), stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .8,
+          &#x27;data-campus-floor-room&#x27;: r.id, &#x27;data-building&#x27;: building.id, &#x27;data-floor&#x27;: floor,
+          &#x27;data-tooltip&#x27;: description(r), &#x27;aria-label&#x27;: description(r)});
+        const b = r.rect;
+        if (r.storage_rect) {
+          const s = r.storage_rect;
+          rect(s, {fill: color(&#x27;service&#x27;), stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .7,
+            &#x27;data-classroom-storage&#x27;: (s[2] - s[0]) * (s[3] - s[1]), &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+          line([s[0] + .3, s[1]], [s[2] - .3, s[1]], {stroke: color(r.category), &#x27;stroke-width&#x27;: 2});
+          for (let i = 1; i &lt; 4; i++) line([s[0] + i * (s[2] - s[0]) / 4, s[1] + .2], [s[0] + i * (s[2] - s[0]) / 4, s[3]], {&#x27;stroke-width&#x27;: .5});
+          if ((s[2] - s[0]) * scale &gt; 45 &amp;&amp; (s[3] - s[1]) * scale &gt;= 16) label(&#x27;Store&#x27;, (s[0] + s[2]) / 2, (s[1] + s[3]) / 2);
+        }
+        if (r.stair) {
+          if (r.stair_orientation === &#x27;east-west&#x27;) {
+            const mid = (b[1] + b[3]) / 2, left = b[0] + 5, right = b[2] - 5;
+            for (let i = 0; i &lt;= 11; i++) {
+              const xx = left + (right - left) * i / 11;
+              line([xx, b[1] + 1], [xx, mid - .6], {&#x27;stroke-width&#x27;: .6, &#x27;data-stair-tread&#x27;: r.id});
+              line([xx, mid + .6], [xx, b[3] - 1], {&#x27;stroke-width&#x27;: .6, &#x27;data-stair-tread&#x27;: r.id});
+            }
+            line([b[0] + 3, mid], [b[2] - 3, mid]);
+          } else {
+            const mid = (b[0] + b[2]) / 2, top = b[1] + 5, bottom = b[3] - 5;
+            for (let i = 0; i &lt;= 11; i++) {
+              const yy = top + (bottom - top) * i / 11;
+              line([b[0] + 1, yy], [mid - .6, yy], {&#x27;stroke-width&#x27;: .6, &#x27;data-stair-tread&#x27;: r.id});
+              line([mid + .6, yy], [b[2] - 1, yy], {&#x27;stroke-width&#x27;: .6, &#x27;data-stair-tread&#x27;: r.id});
+            }
+            line([mid, b[1] + 3], [mid, b[3] - 3]);
+          }
+        }
+        if (r.lift) {
+          line([b[0] + 1, b[1] + 1], [b[2] - 1, b[3] - 1], {&#x27;data-lift&#x27;: r.id});
+          line([b[2] - 1, b[1] + 1], [b[0] + 1, b[3] - 1]);
+        }
+        for (const item of r.furniture || []) {
+          const q = item.rect, cx = (q[0] + q[2]) / 2, cy = (q[1] + q[3]) / 2;
+          if (item.kind === &#x27;reception-desk&#x27;) {
+            rect(q, {fill: &#x27;var(--muted)&#x27;, stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.2, &#x27;data-furniture&#x27;: &#x27;reception-desk&#x27;, &#x27;data-faces&#x27;: item.faces, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+            const north = item.faces === &#x27;N&#x27;, tip = north ? [cx, q[1] - 4] : [q[0] - 4, cy];
+            line(north ? [cx, q[1] - 1] : [q[0] - 1, cy], tip, {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.2});
+            line(tip, north ? [cx - 1, q[1] - 2.8] : [q[0] - 2.8, cy - 1], {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.2});
+            line(tip, north ? [cx + 1, q[1] - 2.8] : [q[0] - 2.8, cy + 1], {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.2});
+          } else {
+            rect(q, {rx: .3 * scale, fill: &#x27;var(--background)&#x27;, stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .8,
+              &#x27;data-furniture&#x27;: item.staff ? &#x27;receptionist-chair&#x27; : &#x27;waiting-chair&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+            if (item.faces === &#x27;W&#x27;) line([q[2], q[1]], [q[2], q[3]], {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.5});
+            else if (item.faces === &#x27;E&#x27;) line([q[0], q[1]], [q[0], q[3]], {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.5});
+            else line([q[0], q[3]], [q[2], q[3]], {stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: 1.5});
+          }
+        }
+        for (const f of r.fixtures || []) {
+          const q = f.rect, cx = (q[0] + q[2]) / 2, cy = (q[1] + q[3]) / 2;
+          if (f.kind === &#x27;stall&#x27;) {
+            rect(q, {fill: &#x27;none&#x27;, stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .8, &#x27;data-fixture&#x27;: &#x27;stall&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+            const w = Math.min(3, q[2] - q[0] - .4), a = q[2] - .2;
+            line([a - w, q[1]], [a, q[1]], {stroke: color(&#x27;toilet&#x27;), &#x27;stroke-width&#x27;: 2.5});
+            line([a, q[1]], [a, q[1] + w], {&#x27;stroke-width&#x27;: .6});
+          } else if (f.kind === &#x27;wc&#x27;) {
+            el(&#x27;ellipse&#x27;, {cx: bx(cx), cy: by(cy + (f.rotation === 180 ? .15 : -.15)), rx: (q[2] - q[0]) * .44 * scale,
+              ry: (q[3] - q[1]) * .34 * scale, fill: &#x27;var(--background)&#x27;, stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: .8,
+              &#x27;data-fixture&#x27;: &#x27;wc&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;}, interior);
+            rect(f.rotation === 180 ? [q[0], q[1], q[2], q[1] + .55] : [q[0], q[3] - .55, q[2], q[3]],
+              {fill: &#x27;var(--background)&#x27;, stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: .7, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+          } else if (f.kind === &#x27;sink&#x27;) {
+            rect(q, {fill: &#x27;var(--background)&#x27;, stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .7, &#x27;data-fixture&#x27;: &#x27;sink&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+            el(&#x27;ellipse&#x27;, {cx: bx(cx), cy: by(cy), rx: (q[2] - q[0]) * .3 * scale, ry: (q[3] - q[1]) * .3 * scale,
+              fill: &#x27;none&#x27;, stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .6, &#x27;pointer-events&#x27;: &#x27;none&#x27;}, interior);
+          } else if (f.kind === &#x27;urinal&#x27;) rect(q, {rx: .4 * scale, fill: &#x27;var(--background)&#x27;, stroke: &#x27;var(--foreground)&#x27;, &#x27;stroke-width&#x27;: .8, &#x27;data-fixture&#x27;: &#x27;urinal&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;});
+        }
+      }
+      function drawDoor(r, d, exterior = false) {
+        const b = r.rect, side = d.side, p = d.pos, w = d.width;
+        const c = d.center || (side === &#x27;N&#x27; ? [p, b[1]] : side === &#x27;S&#x27; ? [p, b[3]] : side === &#x27;W&#x27; ? [b[0], p] : [b[2], p]);
+        const horizontal = side === &#x27;N&#x27; || side === &#x27;S&#x27;;
+        const start = horizontal ? [c[0] - w / 2, c[1]] : [c[0], c[1] - w / 2];
+        const end = horizontal ? [c[0] + w / 2, c[1]] : [c[0], c[1] + w / 2];
+        const target = exterior ? group : interior;
+        const inward = side === &#x27;N&#x27; ? [0, 1] : side === &#x27;S&#x27; ? [0, -1] : side === &#x27;W&#x27; ? [1, 0] : [-1, 0];
+        // Clear both faces and the reserved wall thickness, not just its outline.
+        const shift = d.opposite ? [d.opposite[0] - c[0], d.opposite[1] - c[1]] : inward.map(v =&gt; v * (exterior ? 1 : -.5));
+        polygon([start, end, [end[0] + shift[0], end[1] + shift[1]], [start[0] + shift[0], start[1] + shift[1]]],
+          {fill: &#x27;var(--background)&#x27;, &#x27;pointer-events&#x27;: &#x27;none&#x27;, ...(d.kind === &#x27;open&#x27; ? {&#x27;data-open-entry&#x27;: r.id} : {})}, target);
+        line(start, end, {stroke: &#x27;var(--background)&#x27;, &#x27;stroke-width&#x27;: 2.8, &#x27;data-campus-floor-door&#x27;: r.id,
+          &#x27;data-door-kind&#x27;: d.kind || &#x27;swing&#x27;, &#x27;data-exterior-door&#x27;: exterior ? building.id : &#x27;false&#x27;}, target);
+        if (d.opposite) line(horizontal ? [d.opposite[0] - w / 2, d.opposite[1]] : [d.opposite[0], d.opposite[1] - w / 2],
+          horizontal ? [d.opposite[0] + w / 2, d.opposite[1]] : [d.opposite[0], d.opposite[1] + w / 2],
+          {stroke: &#x27;var(--background)&#x27;, &#x27;stroke-width&#x27;: 2.8}, target);
+        if (d.kind === &#x27;open&#x27;) return;
+        const sweep = side === &#x27;N&#x27; || side === &#x27;E&#x27; ? 1 : 0;
+        const leaves = d.kind === &#x27;double&#x27; ? [[start, c, sweep], [end, c, 1 - sweep]] : [[start, end, sweep]];
+        for (const [hinge, tip, arcSweep] of leaves) {
+          const length = d.kind === &#x27;double&#x27; ? w / 2 : w, leaf = [hinge[0] + inward[0] * length, hinge[1] + inward[1] * length];
+          line(hinge, leaf, {&#x27;stroke-width&#x27;: .7}, target);
+          el(&#x27;path&#x27;, {d: `M${bx(tip[0])} ${by(tip[1])} A${length * scale} ${length * scale} 0 0 ${arcSweep} ${bx(leaf[0])} ${by(leaf[1])}`,
+            fill: &#x27;none&#x27;, stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .6, &#x27;data-door-swing&#x27;: r.id, &#x27;pointer-events&#x27;: &#x27;none&#x27;}, target);
+        }
+      }
+      for (const r of rooms) for (const d of r.doors || []) drawDoor(r, d);
+      const xmax = Math.max(...building.outline.map(p =&gt; p[0])), ymax = Math.max(...building.outline.map(p =&gt; p[1]));
+      for (const e of data.exits || []) if (e.building === building.id &amp;&amp; e.floor === floor) drawDoor({id: `${building.id}-exterior`, rect: [0, 0, xmax, ymax]}, e, true);
+
+      const wrap = (text, max) =&gt; {
+        const lines = [];
+        for (const word of text.split(/\s+/)) {
+          if (!lines.length || lines.at(-1).length + word.length + 1 &gt; max) lines.push(word);
+          else lines[lines.length - 1] += &#x27; &#x27; + word;
+        }
+        return lines;
+      };
+      const inside = (p, polygon) =&gt; {
+        let result = false;
+        for (let i = 0, j = polygon.length - 1; i &lt; polygon.length; j = i++) {
+          const a = polygon[i], b = polygon[j];
+          if ((a[1] &gt; p[1]) !== (b[1] &gt; p[1]) &amp;&amp; p[0] &lt; (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) result = !result;
+        }
+        return result;
+      };
+      for (const r of rooms) {
+        const box = r.label_rect || r.rect, ww = (box[2] - box[0]) * scale, hh = (box[3] - box[1]) * scale;
+        let cx = r.label_xy?.[0] ?? (box[0] + box[2]) / 2, cy = r.label_xy?.[1] ?? (box[1] + box[3]) / 2;
+        const limit = Math.max(3, Math.floor((ww - 8) / 7));
+        const nameLines = (r.label_lines || [r.name]).flatMap(t =&gt; wrap(t, limit));
+        const areaLines = wrap(areaText(r), limit), dimensionLines = wrap(dimensions(r), limit);
+        const withArea = [...nameLines, ...areaLines], full = [...withArea, ...dimensionLines];
+        const grade = r.name.match(/^Grade\s*(\d+)([A-Z])?$/i), spare = r.name.match(/^Spare\s*(\d+)$/i);
+        const classroomCompact = r.classroom ? (grade ? `${grade[2] ? &#x27;&#x27; : &#x27;G&#x27;}${grade[1]}${grade[2] || &#x27;&#x27;}` : spare ? `Sp${spare[1]}` : /^K[45]$/.test(r.name) ? r.name : &#x27;&#x27;) : &#x27;&#x27;;
+        const fitsBox = lines =&gt; lines.every(t =&gt; t.length * 7 &lt;= ww - 8) &amp;&amp; lines.length * 14 &lt;= hh - 8;
+        const candidates = r.short_label ? [r.short_label] : classroomCompact ? [classroomCompact] :
+          r.lift ? [&#x27;Lift&#x27;] : r.stair ? [&#x27;Stair&#x27;, r.code] : r.category === &#x27;toilet&#x27; ?
+          (r.code === &#x27;G&#x27; ? [&#x27;Girls&#x27;, &#x27;WC&#x27;] : r.code === &#x27;B&#x27; ? [&#x27;Boys&#x27;, &#x27;WC&#x27;] : [&#x27;WC&#x27;]) :
+          /store|storage/i.test(r.name) ? [&#x27;Store&#x27;, &#x27;St&#x27;] : /library/i.test(r.name) ? [&#x27;Lib&#x27;] :
+          /science/i.test(r.name) ? [&#x27;Science&#x27;, &#x27;Lab&#x27;] : /art classroom/i.test(r.name) ? [&#x27;Art&#x27;] :
+          /music/i.test(r.name) ? [&#x27;Music&#x27;, &#x27;Mus&#x27;] : /dining/i.test(r.name) ? [&#x27;Dining&#x27;, &#x27;Dine&#x27;] :
+          /enhanced learning/i.test(r.name) ? [&#x27;Learn&#x27;, &#x27;EL&#x27;] : /school office \/ staff/i.test(r.name) ? [&#x27;Office&#x27;, &#x27;Off&#x27;] :
+          /teachers/i.test(r.name) ? [&#x27;Lounge&#x27;, &#x27;Staff&#x27;, &#x27;Tch&#x27;] : /small-group/i.test(r.name) ? [&#x27;Group&#x27;, &#x27;SG&#x27;] :
+          /conference/i.test(r.name) ? [&#x27;Conf.&#x27;] : /counselor/i.test(r.name) ? [&#x27;Dean&#x27;] :
+          /kitchen/i.test(r.name) ? [&#x27;Kitchen&#x27;, &#x27;Kit&#x27;] : /receiving/i.test(r.name) ? [&#x27;Recv.&#x27;] :
+          /services|riser|MEP/i.test(r.name) ? [&#x27;MEP&#x27;] : /reception/i.test(r.name) ? [&#x27;Reception&#x27;, &#x27;Rec&#x27;] :
+          /head \/ school/i.test(r.name) ? [&#x27;Head&#x27;] : /nurse/i.test(r.name) ? [&#x27;Nurse&#x27;] : [];
+        const compact = candidates.find(text =&gt; text.length * 7 &lt;= ww - 2 &amp;&amp; hh &gt;= 16);
+        const compactLines = compact ? [compact] : [];
+        const lines = fitsBox(full) ? full : fitsBox(withArea) ? withArea : fitsBox(nameLines) ? nameLines : compactLines;
+        if (!lines.length) continue;
+        const smallCompact = lines === compactLines &amp;&amp; !fitsBox(compactLines);
+        const halfH = (lines.length * 14 / 2 + (smallCompact ? 1 : 2)) / scale;
+        cy = Math.max(box[1] + halfH, Math.min(cy, box[3] - halfH));
+        const halfW = (Math.max(...lines.map(t =&gt; t.length)) * 7 / 2 + (smallCompact ? 1 : 2)) / scale;
+        cx = Math.max(box[0] + halfW, Math.min(cx, box[2] - halfW));
+        // Concave specialist rooms keep labels out of their separate stores.
+        if (![[cx - halfW, cy - halfH], [cx + halfW, cy - halfH], [cx - halfW, cy + halfH], [cx + halfW, cy + halfH], [cx, cy]].every(p =&gt; inside(p, r.polygon))) continue;
+        lines.forEach((text, i) =&gt; label(text, cx, cy + (i - (lines.length - 1) / 2) * 14 / scale, {
+          &#x27;data-campus-floor-label&#x27;: r.id,
+          ...((lines === full || lines === withArea) &amp;&amp; i &gt;= nameLines.length &amp;&amp; i &lt; withArea.length ? {&#x27;data-room-area&#x27;: r.id} : {}),
+          ...(lines === full &amp;&amp; i &gt;= withArea.length ? {&#x27;data-room-dimensions&#x27;: r.id} : {})
+        }));
+      }
+    }
+    return overlay;
+  };
+})();
+
+&lt;/script&gt;
 &lt;div id=&quot;fc-parking-comparison&quot;&gt;
   &lt;h3&gt;Full campus comparison&lt;/h3&gt;
   &lt;div class=&quot;viz-row&quot;&gt;
@@ -2812,6 +3058,10 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-compare-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-compare-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;compare&quot;&gt;Side by side&lt;/button&gt;
     &lt;/div&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-toggle-map&quot; aria-keyshortcuts=&quot;T&quot;&gt;Switch map · T&lt;/button&gt;
+    &lt;div id=&quot;cf-floor-controls&quot; class=&quot;viz-row&quot; role=&quot;group&quot; aria-label=&quot;New building story&quot; hidden&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;1&quot; aria-pressed=&quot;true&quot; aria-keyshortcuts=&quot;F&quot; data-tooltip=&quot;First floor · F switches stories&quot;&gt;1st floor&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;2&quot; aria-pressed=&quot;false&quot; aria-keyshortcuts=&quot;F&quot; data-tooltip=&quot;Second floor · F switches stories&quot;&gt;2nd floor&lt;/button&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
     &lt;svg class=&quot;campus-map&quot; data-map=&quot;existing&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-existing-title fc-existing-desc&quot;&gt;&lt;/svg&gt;
@@ -2868,12 +3118,31 @@ html&gt;body{padding:0}&lt;/style&gt;
   const views=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;compare&#x27;];
   const mapKeys=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;side-existing&#x27;,&#x27;side-shifted&#x27;];
   const savedState=window.openai?.widgetState?.modelContent;
+  const storyControls=document.getElementById(&#x27;cf-floor-controls&#x27;);
+  const storyButtons=[...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
+  let campusFloor=savedState?.campusOverlayFloor===2?2:1,siteFloorData=null;
+  const combinedMode=()=&gt;document.getElementById(&#x27;olr-campus-page&#x27;)?.dataset.section===&#x27;combined&#x27;;
+  function updateFloorControls(){
+    storyControls.hidden=!combinedMode();
+    for(const button of storyButtons){
+      button.disabled=view===&#x27;existing&#x27;;
+      button.setAttribute(&#x27;aria-pressed&#x27;,String(Number(button.dataset.campusFloor)===campusFloor));
+    }
+  }
+  function setCampusFloor(next,save=true){
+    if(![1,2].includes(next)||(save&amp;&amp;view===&#x27;existing&#x27;))return;
+    campusFloor=next;updateFloorControls();lastRenderedWidth=0;scheduleRedraw();
+    if(save)document.getElementById(&#x27;olr-campus-page&#x27;).saveState({modelContent:{campusOverlayFloor:campusFloor}}).catch(()=&gt;{});
+  }
+  root.toggleStory=()=&gt;setCampusFloor(campusFloor===1?2:1);
+  storyButtons.forEach(button=&gt;button.addEventListener(&#x27;click&#x27;,()=&gt;setCampusFloor(Number(button.dataset.campusFloor))));
   const saved=savedState?.campusWithTheaterView;
   let view=views.includes(saved)?saved:&#x27;shifted&#x27;;
   let lastSingleView=[&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(savedState?.campusSingleMapView)?savedState.campusSingleMapView:view===&#x27;existing&#x27;?&#x27;existing&#x27;:&#x27;shifted&#x27;;
   function select(next,save=false){
     view=next;
     if(view!==&#x27;compare&#x27;)lastSingleView=view;
+    updateFloorControls();
     for(const tab of tabs){const active=tab.dataset.view===view;tab.setAttribute(&#x27;aria-selected&#x27;,String(active));tab.classList.toggle(&#x27;active&#x27;,active);}
     for(const panel of panels)panel.hidden=panel.id!==`fc-${view}-panel`;
     if(window.olrFitCanvas)requestAnimationFrame(()=&gt;{lastRenderedWidth=0;redrawMaps();});
@@ -2882,7 +3151,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   function draw(kind){
     const sideBySide=kind.startsWith(&#x27;side-&#x27;),baseKind=sideBySide?kind.slice(5):kind;
     const svg=root.querySelector(`[data-map=&quot;${kind}&quot;]`),proposed=baseKind!==&#x27;existing&#x27;,shifted=proposed,detail=kind===&#x27;detail&#x27;,parkingDetail=kind===&#x27;parking&#x27;,closeup=detail||parkingDetail;
-    const proposal=data.shifted,roadX=data.parking.road_center_x;
+    const proposal=data.shifted,roadX=data.parking.road_center_x,combined=combinedMode();
     const rootWidth=root.getBoundingClientRect().width;
     const [xmin,ymin,xmax,ymax]=parkingDetail?[-225,-10,40,225]:detail?[20,-15,310,225]:data.bbox;
     const fitted=window.olrFitCanvas?.(svg,xmax-xmin,ymax-ymin,18,24);
@@ -2908,6 +3177,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       return `${fallback||entry.display_name} · ${entry.dimension_label}${entry.irregular_footprint?&#x27; overall&#x27;:&#x27;&#x27;}${entry.chamfer_legs_ft?&#x27; · 15 × 15 ft southeast corner cut&#x27;:&#x27;&#x27;} · ${entry.approximate?&#x27;mapped estimate&#x27;:id===&#x27;benedict_hall&#x27;?&#x27;published nominal size&#x27;:&#x27;concept-plan size&#x27;}`;
     }
     function buildingLabel(id,name,px,py,rotation=0){
+      if(combined&amp;&amp;(id===&#x27;academic&#x27;||id===&#x27;shared&#x27;))return;
       const entry=buildingSizes.get(String(id));
       const size=compact?`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${entry.dimensions_ft.join(&#x27;×&#x27;)}′`:entry.dimension_label;
       const attrs={&#x27;data-tooltip&#x27;:dimensionTip(id),&#x27;data-building-id&#x27;:id,...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
@@ -3035,7 +3305,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     if(proposed){
 
-      if(!closeup){
+      if(!closeup&amp;&amp;!combined){
         const entrance=[proposal.academic[0]+41,proposal.academic[3]-0];
         line([[entrance[0]-4,entrance[1]],[entrance[0]+4,entrance[1]]],{stroke:&#x27;var(--background)&#x27;,&#x27;stroke-width&#x27;:3,&#x27;data-main-entrance&#x27;:&#x27;north&#x27;},map);
         el(&#x27;circle&#x27;,{cx:x(entrance[0]),cy:y(entrance[1]),r:3,fill:&#x27;var(--foreground)&#x27;,&#x27;data-tooltip&#x27;:&#x27;Main school entrance · north side · double doors to reception&#x27;},map);
@@ -3055,7 +3325,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(proposal.northParkingExtension&amp;&amp;!closeup){
         const northSpaces=proposal.northParkingExtension.stall_count+(proposal.northParkingUpperRow?.stall_count||0);
         label(compact?`+${northSpaces}`:`+${northSpaces} spaces`,43.5,252,{&#x27;data-north-extension-label&#x27;:&#x27;spaces&#x27;,&#x27;data-tooltip&#x27;:`${northSpaces} new north parking spaces: 16 in the lower row and 7 in the upper row`});
-        if(!compact)label(&#x27;Landscaped walk&#x27;,35,210,{&#x27;data-north-extension-label&#x27;:&#x27;landscaped-walk&#x27;});
+        if(!compact&amp;&amp;!combined)label(&#x27;Landscaped walk&#x27;,35,210,{&#x27;data-north-extension-label&#x27;:&#x27;landscaped-walk&#x27;});
       }
       if(!closeup)label(compact?&#x27;North parking&#x27;:&#x27;North parking · retained&#x27;,273,compact&amp;&amp;proposal.courtyard?300:269);
       if(proposal.courtyard&amp;&amp;!parkingDetail){
@@ -3070,7 +3340,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         label(&#x27;ENTRY&#x27;,250,368);label(&#x27;EXIT&#x27;,174,-212);
         label(&#x27;Existing Hall access&#x27;,-270,-70);
       }
-      if(!compact&amp;&amp;!closeup){
+      if(!compact&amp;&amp;!closeup&amp;&amp;!combined){
         const callout=shifted?&#x27;var(--muted-foreground)&#x27;:&#x27;var(--destructive)&#x27;;
         line([[shifted?30:38,175],[30,203],[-105,203],[-105,287],[-115,287]],{stroke:callout,&#x27;stroke-width&#x27;:1});label(shifted?&#x27;Min. school gap: 9.6 ft&#x27;:&#x27;Old-school overlap&#x27;,-120,287,{&#x27;text-anchor&#x27;:&#x27;end&#x27;});
         if(!proposal.courtyard){line([[160,112],[203,220]],{stroke:callout,&#x27;stroke-width&#x27;:1});label(&#x27;Corner gap: 21.8 ft&#x27;,280,220);}
@@ -3103,6 +3373,15 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!compact)label(&#x27;Church parking&#x27;,374,27);
       if(data.hallReference.show&amp;&amp;!compact)label(&#x27;Existing Hall access&#x27;,-270,-70);
     }
+    svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
+    if(combined&amp;&amp;proposed){
+      siteFloorData??=JSON.parse(document.getElementById(&#x27;fp-data&#x27;).textContent);
+      window.olrDrawCampusFloors({data:siteFloorData,proposal,floor:campusFloor,parent:map,el,x,y,scale});
+      for(const [name,box] of [[&#x27;Building 1&#x27;,proposal.academic],[&#x27;Building 2&#x27;,proposal.shared]]){
+        label(name,(box[0]+box[2])/2,box[3]+9/scale,{&#x27;data-campus-floor-building-label&#x27;:name});
+      }
+      svg.setAttribute(&#x27;aria-label&#x27;,`New campus with ${campusFloor===1?&#x27;first&#x27;:&#x27;second&#x27;}-floor plans inside Buildings 1 and 2`);
+    }else svg.setAttribute(&#x27;aria-label&#x27;,proposed?&#x27;New campus&#x27;:&#x27;Current campus · existing exterior layout&#x27;);
     const barLength=closeup?25:100,barX=width-22-barLength*scale,barY=height-12;
     el(&#x27;line&#x27;,{x1:barX,y1:barY,x2:barX+barLength*scale,y2:barY,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5});
     el(&#x27;text&#x27;,{x:barX+barLength/2*scale,y:barY-6,&#x27;text-anchor&#x27;:&#x27;middle&#x27;}).textContent=`${barLength} ft`;
@@ -3123,8 +3402,17 @@ html&gt;body{padding:0}&lt;/style&gt;
 
     if(event.source===window.parent&amp;&amp;event.data?.type===&#x27;fc-toggle-campus-view&#x27;)toggleMap();
   });
+  document.addEventListener(&#x27;keydown&#x27;,storyEvent=&gt;{
+    if(!combinedMode()||document.getElementById(&#x27;olr-campus-section&#x27;).hidden||storyEvent.defaultPrevented||storyEvent.repeat||storyEvent.isComposing||storyEvent.ctrlKey||storyEvent.metaKey||storyEvent.altKey||storyEvent.shiftKey||storyEvent.key.toLowerCase()!==&#x27;f&#x27;)return;
+    if(storyEvent.target instanceof Element&amp;&amp;storyEvent.target.closest(&#x27;input,textarea,select,[contenteditable]:not([contenteditable=&quot;false&quot;]),[role=&quot;textbox&quot;]&#x27;))return;
+    storyEvent.preventDefault();root.toggleStory();
+  });
+  window.addEventListener(&#x27;olr-campus-mode-change&#x27;,()=&gt;{
+    updateFloorControls();lastRenderedWidth=0;scheduleRedraw();
+  });
   window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{
     const state=e.detail?.globals?.widgetState?.modelContent;
+    if([1,2].includes(state?.campusOverlayFloor)&amp;&amp;state.campusOverlayFloor!==campusFloor)setCampusFloor(state.campusOverlayFloor,false);
     if([&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(state?.campusSingleMapView))lastSingleView=state.campusSingleMapView;
     if(views.includes(state?.campusWithTheaterView))select(state.campusWithTheaterView);
   });
@@ -3547,10 +3835,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const root = document.getElementById(&#x27;olr-campus-page&#x27;);
   const tabs = [...root.querySelectorAll(&#x27;[data-page-section]&#x27;)];
   const panels = {
+    combined: document.getElementById(&#x27;olr-campus-section&#x27;),
     campus: document.getElementById(&#x27;olr-campus-section&#x27;),
     floors: document.getElementById(&#x27;olr-floors-section&#x27;),
   };
-  let active = &#x27;campus&#x27;;
+  let active = &#x27;combined&#x27;;
   let modelContent = {...window.openai?.widgetState?.modelContent};
   let privateContent = window.openai?.widgetState?.privateContent ?? null;
 
@@ -3567,13 +3856,15 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const changed = active !== next;
     active = next;
     root.dataset.section = active;
-    for (const [name, panel] of Object.entries(panels)) panel.hidden = name !== active;
+    for (const panel of new Set(Object.values(panels))) panel.hidden = panel !== panels[active];
+    panels[active].setAttribute(&#x27;aria-labelledby&#x27;, `olr-${active}-tab`);
     for (const tab of tabs) {
       const selected = tab.dataset.pageSection === active;
       tab.setAttribute(&#x27;aria-selected&#x27;, String(selected));
       tab.classList.toggle(&#x27;active&#x27;, selected);
     }
     if (changed) window.dispatchEvent(new Event(&#x27;resize&#x27;));
+    window.dispatchEvent(new Event(&#x27;olr-campus-mode-change&#x27;));
     if (remember) root.saveState({modelContent: {campusPlanSection: active}}).catch(() =&gt; {});
   }
 
@@ -3585,12 +3876,26 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const observer = new MutationObserver(() =&gt; {
       const selected = tabs.find(tab =&gt; tab.getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27;);
       if (selected &amp;&amp; selected.dataset.pageSection !== active) selectSection(selected.dataset.pageSection, true);
+      else if (selected) {
+        // Combined and Campus share one canvas. A native tab runtime may hide
+        // their shared panel while processing the other, inactive tab.
+        for (const panel of new Set(Object.values(panels))) panel.hidden = panel !== panels[active];
+      }
     });
     for (const tab of tabs) observer.observe(tab, {attributes: true, attributeFilter: [&#x27;aria-selected&#x27;]});
   }
   window.addEventListener(&#x27;message&#x27;, event =&gt; {
-    if (event.source !== window.parent || event.data?.type !== &#x27;olr-toggle-active-view&#x27;) return;
-    document.getElementById(active === &#x27;campus&#x27; ? &#x27;fc-toggle-map&#x27; : &#x27;fp-toggle&#x27;).click();
+    if (event.source !== window.parent) return;
+    if (event.data?.type === &#x27;olr-toggle-active-view&#x27;) document.getElementById(active === &#x27;floors&#x27; ? &#x27;fp-toggle&#x27; : &#x27;fc-toggle-map&#x27;).click();
+    if (event.data?.type === &#x27;olr-toggle-story&#x27;) {
+      if (active === &#x27;combined&#x27;) document.getElementById(&#x27;fc-parking-comparison&#x27;).toggleStory();
+      if (active === &#x27;floors&#x27;) document.getElementById(&#x27;fp-toggle&#x27;).click();
+    }
+  });
+  document.addEventListener(&#x27;keydown&#x27;, event =&gt; {
+    if (active !== &#x27;floors&#x27; || event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.key.toLowerCase() !== &#x27;f&#x27;) return;
+    if (event.target instanceof Element &amp;&amp; event.target.closest(&#x27;input,textarea,select,[contenteditable]:not([contenteditable=&quot;false&quot;]),[role=&quot;textbox&quot;]&#x27;)) return;
+    event.preventDefault(); document.getElementById(&#x27;fp-toggle&#x27;).click();
   });
   window.addEventListener(&#x27;openai:set_globals&#x27;, event =&gt; {
     const state = event.detail?.globals?.widgetState;
@@ -3599,7 +3904,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (state.privateContent != null) privateContent = state.privateContent;
     selectSection(modelContent.campusPlanSection);
   });
-  selectSection(modelContent.campusPlanSection === &#x27;floors&#x27; ? &#x27;floors&#x27; : &#x27;campus&#x27;);
+  selectSection(Object.hasOwn(panels, modelContent.campusPlanSection) ? modelContent.campusPlanSection : &#x27;combined&#x27;);
 })();
 
   &lt;/script&gt;
@@ -4493,10 +4798,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
 (() => {
   const frame = document.getElementById('codex-visualization');
   document.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.key.toLowerCase() !== 't') return;
+    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || !['t','f'].includes(event.key.toLowerCase())) return;
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
     event.preventDefault();
-    frame.contentWindow?.postMessage({type:'olr-toggle-active-view'}, '*');
+    frame.contentWindow?.postMessage({type:event.key.toLowerCase()==='f'?'olr-toggle-story':'olr-toggle-active-view'}, '*');
   });
 })();
 </script>
