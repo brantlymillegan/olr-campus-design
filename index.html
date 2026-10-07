@@ -3407,7 +3407,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     buildingLabel(&#x27;benedict_hall&#x27;,compact?&#x27;Benedict&#x27;:&#x27;Benedict Hall&#x27;,-308,55);
     if(!compact){
       buildingLabel(897613,&#x27;Parish office&#x27;,346,-151);
-      buildingLabel(&#x27;hall_kitchen&#x27;,&#x27;Kitchen&#x27;,385,100);
       line([[-124.44,-158.95],[-124.44,-181]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(888497,&#x27;Future rectory&#x27;,-124.44,-200);
       line([[64.81,-146.89],[55,-177]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(901716,&#x27;MTH&#x27;,55,-200);
     }
@@ -3474,7 +3473,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
       if(detail){
         const leader=(points,t,tx,ty)=&gt;{line(points,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1});label(t,tx,ty);};
-        buildingLabel(&#x27;hall_corrected&#x27;,&#x27;Hall&#x27;,217,43);buildingLabel(&#x27;hall_kitchen&#x27;,&#x27;Kitchen&#x27;,176.5,84);
+        buildingLabel(&#x27;hall_corrected&#x27;,&#x27;Hall&#x27;,217,43);
         if(!compact)buildingLabel(1022037,&#x27;Church&#x27;,275,155);
         const pair=data.chamfer.closest_pair;
         line(pair,{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.4});
