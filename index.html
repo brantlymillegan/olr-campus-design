@@ -3290,7 +3290,6 @@ html&gt;body{padding:0}&lt;/style&gt;
         for(const polygon of extension.paved_polygons_xy)poly(polygon,{fill:paving,&#x27;data-north-extension-paving&#x27;:&#x27;new&#x27;},addition);
         for(const garden of extension.landscape_rects)rect(garden,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-north-landscaping&#x27;:&#x27;frontage-and-end-island&#x27;},addition);
         for(const walk of extension.walk_rects)rect(walk,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-north-frontage-walk&#x27;:&#x27;pedestrian&#x27;},addition);
-        rect(extension.access_aisle_rect,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-north-access-aisle&#x27;:&#x27;reserved&#x27;,&#x27;data-tooltip&#x27;:&#x27;9 ft access aisle linked to the school walk; final grades and accessible design remain to be verified&#x27;},addition);
         extension.stall_rects.forEach((bay,index)=&gt;{
           const reserved=extension.accessible_stall_indices_zero_based.includes(index);
           rect(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:reserved?.9:.65,&#x27;data-north-parking-bay&#x27;:index+1,&#x27;data-north-accessible-reservation&#x27;:String(reserved),&#x27;data-tooltip&#x27;:reserved?&#x27;Accessible space reservation · concept layout&#x27;:&#x27;Additional parking space · 9 × 20 ft&#x27;},addition);
