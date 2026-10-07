@@ -3444,7 +3444,6 @@ html&gt;body{padding:0}&lt;/style&gt;
         label(compact?`+${northSpaces}`:`+${northSpaces} spaces`,(aisle[0]+aisle[2])/2,(aisle[1]+aisle[3])/2,{&#x27;data-north-extension-label&#x27;:&#x27;spaces&#x27;,&#x27;data-tooltip&#x27;:`${northSpaces} new north parking spaces; remaining bays east of Building 1`});
         if(!compact&amp;&amp;!combined)label(&#x27;Landscaped walk&#x27;,77,210,{&#x27;data-north-extension-label&#x27;:&#x27;landscaped-walk&#x27;});
       }
-      if(!closeup)label(compact?&#x27;North parking&#x27;:&#x27;North parking · retained&#x27;,273,compact&amp;&amp;proposal.courtyard?300:269);
       if(proposal.courtyard&amp;&amp;!parkingDetail){
         const c=proposal.courtyard,cx=(c[0]+c[2])/2,cy=(c[1]+c[3])/2;
         if(compact&amp;&amp;!detail){
@@ -3488,8 +3487,6 @@ html&gt;body{padding:0}&lt;/style&gt;
       const school=data.existing.buildings.find(b=&gt;b.id===887530),annex=data.existing.buildings.find(b=&gt;b.id===880586);
       buildingLabel(887530,compact?&#x27;School&#x27;:&#x27;Lower school&#x27;,58,school.label_xy[1],-90);
       line([annex.label_xy,[-120,276]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1});buildingLabel(880586,compact?&#x27;Annex&#x27;:&#x27;Art / K4 annex&#x27;,-182,276);
-      label(compact?&#x27;Parking&#x27;:&#x27;North parking&#x27;,273,269);
-      if(!compact)label(&#x27;Church parking&#x27;,374,27);
       if(data.hallReference.show&amp;&amp;!compact)label(&#x27;Existing Hall access&#x27;,-270,-70);
     }
     svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
