@@ -3135,20 +3135,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-floor=&quot;1&quot; aria-pressed=&quot;true&quot;&gt;1st floor&lt;/button&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-floor=&quot;2&quot; aria-pressed=&quot;false&quot;&gt;2nd floor&lt;/button&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; id=&quot;fp-toggle&quot;&gt;Switch floor · T&lt;/button&gt;
-    &lt;label class=&quot;form-label&quot;&gt;View
-      &lt;select class=&quot;form-select&quot; id=&quot;fp-view&quot;&gt;
-        &lt;option value=&quot;both&quot;&gt;Both buildings&lt;/option&gt;
-        &lt;option value=&quot;b1&quot;&gt;Building 1&lt;/option&gt;
-        &lt;option value=&quot;entry&quot;&gt;Entrance area&lt;/option&gt;
-        &lt;option value=&quot;b2&quot;&gt;Building 2&lt;/option&gt;
-        &lt;option value=&quot;wc1&quot;&gt;Building 1 main toilets&lt;/option&gt;
-        &lt;option value=&quot;wc2&quot;&gt;Building 2 toilet detail&lt;/option&gt;
-        &lt;option value=&quot;room&quot; disabled&gt;Selected room&lt;/option&gt;
-      &lt;/select&gt;
-    &lt;/label&gt;
-    &lt;label class=&quot;form-label&quot;&gt;Room
-      &lt;select class=&quot;form-select&quot; id=&quot;fp-room&quot; aria-label=&quot;Choose a room to inspect&quot;&gt;&lt;option value=&quot;&quot;&gt;Choose a room&lt;/option&gt;&lt;/select&gt;
-    &lt;/label&gt;
+    &lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; id=&quot;fp-back&quot; hidden&gt;Back to floor plan&lt;/button&gt;
   &lt;/div&gt;
   &lt;div id=&quot;fp-summary&quot; class=&quot;text-small tabular-nums&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot;&gt;&lt;svg id=&quot;fp-map&quot; role=&quot;img&quot; aria-label=&quot;School floor plan&quot;&gt;&lt;/svg&gt;&lt;/div&gt;
@@ -3181,10 +3168,10 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;script id=&quot;olr-floor-view-script&quot;&gt;
   (()=&gt;{
     const root=document.getElementById(&#x27;olr-floor-plans&#x27;),data=JSON.parse(document.getElementById(&#x27;fp-data&#x27;).textContent);
-    const svg=root.querySelector(&#x27;#fp-map&#x27;),viewSelect=root.querySelector(&#x27;#fp-view&#x27;),roomSelect=root.querySelector(&#x27;#fp-room&#x27;);
+    const svg=root.querySelector(&#x27;#fp-map&#x27;),backButton=root.querySelector(&#x27;#fp-back&#x27;);
     const summary=root.querySelector(&#x27;#fp-summary&#x27;),detail=root.querySelector(&#x27;#fp-detail&#x27;);
     let floor=1,view=&#x27;both&#x27;,roomId=&#x27;&#x27;,lastWidth=0,frame=null;
-    const allowed=[&#x27;both&#x27;,&#x27;b1&#x27;,&#x27;b2&#x27;,&#x27;entry&#x27;,&#x27;wc1&#x27;,&#x27;wc2&#x27;,&#x27;room&#x27;];
+    const allowed=[&#x27;both&#x27;,&#x27;room&#x27;];
     const rooms=()=&gt;data.rooms.filter(r=&gt;r.floor===floor);
     const getRoom=()=&gt;data.rooms.find(r=&gt;r.id===roomId&amp;&amp;r.floor===floor);
     const offset=b=&gt;data.buildings.find(v=&gt;v.id===b).offset;
@@ -3200,15 +3187,6 @@ html&gt;body{padding:0}&lt;/style&gt;
       roomId=typeof s.selectedRoom===&#x27;string&#x27;?s.selectedRoom:&#x27;&#x27;;
       if(!getRoom()){roomId=&#x27;&#x27;;if(view===&#x27;room&#x27;)view=&#x27;both&#x27;;}
     }
-    function fillRoomOptions(){
-      roomSelect.replaceChildren();
-      const initial=document.createElement(&#x27;option&#x27;);initial.value=&#x27;&#x27;;initial.textContent=&#x27;Choose a room&#x27;;roomSelect.appendChild(initial);
-      for(const r of rooms()){
-        const o=document.createElement(&#x27;option&#x27;);o.value=r.id;o.textContent=`${r.building===&#x27;b1&#x27;?&#x27;1&#x27;:&#x27;2&#x27;} · ${r.name}`;roomSelect.appendChild(o);
-      }
-      roomSelect.value=roomId;
-      viewSelect.querySelector(&#x27;[value=&quot;room&quot;]&#x27;).disabled=!getRoom();
-    }
     function setFloor(next,remember=true){
       const old=getRoom();floor=next;
       roomId=old?(data.rooms.find(r=&gt;r.id===old.id.replace(`-f${old.floor}-`,`-f${floor}-`))?.id??&#x27;&#x27;):&#x27;&#x27;;
@@ -3218,7 +3196,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     function chooseRoom(id){roomId=id;if(getRoom())view=&#x27;room&#x27;;else view=&#x27;both&#x27;;update();save();}
     function update(){
       for(const b of root.querySelectorAll(&#x27;[data-floor]&#x27;))b.setAttribute(&#x27;aria-pressed&#x27;,String(Number(b.dataset.floor)===floor));
-      viewSelect.value=view;fillRoomOptions();
+      backButton.hidden=view!==&#x27;room&#x27;||!getRoom();
       const c=data.floor_totals[String(floor)];
       summary.textContent=`${floor===1?&#x27;1st&#x27;:&#x27;2nd&#x27;} floor · ${data.floor_classrooms[String(floor)]} general classrooms · ${c.wc} toilets + ${c.urinal} urinals · ${c.sink} sinks`;
       const r=getRoom();
@@ -3422,8 +3400,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     for(const b of root.querySelectorAll(&#x27;[data-floor]&#x27;))b.addEventListener(&#x27;click&#x27;,()=&gt;setFloor(Number(b.dataset.floor)));
     root.querySelector(&#x27;#fp-toggle&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;setFloor(floor===1?2:1));
-    viewSelect.addEventListener(&#x27;change&#x27;,()=&gt;{view=viewSelect.value;update();save();});
-    roomSelect.addEventListener(&#x27;change&#x27;,()=&gt;chooseRoom(roomSelect.value));
+    backButton.addEventListener(&#x27;click&#x27;,()=&gt;chooseRoom(&#x27;&#x27;));
     document.addEventListener(&#x27;keydown&#x27;,e=&gt;{
     if(document.getElementById(&#x27;olr-floors-section&#x27;).hidden)return;
 if(e.defaultPrevented||e.repeat||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.key.toLowerCase()!==&#x27;t&#x27;||e.target instanceof Element&amp;&amp;e.target.closest(&#x27;input,textarea,select,[contenteditable]:not([contenteditable=&quot;false&quot;])&#x27;))return;e.preventDefault();setFloor(floor===1?2:1);});
