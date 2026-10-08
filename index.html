@@ -3397,8 +3397,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     const building=&#x27;color-mix(in srgb,var(--foreground) 10%,var(--background))&#x27;;
     const newBuilding=&#x27;color-mix(in srgb,var(--viz-series-2) 32%,var(--background))&#x27;;
     const outdoor=&#x27;color-mix(in srgb,var(--viz-series-3) 18%,var(--background))&#x27;;
-    svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);svg.replaceChildren();
-    function el(tag,a={},parent=svg){const n=document.createElementNS(&#x27;http://www.w3.org/2000/svg&#x27;,tag);for(const[k,v]of Object.entries(a))n.setAttribute(k,v);parent.appendChild(n);return n;}
+    const drawing=document.createElementNS(&#x27;http://www.w3.org/2000/svg&#x27;,&#x27;g&#x27;);
+    function el(tag,a={},parent=drawing){const n=document.createElementNS(&#x27;http://www.w3.org/2000/svg&#x27;,tag);for(const[k,v]of Object.entries(a))n.setAttribute(k,v);parent.appendChild(n);return n;}
     function pathData(rings){return rings.map(r=&gt;{const p=Array.isArray(r)?r:r.points;return p.length?&#x27;M&#x27;+p.map(q=&gt;`${x(q[0])},${y(q[1])}`).join(&#x27; L&#x27;)+&#x27; Z&#x27;:&#x27;&#x27;;}).join(&#x27; &#x27;);}
     function poly(p,a={},parent=svg){return el(&#x27;path&#x27;,{d:pathData([p]),...a},parent);}
     function feature(rings,a={},parent=svg){return el(&#x27;path&#x27;,{d:pathData(rings),&#x27;fill-rule&#x27;:&#x27;evenodd&#x27;,...a},parent);}
@@ -3479,21 +3479,40 @@ html&gt;body{padding:0}&lt;/style&gt;
     svg.setAttribute(&#x27;aria-label&#x27;,parkingDetail?&#x27;Parking bays for one-way southbound traffic&#x27;:detail?&#x27;Building 2 southeast diagonal cut&#x27;:proposed?&#x27;Proposed campus with east school entrance, north vehicle entry and south exit&#x27;:&#x27;Current campus with theater addition&#x27;);
     el(&#x27;desc&#x27;,{id:`fc-${kind}-desc`}).textContent=proposed?data.building1NorthMove.description+&#x27; &#x27;+(proposal.southParkingAddition?.description||&#x27;&#x27;)+&#x27; &#x27;+(proposal.amphitheater?.description||&#x27;&#x27;)+&#x27; &#x27;+(proposal.picnicArea?.description||&#x27;&#x27;):&#x27;Existing campus buildings and mapped roads, with the theater addition shown beside the gym at the user’s request. Benedict Hall driveway is confirmed existing and is retained in the proposal. Existing and proposal share coordinates and scale. Proposed traffic arrows appear only in proposal views.&#x27;;
     const defs=el(&#x27;defs&#x27;);
-    const frame=el(&#x27;clipPath&#x27;,{id:`fc-${kind}-clip`},defs);el(&#x27;rect&#x27;,{x:0,y:0,width,height},frame);
-    const mask=el(&#x27;mask&#x27;,{id:`fc-${kind}-paving-mask`,maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height},defs);
-    el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},mask);
-    for(const b of data.existing.buildings){if(!proposed||!b.remove_in_proposal)feature(b.rings,{fill:&#x27;black&#x27;},mask);}
-    if(proposed){
-      for(const r of proposal.pavingRemovalRects)rect(r,{fill:&#x27;black&#x27;},mask);
-      if(proposal.academic_outline_polygon)poly(proposal.academic_outline_polygon,{fill:&#x27;black&#x27;},mask);else rect(proposal.academic,{fill:&#x27;black&#x27;},mask);
-      poly(proposal.shared_polygon,{fill:&#x27;black&#x27;},mask);
-      if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)poly(courtyardOutline,{fill:&#x27;black&#x27;},mask);else if(proposal.courtyard)rect(proposal.courtyard,{fill:&#x27;black&#x27;},mask);
+    const frame=el(&#x27;clipPath&#x27;,{id:`fc-${kind}-clip`},defs);el(&#x27;rect&#x27;,{x:0,y:0,width,height,&#x27;data-map-viewport-clip&#x27;:&#x27;true&#x27;},frame);
+    const rectRing=r=&gt;[[r[0],r[1]],[r[2],r[1]],[r[2],r[3]],[r[0],r[3]]];
+    const retainedBuildingCuts=data.existing.buildings.filter(b=&gt;!proposed||!b.remove_in_proposal).map(b=&gt;b.rings);
+    // Vector cutouts avoid zoom-sized raster mask textures. Each exclusion gets
+    // its own layer when it overlaps others, preserving union subtraction.
+    function cutoutGroup(id,cuts,attrs={},parent=map){
+      let group=el(&#x27;g&#x27;,attrs,parent);
+      const layers=[];
+      for(const rings of cuts){
+        const points=rings.flatMap(r=&gt;Array.isArray(r)?r:r.points);
+        const bounds=[Math.min(...points.map(p=&gt;p[0])),Math.min(...points.map(p=&gt;p[1])),Math.max(...points.map(p=&gt;p[0])),Math.max(...points.map(p=&gt;p[1]))];
+        // Disjoint cuts can share one path; intersecting bounds use another layer.
+        let layer=layers.find(items=&gt;items.every(item=&gt;bounds[2]&lt;=item.bounds[0]||bounds[0]&gt;=item.bounds[2]||bounds[3]&lt;=item.bounds[1]||bounds[1]&gt;=item.bounds[3]));
+        if(!layer){layer=[];layers.push(layer);}
+        layer.push({rings,bounds});
+      }
+      layers.forEach((items,index)=&gt;{
+        const clipId=`fc-${kind}-${id}-${index}`;
+        const clip=el(&#x27;clipPath&#x27;,{id:clipId,clipPathUnits:&#x27;userSpaceOnUse&#x27;,&#x27;data-vector-cutout&#x27;:id},defs);
+        el(&#x27;path&#x27;,{d:`M0,0 L${width},0 L${width},${height} L0,${height} Z `+items.map(item=&gt;pathData(item.rings)).join(&#x27; &#x27;),&#x27;clip-rule&#x27;:&#x27;evenodd&#x27;},clip);
+        group=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#${clipId})`},group);
+      });
+      return group;
     }
-    poly(proposal.theater,{fill:&#x27;black&#x27;},mask);
+    const pavingCuts=[...retainedBuildingCuts,[proposal.theater]];
+    if(proposed){
+      for(const r of proposal.pavingRemovalRects)pavingCuts.push([rectRing(r)]);
+      pavingCuts.push([proposal.academic_outline_polygon||rectRing(proposal.academic)],[proposal.shared_polygon]);
+      if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)pavingCuts.push([courtyardOutline]);else if(proposal.courtyard)pavingCuts.push([rectRing(proposal.courtyard)]);
+    }
     const map=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#fc-${kind}-clip)`});
     for(const road of data.existing.public_roads)feature(road.rings,{fill:&#x27;var(--muted)&#x27;},map);
     for(const p of data.existing.parcels)feature(p.rings,{fill:&#x27;none&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7},map);
-    const pavingGroup=el(&#x27;g&#x27;,{mask:`url(#fc-${kind}-paving-mask)`},map);
+    const pavingGroup=cutoutGroup(&#x27;paving-cutout&#x27;,pavingCuts);
     for(const p of data.existing.existing_paving){
       if((data.offCampusPavingFeatureIds||[]).includes(p.id))continue;
       if((data.pavingRemovalFeatureIds||[]).includes(p.id))continue;
@@ -3547,18 +3566,18 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     poly(proposal.theater,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-theater&#x27;:&#x27;addition&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;theater&#x27;,&#x27;Theater addition beside the gym&#x27;)},map);
     const northClip=el(&#x27;clipPath&#x27;,{id:`fc-${kind}-retained-north-clip`},defs);rect(data.retainedNorthParking.clip_rect,{},northClip);
-    const northMask=el(&#x27;mask&#x27;,{id:`fc-${kind}-retained-north-mask`,maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height},defs);
-    el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},northMask);
+    const northCuts=[];
     if(proposed){
-      for(const r of data.retainedNorthParking.proposal_exclusion_rects||[])rect(r,{fill:&#x27;black&#x27;,&#x27;data-removed-pavement&#x27;:&#x27;former-school-access&#x27;},northMask);
-      if(proposal.academic_outline_polygon)poly(proposal.academic_outline_polygon,{fill:&#x27;black&#x27;},northMask);else rect(proposal.academic,{fill:&#x27;black&#x27;},northMask);
-      if(data.canopyExtension)poly(data.canopyExtension.full_outline,{fill:&#x27;black&#x27;},northMask);
-      for(const r of proposal.northParkingExtension?.walk_rects||[])rect(r,{fill:&#x27;black&#x27;},northMask);
-      for(const r of proposal.northParkingExtension?.landscape_rects||[])rect(r,{fill:&#x27;black&#x27;},northMask);
+      for(const r of data.retainedNorthParking.proposal_exclusion_rects||[])northCuts.push([rectRing(r)]);
+      northCuts.push([proposal.academic_outline_polygon||rectRing(proposal.academic)]);
+      if(data.canopyExtension)northCuts.push([data.canopyExtension.full_outline]);
+      for(const r of proposal.northParkingExtension?.walk_rects||[])northCuts.push([rectRing(r)]);
+      for(const r of proposal.northParkingExtension?.landscape_rects||[])northCuts.push([rectRing(r)]);
     }
     const northArea=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#fc-${kind}-retained-north-clip)`,&#x27;data-north-parking-layer&#x27;:&#x27;retained&#x27;},map);
     const northPaving=data.existing.existing_paving.find(p=&gt;p.id===data.retainedNorthParking.source_id);
-    feature(northPaving.rings,{fill:paving,mask:`url(#fc-${kind}-retained-north-mask)`,&#x27;data-north-parking&#x27;:&#x27;retained&#x27;,&#x27;aria-label&#x27;:&#x27;Existing north parking, islands and street entrance retained; former school access stub removed in proposal&#x27;},northArea);
+    const northSurface=cutoutGroup(&#x27;retained-north-cutout&#x27;,northCuts,{},northArea);
+    feature(northPaving.rings,{fill:paving,&#x27;data-north-parking&#x27;:&#x27;retained&#x27;,&#x27;aria-label&#x27;:&#x27;Existing north parking, islands and street entrance retained; former school access stub removed in proposal&#x27;},northSurface);
     if(proposed&amp;&amp;proposal.northAccessibleParking){
       const addition=proposal.northAccessibleParking;
       const surface=el(&#x27;g&#x27;,{&#x27;data-north-accessible-surface&#x27;:&#x27;island-replacement&#x27;,&#x27;aria-label&#x27;:addition.description},map);
@@ -3594,29 +3613,25 @@ html&gt;body{padding:0}&lt;/style&gt;
     poly(gymParking.outline,{fill:paving,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7},gymSpaces);
     for(const divider of gymParking.dividers)line(divider,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7},gymSpaces);
     if(data.existingParkingMarkings){
-      const stripeMask=el(&#x27;mask&#x27;,{id:`fc-${kind}-existing-stripes-mask`,maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height},defs);
-      el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},stripeMask);
-      for(const b of data.existing.buildings)if(!proposed||!b.remove_in_proposal)feature(b.rings,{fill:&#x27;black&#x27;},stripeMask);
-      poly(proposal.theater,{fill:&#x27;black&#x27;},stripeMask);
+      const stripeCuts=[...retainedBuildingCuts,[proposal.theater]];
       if(proposed){
-        if(proposal.academic_outline_polygon)poly(proposal.academic_outline_polygon,{fill:&#x27;black&#x27;},stripeMask);else rect(proposal.academic,{fill:&#x27;black&#x27;},stripeMask);
-        poly(proposal.shared_polygon,{fill:&#x27;black&#x27;},stripeMask);
-        if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)poly(courtyardOutline,{fill:&#x27;black&#x27;},stripeMask);else if(proposal.courtyard)rect(proposal.courtyard,{fill:&#x27;black&#x27;},stripeMask);
-        if(data.canopyExtension)poly(data.canopyExtension.full_outline,{fill:&#x27;black&#x27;},stripeMask);
-        for(const r of [...(data.retainedNorthParking.proposal_exclusion_rects||[]),...(proposal.northParkingExtension?.walk_rects||[]),...(proposal.northParkingExtension?.landscape_rects||[])])rect(r,{fill:&#x27;black&#x27;},stripeMask);
+        stripeCuts.push([proposal.academic_outline_polygon||rectRing(proposal.academic)],[proposal.shared_polygon]);
+        if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)stripeCuts.push([courtyardOutline]);else if(proposal.courtyard)stripeCuts.push([rectRing(proposal.courtyard)]);
+        if(data.canopyExtension)stripeCuts.push([data.canopyExtension.full_outline]);
+        for(const r of [...(data.retainedNorthParking.proposal_exclusion_rects||[]),...(proposal.northParkingExtension?.walk_rects||[]),...(proposal.northParkingExtension?.landscape_rects||[])])stripeCuts.push([rectRing(r)]);
       }
-      const markings=el(&#x27;g&#x27;,{&#x27;data-existing-parking-markings&#x27;:&#x27;aerial-trace&#x27;,mask:`url(#fc-${kind}-existing-stripes-mask)`},map);
+      const markings=cutoutGroup(&#x27;existing-stripes-cutout&#x27;,stripeCuts,{&#x27;data-existing-parking-markings&#x27;:&#x27;aerial-trace&#x27;});
       for(const lot of data.existingParkingMarkings.lots){
         if(lot.views&amp;&amp;!lot.views.includes(baseKind))continue;
         for(const band of lot.pavement_bands||[])poly(band,{fill:paving,&#x27;data-existing-parking-paving&#x27;:lot.id},markings);
         const pavement=data.existing.existing_paving.find(p=&gt;p.id===lot.paving_feature_id);
         if(!pavement)continue;
         const clipId=`fc-${kind}-parking-stripes-${lot.id}`;
-        const addPaving=Boolean(lot.pavement_bands?.length);
-        const clip=el(addPaving?&#x27;mask&#x27;:&#x27;clipPath&#x27;,{id:clipId,...(addPaving?{maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height}:{})},defs);
+        // Separate clip children form a union, including added pavement bands.
+        const clip=el(&#x27;clipPath&#x27;,{id:clipId,clipPathUnits:&#x27;userSpaceOnUse&#x27;},defs);
         feature(pavement.rings,{fill:&#x27;white&#x27;,&#x27;clip-rule&#x27;:&#x27;evenodd&#x27;},clip);
         for(const band of lot.pavement_bands||[])poly(band,{fill:&#x27;white&#x27;},clip);
-        const group=el(&#x27;g&#x27;,{&#x27;data-existing-parking-lot&#x27;:lot.id,[addPaving?&#x27;mask&#x27;:&#x27;clip-path&#x27;]:`url(#${clipId})`,&#x27;aria-label&#x27;:`${lot.label} · existing parking layout approximated from aerial images`},markings);
+        const group=el(&#x27;g&#x27;,{&#x27;data-existing-parking-lot&#x27;:lot.id,&#x27;clip-path&#x27;:`url(#${clipId})`,&#x27;aria-label&#x27;:`${lot.label} · existing parking layout approximated from aerial images`},markings);
         const ink={stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8};
         for(const row of lot.rows){
           if(row.views&amp;&amp;!row.views.includes(baseKind))continue;
@@ -3709,14 +3724,8 @@ html&gt;body{padding:0}&lt;/style&gt;
         features:source.features.filter(item=&gt;selection.feature_ids.includes(item.id))
       }:source;
       const pathColor=&#x27;color-mix(in srgb,var(--viz-series-2) 18%,var(--background))&#x27;;
-      let exclusion;
-      if(proposed){
-        exclusion=`fc-${kind}-retained-courtyard-mask`;
-        const courtyardMask=el(&#x27;mask&#x27;,{id:exclusion,maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height},defs);
-        el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},courtyardMask);
-        poly(proposal.shared_polygon,{fill:&#x27;black&#x27;},courtyardMask);
-      }
-      const group=el(&#x27;g&#x27;,proposed?{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,mask:`url(#${exclusion})`,&#x27;aria-label&#x27;:selection.description}:{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing walking paths and courtyard · approximate aerial tracing&#x27;},map);
+      const group=proposed?cutoutGroup(&#x27;retained-courtyard-cutout&#x27;,[[proposal.shared_polygon]],{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,&#x27;aria-label&#x27;:selection.description}):
+        el(&#x27;g&#x27;,{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing walking paths and courtyard · approximate aerial tracing&#x27;},map);
       for(const item of walks.polygons.filter(p=&gt;p.kind!==&#x27;lawn&#x27;))poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-walk-area&#x27;:item.id},group);
       for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;lawn&#x27;))poly(item.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-courtyard-lawn&#x27;:item.id},group);
       for(const path of walks.paths)line(path.points,{stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:path.width_ft*scale+1,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;},group);
@@ -3836,7 +3845,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }else svg.setAttribute(&#x27;aria-label&#x27;,proposed?&#x27;New campus · building outlines&#x27;:&#x27;Current campus · existing exterior layout&#x27;);
     // Old building references render after all proposed plan details.
     if(proposed&amp;&amp;showOldBuildings){
-      const oldBuildings=el(&#x27;g&#x27;,{&#x27;data-old-buildings-layer&#x27;:&#x27;references&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;},svg);
+      const oldBuildings=el(&#x27;g&#x27;,{&#x27;data-old-buildings-layer&#x27;:&#x27;references&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;},drawing);
       for(const old of data.existing.buildings.filter(b=&gt;b.remove_in_proposal)){
         const outline={fill:&#x27;none&#x27;,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;};
         feature(old.rings,{...outline,stroke:&#x27;var(--background)&#x27;,&#x27;stroke-width&#x27;:3.5,&#x27;data-old-building-halo&#x27;:old.id,&#x27;aria-hidden&#x27;:&#x27;true&#x27;},oldBuildings);
@@ -3847,7 +3856,9 @@ html&gt;body{padding:0}&lt;/style&gt;
     const scaleBar=el(&#x27;g&#x27;,{&#x27;data-map-scale&#x27;:&#x27;bar&#x27;});
     el(&#x27;line&#x27;,{x1:barX,y1:barY,x2:barX+barLength*scale,y2:barY,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5,&#x27;data-map-scale&#x27;:&#x27;line&#x27;},scaleBar);
     el(&#x27;text&#x27;,{x:barX+barLength/2*scale,y:barY-6,&#x27;text-anchor&#x27;:&#x27;middle&#x27;,&#x27;data-map-scale&#x27;:&#x27;label&#x27;},scaleBar).textContent=`${barLength} ft`;
-    window.olrCommitCanvas?.(svg);
+    svg.replaceChildren(...drawing.children);
+    if(window.olrCommitCanvas)window.olrCommitCanvas(svg);
+    else {svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);}
   }
   tabs.forEach(tab=&gt;tab.addEventListener(&#x27;click&#x27;,()=&gt;select(tab.dataset.view,true)));
   function toggleMap(){select(lastSingleView===&#x27;shifted&#x27;?&#x27;existing&#x27;:&#x27;shifted&#x27;,true);}
@@ -3918,6 +3929,10 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-unified-map[data-external-tools=&quot;true&quot;] #fc-parking-comparison &gt; .viz-row,
 .olr-unified-map[data-external-tools=&quot;true&quot;] &gt; .olr-map-compass { display:none !important; }
 .olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport { overflow:hidden; touch-action:none; overscroll-behavior:none; }
+.olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport &gt; svg { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.olr-unified-map [data-canvas-renderer=&quot;true&quot;] { position:relative; isolation:isolate; }
+.olr-unified-map [data-map-canvas] { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+.olr-unified-map [data-canvas-renderer=&quot;true&quot;] &gt; svg { position:relative; z-index:1; background:transparent; }
 .olr-unified-map .olr-map-compass { position:absolute; top:var(--olr-compass-top,64px); right:18px; z-index:10; display:grid; place-items:center; width:48px; height:48px; box-sizing:border-box; padding:3px; border:1px solid var(--border); border-radius:50%; background:var(--background); color:var(--foreground); box-shadow:0 2px 8px #0002; cursor:pointer; touch-action:none; }
 .olr-unified-map .olr-map-compass:focus-visible { outline:2px solid var(--foreground); outline-offset:3px; }
 .olr-unified-map [data-map-compass-needle] { display:block; width:40px; height:40px; overflow:visible; transform-origin:center; transform-box:view-box; pointer-events:none; }
@@ -4302,6 +4317,78 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   redraw();
 })();
 &lt;/script&gt;
+&lt;script id=&quot;olr-canvas-scene&quot;&gt;
+// Firefox paints scaled SVG groups slowly on some software-rendering paths.
+// Draw those same paths into a viewport-sized canvas, while retaining the SVG
+// for hit testing, keyboard navigation, and accessible room descriptions.
+(() =&gt; {
+  if (!/Firefox\//.test(navigator.userAgent) || typeof Path2D!==&#x27;function&#x27; || typeof DOMMatrix!==&#x27;function&#x27;) return;
+  const matrix=node=&gt;{const m=node.transform?.baseVal?.consolidate()?.matrix;return m?[m.a,m.b,m.c,m.d,m.e,m.f]:null;};
+  const number=(node,name,fallback=0)=&gt;Number.parseFloat(node.getAttribute(name))||fallback;
+  function pathFor(node){
+    const p=new Path2D(),tag=node.localName;
+    if(tag===&#x27;path&#x27;)return new Path2D(node.getAttribute(&#x27;d&#x27;)||&#x27;&#x27;);
+    if(tag===&#x27;polygon&#x27;||tag===&#x27;polyline&#x27;){
+      const points=[...node.points];points.forEach((v,i)=&gt;i?p.lineTo(v.x,v.y):p.moveTo(v.x,v.y));if(tag===&#x27;polygon&#x27;)p.closePath();
+    }else if(tag===&#x27;rect&#x27;){
+      const x=number(node,&#x27;x&#x27;),y=number(node,&#x27;y&#x27;),w=number(node,&#x27;width&#x27;),h=number(node,&#x27;height&#x27;),r=number(node,&#x27;rx&#x27;);
+      if(r&amp;&amp;p.roundRect)p.roundRect(x,y,w,h,r);else p.rect(x,y,w,h);
+    }else if(tag===&#x27;line&#x27;){p.moveTo(number(node,&#x27;x1&#x27;),number(node,&#x27;y1&#x27;));p.lineTo(number(node,&#x27;x2&#x27;),number(node,&#x27;y2&#x27;));}
+    else if(tag===&#x27;circle&#x27;||tag===&#x27;ellipse&#x27;){const r=number(node,&#x27;r&#x27;);p.ellipse(number(node,&#x27;cx&#x27;),number(node,&#x27;cy&#x27;),number(node,&#x27;rx&#x27;,r),number(node,&#x27;ry&#x27;,r),0,0,Math.PI*2);}
+    return p;
+  }
+  window.olrCreateCanvasScene=(svg,scene)=&gt;{
+    const stage=svg.parentElement;
+    let canvas=stage.querySelector(&#x27;[data-map-canvas]&#x27;);
+    if(!canvas){canvas=document.createElement(&#x27;canvas&#x27;);canvas.setAttribute(&#x27;data-map-canvas&#x27;,&#x27;true&#x27;);canvas.setAttribute(&#x27;aria-hidden&#x27;,&#x27;true&#x27;);stage.insertBefore(canvas,svg);}
+    const ctx=canvas.getContext(&#x27;2d&#x27;);if(!ctx)return null;
+    const clips=new Map();
+    function clipFor(id){
+      if(clips.has(id))return clips.get(id);
+      const source=svg.querySelector(`[id=&quot;${id}&quot;]`);if(!source)return null;
+      const p=new Path2D(),children=[...source.children];
+      for(const child of children){const m=matrix(child);p.addPath(pathFor(child),m?new DOMMatrix(m):new DOMMatrix());}
+      const rule=children.length===1?(children[0].getAttribute(&#x27;clip-rule&#x27;)||getComputedStyle(children[0]).clipRule||&#x27;nonzero&#x27;):&#x27;nonzero&#x27;;
+      const result={path:p,rule};clips.set(id,result);return result;
+    }
+    function compile(node,isRoot=false){
+      const tag=node.localName;if([&#x27;defs&#x27;,&#x27;title&#x27;,&#x27;desc&#x27;,&#x27;clipPath&#x27;].includes(tag))return null;
+      const style=getComputedStyle(node),clipId=node.getAttribute(&#x27;clip-path&#x27;)?.match(/#([^)&#x27;&quot; ]+)/)?.[1];
+      const item={transform:isRoot?null:matrix(node),clip:clipId?clipFor(clipId):null,opacity:isRoot?1:Number(style.opacity),children:[]};
+      if(tag===&#x27;g&#x27;)item.children=[...node.children].map(n=&gt;compile(n)).filter(Boolean);
+      else if(tag===&#x27;text&#x27;)item.text={value:node.textContent,x:number(node,&#x27;x&#x27;),y:number(node,&#x27;y&#x27;),font:`${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,align:style.textAnchor===&#x27;middle&#x27;?&#x27;center&#x27;:style.textAnchor===&#x27;end&#x27;?&#x27;right&#x27;:&#x27;left&#x27;,baseline:[&#x27;middle&#x27;,&#x27;central&#x27;].includes(style.dominantBaseline)?&#x27;middle&#x27;:&#x27;alphabetic&#x27;};
+      else if([&#x27;path&#x27;,&#x27;polygon&#x27;,&#x27;polyline&#x27;,&#x27;rect&#x27;,&#x27;line&#x27;,&#x27;circle&#x27;,&#x27;ellipse&#x27;].includes(tag))item.path=pathFor(node);
+      else return null;
+      if(item.path||item.text)Object.assign(item,{focusNode:node.hasAttribute(&#x27;data-campus-floor-room&#x27;)?node:null,fill:style.fill,stroke:style.stroke,fillOpacity:Number(style.fillOpacity),strokeOpacity:Number(style.strokeOpacity),rule:style.fillRule||&#x27;nonzero&#x27;,width:Number.parseFloat(style.strokeWidth)||1,cap:style.strokeLinecap,join:style.strokeLinejoin,miter:Number(style.strokeMiterlimit)||4,dashes:style.strokeDasharray===&#x27;none&#x27;?[]:(style.strokeDasharray.match(/[\d.]+/g)||[]).map(Number),offset:Number.parseFloat(style.strokeDashoffset)||0});
+      return item;
+    }
+    const drawing=compile(scene,true);
+    function draw(item){
+      ctx.save();if(item.transform)ctx.transform(...item.transform);ctx.globalAlpha*=Number.isFinite(item.opacity)?item.opacity:1;
+      if(item.clip)ctx.clip(item.clip.path,item.clip.rule);
+      const alpha=ctx.globalAlpha;
+      if(item.path){
+        if(item.fill&amp;&amp;item.fill!==&#x27;none&#x27;){ctx.globalAlpha=alpha*item.fillOpacity;ctx.fillStyle=item.fill;ctx.fill(item.path,item.rule);}
+        if(item.stroke&amp;&amp;item.stroke!==&#x27;none&#x27;){
+          const focus=item.focusNode===document.activeElement&amp;&amp;item.focusNode.matches(&#x27;:focus-visible&#x27;)?getComputedStyle(item.focusNode):null;
+          ctx.globalAlpha=alpha*item.strokeOpacity;ctx.strokeStyle=focus?.stroke||item.stroke;ctx.lineWidth=focus?Number.parseFloat(focus.strokeWidth):item.width;ctx.lineCap=item.cap;ctx.lineJoin=item.join;ctx.miterLimit=item.miter;ctx.setLineDash(item.dashes);ctx.lineDashOffset=item.offset;ctx.stroke(item.path);
+        }
+      }else if(item.text&amp;&amp;item.fill!==&#x27;none&#x27;){
+        ctx.globalAlpha=alpha*item.fillOpacity;ctx.fillStyle=item.fill;ctx.font=item.text.font;ctx.textAlign=item.text.align;ctx.textBaseline=item.text.baseline;ctx.fillText(item.text.value,item.text.x,item.text.y);
+      }
+      ctx.globalAlpha=alpha;for(const child of item.children)draw(child);ctx.restore();
+    }
+    // Only the scene is transparent: the fixed scale remains a crisp SVG above
+    // the canvas, and transparent SVG room paths still receive pointer events.
+    scene.style.opacity=&#x27;0&#x27;;stage.dataset.canvasRenderer=&#x27;true&#x27;;
+    return {paint({matrix,width,height}){
+      const dpr=Math.min(2,window.devicePixelRatio||1),w=Math.ceil(width*dpr),h=Math.ceil(height*dpr);
+      if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+      ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.transform(...matrix);draw(drawing);
+    }};
+  };
+})();
+&lt;/script&gt;
 &lt;script id=&quot;olr-map-camera-controls&quot;&gt;
 (() =&gt; {
   const root = document.querySelector(&#x27;.olr-fit-viewer&#x27;);
@@ -4315,7 +4402,22 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const wrap = n =&gt; ((n + 180) % 360 + 360) % 360 - 180;
   const radians = n =&gt; n * Math.PI / 180;
   let widthOnly = false, parentSized = false, viewportHeight = null;
-  let zoom = 1, bearing = 0, center = null, pending = false;
+  let zoom = 1, bearing = 0, center = null, pending = false, rebuild = false;
+  let detailTimer = null, detailRefresh = false;
+  const interacting = new Set();
+  const idleDetails = () =&gt; {
+    clearTimeout(detailTimer);
+    detailTimer = setTimeout(() =&gt; {
+      detailTimer = null;
+      if (interacting.size) return;
+      const stage = active(), state = stage &amp;&amp; stateFor(stage), m = stage &amp;&amp; measure(stage);
+      // Geometry and screen-sized labels are refreshed once after zoom settles.
+      // Panning and rotation never need to recreate the drawing.
+      if (m &amp;&amp; state?.fit &amp;&amp; Math.abs(m.scale / state.fit.scale - 1) &gt; .001) { detailRefresh = true; redraw(false); }
+    }, 180);
+  };
+  const startInteraction = stage =&gt; { interacting.add(stage); clearTimeout(detailTimer); detailRefresh = false; };
+  const endInteraction = stage =&gt; { interacting.delete(stage); idleDetails(); };
   const isNorthUp = () =&gt; Math.abs(bearing) &lt; 1e-7;
   const stateFor = stage =&gt; {
     if (!states.has(stage)) states.set(stage, {});
@@ -4332,12 +4434,20 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (widthOnly) { root.style.removeProperty(&#x27;height&#x27;); delete root.dataset.viewport; }
     else { root.dataset.viewport = &#x27;true&#x27;; root.style.height = viewportHeight !== null ? `${viewportHeight}px` : &#x27;100dvh&#x27;; }
   }
-  function redraw() {
+  function redraw(full = true) {
+    rebuild = rebuild || full;
     if (pending) return;
     pending = true;
     requestAnimationFrame(() =&gt; {
       pending = false;
-      window.dispatchEvent(new Event(&#x27;olr-fit-change&#x27;));
+      const refresh = rebuild || (detailRefresh &amp;&amp; !interacting.size);
+      rebuild = false; detailRefresh = false;
+      if (refresh) window.dispatchEvent(new Event(&#x27;olr-fit-change&#x27;));
+      else for (const stage of stages) {
+        const state = stateFor(stage);
+        if (state.scene &amp;&amp; visible(stage)) paintCamera(stage);
+      }
+      controls();
     });
   }
   function controls() {
@@ -4385,6 +4495,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     return {x:m.width/2+c*x-s*y,y:m.height/2+s*x+c*y};
   }
   function change(nextZoom, nextBearing, focus = null) {
+    detailRefresh = false;
     const stage=focus?.stage || active();
     const point=stage ? (focus?.anchor?.screen || screenPoint(stage,focus?.point)) : null;
     const anchor=focus?.anchor || (stage ? worldAt(stage,point) : null);
@@ -4397,20 +4508,21 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         center={x:anchor.x-delta.x,y:anchor.y-delta.y};
       }
     }
-    controls(); redraw();
+    redraw(false); idleDetails();
     return zoom;
   }
   function pan(stage, dx, dy) {
+    detailRefresh = false;
     const m=measure(stage);
     if (!m || !center) return;
     const delta=inverseDelta(dx,dy,m.scale);
     center={x:center.x-delta.x,y:center.y-delta.y};
-    redraw();
+    redraw(false); idleDetails();
   }
   function fit() {
     const d=stateFor(active()||stages[0]).dimensions;
     center=d?{x:d.dx/2,y:d.dy/2}:null;
-    zoom=1; bearing=0; controls(); redraw();
+    zoom=1; bearing=0; redraw(false); idleDetails();
   }
   const setZoom=(value,focus=null)=&gt;change(value,bearing,focus);
   const setBearing=(value,focus=null)=&gt;{change(zoom,value,focus);return bearing;};
@@ -4441,11 +4553,41 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));
     parent.appendChild(n);return n;
   };
+  function paintCamera(stage) {
+    const state=stateFor(stage),m=measure(stage),f=state.fit,scene=state.scene,svg=state.svg;
+    if (!m || !f || !scene || !center) return;
+    // Retain all SVG geometry during gestures. The ratio accounts for a scene
+    // last drawn at another zoom level; its focal point stays exact every frame.
+    const a=radians(northAngle+bearing),ratio=m.scale/f.scale,c=Math.cos(a)*ratio,s=Math.sin(a)*ratio;
+    const cx=f.left+center.x*f.scale,cy=f.top+center.y*f.scale;
+    // Bound nested SVG clipping to the visible region before transforming it.
+    // Firefox otherwise rasterizes offscreen clip surfaces at the full zoomed
+    // campus size. The inverse viewport bounds include rotation and a 2px guard.
+    if(state.viewportClip){
+      const hw=(Math.abs(Math.cos(a))*m.width+Math.abs(Math.sin(a))*m.height)/2/ratio+2/ratio;
+      const hh=(Math.abs(Math.sin(a))*m.width+Math.abs(Math.cos(a))*m.height)/2/ratio+2/ratio;
+      const left=Math.max(0,cx-hw),top=Math.max(0,cy-hh);
+      const right=Math.min(f.width,cx+hw),bottom=Math.min(f.height,cy+hh);
+      for(const [key,value] of Object.entries({x:left,y:top,width:Math.max(0,right-left),height:Math.max(0,bottom-top)}))state.viewportClip.setAttribute(key,value);
+    }
+    scene.setAttribute(&#x27;transform&#x27;,`matrix(${c} ${s} ${-s} ${c} ${m.width/2-c*cx+s*cy} ${m.height/2-s*cx-c*cy})`);
+    state.canvasScene?.paint({matrix:[c,s,-s,c,m.width/2-c*cx+s*cy,m.height/2-s*cx-c*cy],width:m.width,height:m.height});
+    svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${m.width} ${m.height}`);
+    svg.setAttribute(&#x27;height&#x27;,m.height);
+    svg.setAttribute(&#x27;data-map-bearing&#x27;,bearing);
+    const desired=Math.min(100,Math.max(.1,(m.width-44)/m.scale/3)),power=10**Math.floor(Math.log10(desired));
+    const length=([5,2,1].find(n=&gt;n*power&lt;=desired)||1)*power;
+    const x=m.width-22-length*m.scale,y=m.height-12;
+    for (const [key,value] of Object.entries({x1:x,y1:y,x2:x+length*m.scale,y2:y})) state.scaleLine.setAttribute(key,value);
+    state.scaleText.setAttribute(&#x27;x&#x27;,x+length*m.scale/2);
+    state.scaleText.setAttribute(&#x27;y&#x27;,y-6);
+    const text=`${Number(length.toPrecision(4))} ft`;
+    if(state.scaleText.textContent!==text)state.scaleText.textContent=text;
+  }
   window.olrCommitCanvas=svg=&gt;{
-    const stage=svg.parentElement,m=measure(stage),f=stateFor(stage).fit;
-    if (!m || !f || !center) return;
-    // One complete transform is committed with the fresh drawing in this frame.
-    // All masks/clip paths remain in the original, unrotated drawing coordinates.
+    const stage=svg.parentElement,state=stateFor(stage);
+    if (!state.fit || !center) return;
+    // Definitions remain in drawing coordinates, outside the camera scene.
     const children=[...svg.children];
     const scene=children.find(child=&gt;child.hasAttribute?.(&#x27;data-map-scene&#x27;))||svgNode(&#x27;g&#x27;,{&#x27;data-map-scene&#x27;:&#x27;true&#x27;},svg);
     for (const child of children) {
@@ -4454,18 +4596,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if ([&#x27;defs&#x27;,&#x27;title&#x27;,&#x27;desc&#x27;].includes((child.tagName||child.nodeName||child.tag||&#x27;&#x27;).toLowerCase())) continue;
       scene.appendChild(child);
     }
-    const a=radians(northAngle+bearing),c=Math.cos(a),s=Math.sin(a);
-    const cx=f.left+center.x*f.scale,cy=f.top+center.y*f.scale;
-    scene.setAttribute(&#x27;transform&#x27;,`matrix(${c} ${s} ${-s} ${c} ${m.width/2-c*cx+s*cy} ${m.height/2-s*cx-c*cy})`);
-    svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${m.width} ${m.height}`);
-    svg.setAttribute(&#x27;height&#x27;,m.height);
-    svg.setAttribute(&#x27;data-map-bearing&#x27;,bearing);
-    const desired=Math.min(100,Math.max(.1,(m.width-44)/f.scale/3)),power=10**Math.floor(Math.log10(desired));
-    const length=([5,2,1].find(n=&gt;n*power&lt;=desired)||1)*power;
-    const x=m.width-22-length*f.scale,y=m.height-12;
-    const bar=svgNode(&#x27;g&#x27;,{&#x27;data-map-scale&#x27;:&#x27;fixed&#x27;},svg);
-    svgNode(&#x27;line&#x27;,{x1:x,y1:y,x2:x+length*f.scale,y2:y,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5},bar);
-    svgNode(&#x27;text&#x27;,{x:x+length*f.scale/2,y:y-6,&#x27;text-anchor&#x27;:&#x27;middle&#x27;},bar).textContent=`${Number(length.toPrecision(4))} ft`;
+    state.svg=svg;state.scene=scene;state.viewportClip=svg.querySelector(&#x27;[data-map-viewport-clip]&#x27;);
+    state.canvasScene=window.olrCreateCanvasScene?.(svg,scene);
+    const bar=svgNode(&#x27;g&#x27;,{&#x27;data-map-scale&#x27;:&#x27;fixed&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;},svg);
+    state.scaleLine=svgNode(&#x27;line&#x27;,{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5},bar);
+    state.scaleText=svgNode(&#x27;text&#x27;,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;},bar);
+    paintCamera(stage);
   };
   function command(name) {
     name=typeof name===&#x27;string&#x27;?name:name?.command;
@@ -4482,6 +4618,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(name){e.preventDefault();command(name);}
   });
   for(const stage of stages){
+    for(const type of [&#x27;focusin&#x27;,&#x27;focusout&#x27;])stage.addEventListener(type,()=&gt;{if(stateFor(stage).canvasScene)redraw(false);});
     let drag=null,pinch=null,native=null,dragged=false,wheelGesture=null;
     const local=(x,y)=&gt;{const b=stage.getBoundingClientRect();return{x:x-finite(b.left),y:y-finite(b.top)};};
     const point=e=&gt;Number.isFinite(e.clientX)&amp;&amp;Number.isFinite(e.clientY)?local(e.clientX,e.clientY):screenPoint(stage);
@@ -4493,7 +4630,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const beginPinch=touches=&gt;{
       const p=pair(touches);
       pinch={zoom,bearing,distance:Math.max(1,p.distance),lastAngle:p.angle,rotation:0,anchor:worldAt(stage,p.point),ids:touches[0].identifier!==undefined?[touches[0].identifier,touches[1].identifier]:null};
-      native=null;drag=null;
+      native=null;drag=null;startInteraction(stage);
     };
     stage.addEventListener(&#x27;wheel&#x27;,e=&gt;{
       if(pinch||native){e.preventDefault();return;}
@@ -4519,7 +4656,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       }else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){e.preventDefault();pan(stage,-moveX,-moveY);}
     },{passive:false});
     stage.addEventListener(&#x27;gesturestart&#x27;,e=&gt;{
-      e.preventDefault();if(pinch)return;
+      e.preventDefault();if(pinch)return;startInteraction(stage);
       native={zoom,bearing,scale:Math.max(.001,finite(e.scale,1)),rotation:finite(e.rotation),anchor:worldAt(stage,point(e))};drag=null;
     },{passive:false});
     stage.addEventListener(&#x27;gesturechange&#x27;,e=&gt;{
@@ -4528,10 +4665,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       dragged=true;
       change(native.zoom*ratio,native.bearing+finite(e.rotation,native.rotation)-native.rotation,{stage,anchor:{...native.anchor,screen:point(e)}});
     },{passive:false});
-    stage.addEventListener(&#x27;gestureend&#x27;,e=&gt;{e.preventDefault();native=null;}, {passive:false});
+    stage.addEventListener(&#x27;gestureend&#x27;,e=&gt;{e.preventDefault();native=null;if(!pinch)endInteraction(stage);}, {passive:false});
     stage.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{
       if(e.pointerType===&#x27;touch&#x27;||e.button!==0||e.target?.closest?.(&#x27;button,input,select,textarea,a&#x27;))return;
-      drag={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY};dragged=false;
+      drag={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY};dragged=false;startInteraction(stage);
     });
     stage.addEventListener(&#x27;pointermove&#x27;,e=&gt;{
       if(!drag||e.pointerType===&#x27;touch&#x27;||e.pointerId!==drag.id)return;
@@ -4539,12 +4676,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(!dragged)return;
       e.preventDefault();pan(stage,e.clientX-drag.x,e.clientY-drag.y);drag.x=e.clientX;drag.y=e.clientY;stage.dataset.panning=&#x27;true&#x27;;
     });
-    const finish=()=&gt;{drag=null;delete stage.dataset.panning;};
+    const finish=e=&gt;{if(e?.pointerType===&#x27;touch&#x27;)return;if(drag&amp;&amp;!pinch&amp;&amp;!native)endInteraction(stage);drag=null;delete stage.dataset.panning;};
     for(const name of [&#x27;pointerup&#x27;,&#x27;pointercancel&#x27;,&#x27;lostpointercapture&#x27;])stage.addEventListener(name,finish);
     for(const name of [&#x27;pointerup&#x27;,&#x27;pointercancel&#x27;])window.addEventListener(name,finish);
     stage.addEventListener(&#x27;click&#x27;,e=&gt;{if(dragged){dragged=false;e.preventDefault();e.stopPropagation();}},true);
     stage.addEventListener(&#x27;touchstart&#x27;,e=&gt;{
-      dragged=false;
+      dragged=false;startInteraction(stage);
       if(e.touches.length&gt;=2){beginPinch(e.touches);e.preventDefault();}
       else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
     },{passive:false});
@@ -4564,6 +4701,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     },{passive:false});
     const endTouch=e=&gt;{
       pinch=null;drag=null;
+      if(!e.touches.length)endInteraction(stage);
       if(e.touches.length&gt;=2)beginPinch(e.touches);
       else if(e.touches.length===1&amp;&amp;(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001)){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
     };
@@ -4599,8 +4737,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     });
     for(const stage of stages)observer.observe(stage);
   }
-  window.addEventListener(&#x27;resize&#x27;,redraw);
-  layout();controls();window.parent.postMessage({type:&#x27;olr-viewport-ready&#x27;},&#x27;*&#x27;);redraw();
+  window.addEventListener(&#x27;resize&#x27;,()=&gt;redraw());
+  window.addEventListener(&#x27;openai:set_globals&#x27;,event=&gt;{
+    const globals=event.detail?.globals;
+    if((globals?.theme||globals?.visualizationTheme)&amp;&amp;stages.some(stage=&gt;stateFor(stage).canvasScene))redraw();
+  });
+  window.addEventListener(&#x27;blur&#x27;,()=&gt;{interacting.clear();idleDetails();});
+  layout();window.parent.postMessage({type:&#x27;olr-viewport-ready&#x27;},&#x27;*&#x27;);redraw();
 })();
 &lt;/script&gt;
 &lt;script id=&quot;olr-combined-page-controls&quot;&gt;
@@ -4673,24 +4816,32 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const root = document.getElementById(&#x27;olr-campus-page&#x27;);
   if (!root) return;
   let connected = false;
+  let lastPublished = null;
   const campus = document.getElementById(&#x27;fc-parking-comparison&#x27;);
   const floors = [...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
   function publish() {
     if (!connected) return;
     const zoom = window.olrMapZoom;
-    window.parent.postMessage({type:&#x27;olr-tools-state&#x27;,
+    const state = {type:&#x27;olr-tools-state&#x27;,
       view: document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27; ? &#x27;existing&#x27; : &#x27;shifted&#x27;,
       floor: Number(floors.find(b=&gt;b.getAttribute(&#x27;aria-pressed&#x27;) === &#x27;true&#x27;)?.dataset.campusFloor ?? 1),
       zoom: zoom?.value ?? 1, minZoom: zoom?.min ?? 1, maxZoom: zoom?.max ?? 32,
       bearing: window.olrMapCamera?.bearing ?? 0,
       oldBuildings: campus?.oldBuildingsVisible ?? true
-    }, &#x27;*&#x27;);
+    };
+    // Camera frames may change only the transform, or reach the same zoom limit.
+    // Avoid delivering duplicate states to the parent controls.
+    const signature = JSON.stringify(state);
+    if (signature === lastPublished) return;
+    lastPublished = signature;
+    window.parent.postMessage(state, &#x27;*&#x27;);
   }
   window.addEventListener(&#x27;message&#x27;, event =&gt; {
     if (event.source !== window.parent || event.data?.type !== &#x27;olr-tools-command&#x27;) return;
     const {command, value} = event.data;
     if (command === &#x27;connect&#x27;) {
       connected = true;
+      lastPublished = null;
       root.dataset.externalTools = &#x27;true&#x27;;
       window.olrMapZoom?.restore();
     } else if (!connected) return;
@@ -5631,7 +5782,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const toggle = document.getElementById('campus-tools-toggle');
   const oldBuildings = document.getElementById('campus-old-buildings');
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
-  let expanded = false;
+  let expanded = false, renderedState = null;
   function expand(next) {
     expanded = next;
     panel.dataset.mobileExpanded = String(expanded);
@@ -5665,17 +5816,31 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (s?.type === 'olr-tools-ready') { connect(); return; }
     if (s?.type !== 'olr-tools-state' || !['existing','shifted'].includes(s.view) || ![0,1,2].includes(s.floor) ||
         ![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite)) return;
-    maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap === s.view)));
-    floorGroup.hidden = false;
-    floorGroup.setAttribute('aria-disabled',String(s.view !== 'shifted'));
-    floors.forEach(b=>{ b.disabled = s.view !== 'shifted'; b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor) === s.floor)); });
-    if(oldBuildings){
-      oldBuildings.disabled=s.view!=='shifted';
-      oldBuildings.setAttribute('aria-pressed',String(s.oldBuildings!==false));
+    const previous = renderedState;
+    // Updating the camera must not invalidate every control's style and layout.
+    if (!previous || previous.view !== s.view) {
+      maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap === s.view)));
+      floorGroup.hidden = false;
+      floorGroup.setAttribute('aria-disabled',String(s.view !== 'shifted'));
+      floors.forEach(b=>{ b.disabled = s.view !== 'shifted'; });
+      if(oldBuildings)oldBuildings.disabled=s.view!=='shifted';
     }
-    zoom.forEach(b=>b.disabled = b.dataset.campusZoom === 'out' ? s.zoom <= s.minZoom : b.dataset.campusZoom === 'in' ? s.zoom >= s.maxZoom : false);
-    needle.style.transform = `rotate(${s.bearing}deg)`;
-    compass.setAttribute('aria-label',Math.abs(s.bearing) < 1e-7 ? 'North is up. Click to align Building 1 with the screen.' : `North points ${Math.round((s.bearing+360)%360)} degrees clockwise from up. Click to return north to the top.`);
+    if (!previous || previous.floor !== s.floor) {
+      floors.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor) === s.floor)));
+    }
+    if(oldBuildings){
+      if (!previous || previous.oldBuildings !== (s.oldBuildings!==false)) oldBuildings.setAttribute('aria-pressed',String(s.oldBuildings!==false));
+    }
+    zoom.forEach(b=>{
+      const disabled = b.dataset.campusZoom === 'out' ? s.zoom <= s.minZoom : b.dataset.campusZoom === 'in' ? s.zoom >= s.maxZoom : false;
+      if (!previous || b.disabled !== disabled) b.disabled = disabled;
+    });
+    if (!previous || previous.bearing !== s.bearing) {
+      needle.style.transform = `rotate(${s.bearing}deg)`;
+      const label = Math.abs(s.bearing) < 1e-7 ? 'North is up. Click to align Building 1 with the screen.' : `North points ${Math.round((s.bearing+360)%360)} degrees clockwise from up. Click to return north to the top.`;
+      if (compass.getAttribute('aria-label') !== label) compass.setAttribute('aria-label',label);
+    }
+    renderedState = {view:s.view, floor:s.floor, bearing:s.bearing, oldBuildings:s.oldBuildings!==false};
   });
   let drag = null, moved = false;
   const angle = event => { const b=compass.getBoundingClientRect(); return Math.atan2(event.clientY-b.top-b.height/2,event.clientX-b.left-b.width/2)*180/Math.PI; };
