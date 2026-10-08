@@ -3699,9 +3699,6 @@ html&gt;body{padding:0}&lt;/style&gt;
       const px=(proposal.play[0]+proposal.play[2])/2;
       if(!parkingDetail){buildingLabel(&#x27;shared&#x27;,&#x27;Building 2&#x27;,sx+(compact&amp;&amp;!detail?8/scale:0),153);label(compact?&#x27;Play&#x27;:&#x27;Playground&#x27;,px,45);if(!compact)label(proposal.eastPlayground?.area_label||&#x27;12,000 SF&#x27;,px,24,{&#x27;data-east-playground-label&#x27;:&#x27;area&#x27;});}
       if(proposal.northParkingExtension&amp;&amp;!closeup){
-        const northSpaces=proposal.northParkingExtension.stall_count+(proposal.northParkingUpperRow?.stall_count||0);
-        const aisle=proposal.northParkingExtension.maneuver_aisle.rect;
-        label(compact?`+${northSpaces}`:`+${northSpaces} spaces`,(aisle[0]+aisle[2])/2,(aisle[1]+aisle[3])/2,{&#x27;data-north-extension-label&#x27;:&#x27;spaces&#x27;,&#x27;data-tooltip&#x27;:`${northSpaces} new north parking spaces; remaining bays east of Building 1`});
         if(!compact&amp;&amp;!combined)label(&#x27;Landscaped walk&#x27;,77,210,{&#x27;data-north-extension-label&#x27;:&#x27;landscaped-walk&#x27;});
       }
       if(!compact&amp;&amp;!closeup){
