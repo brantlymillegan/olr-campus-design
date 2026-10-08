@@ -3297,7 +3297,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;out&quot; aria-label=&quot;Zoom out&quot; aria-keyshortcuts=&quot;-&quot;&gt;&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path d=&quot;M4 10h12&quot;/&gt;&lt;/svg&gt;&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot;&gt;&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path d=&quot;M4 10h12M10 4v12&quot;/&gt;&lt;/svg&gt;&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; aria-label=&quot;Reset map&quot;&gt;Fit&lt;/button&gt;
-&lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers sideways to rotate · Pinch to zoom · Drag to move&lt;/p&gt;
+&lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers to move · Pinch to zoom · Twist to rotate&lt;/p&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-old-buildings&quot; aria-pressed=&quot;true&quot; aria-label=&quot;Show old building outlines&quot;&gt;Old buildings&lt;/button&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
@@ -4619,7 +4619,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   });
   for(const stage of stages){
     for(const type of [&#x27;focusin&#x27;,&#x27;focusout&#x27;])stage.addEventListener(type,()=&gt;{if(stateFor(stage).canvasScene)redraw(false);});
-    let drag=null,pinch=null,native=null,dragged=false,wheelGesture=null;
+    let drag=null,pinch=null,native=null,dragged=false;
     const local=(x,y)=&gt;{const b=stage.getBoundingClientRect();return{x:x-finite(b.left),y:y-finite(b.top)};};
     const point=e=&gt;Number.isFinite(e.clientX)&amp;&amp;Number.isFinite(e.clientY)?local(e.clientX,e.clientY):screenPoint(stage);
     const pair=(touches,ids)=&gt;{
@@ -4636,24 +4636,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(pinch||native){e.preventDefault();return;}
       const unit=e.deltaMode===1?16:e.deltaMode===2?measure(stage)?.height||1:1;
       const dx=finite(e.deltaX)*unit,dy=finite(e.deltaY)*unit;
-      // Chromium delivers trackpad swipes as wheel events, without a twist angle.
-      // A sideways swipe rotates directly; a vertical swipe keeps panning.
-      // Lock the intent for the full swipe so diagonal noise cannot switch modes.
-      if(e.ctrlKey){wheelGesture=null;e.preventDefault();setZoom(zoom*Math.exp(Math.max(-1,Math.min(1,-dy*.01))),{stage,point:point(e)});return;}
-      if(e.altKey){wheelGesture=null;e.preventDefault();setBearing(bearing+(Math.abs(dx)&gt;Math.abs(dy)?dx:dy)*.25,{stage,point:point(e)});dragged=true;return;}
-      const now=Number.isFinite(e.timeStamp)?e.timeStamp:Date.now();
-      if(!wheelGesture||now-wheelGesture.time&gt;180||now&lt;wheelGesture.time)wheelGesture={time:now,intent:null,dx:0,dy:0};
-      wheelGesture.time=now;
-      let moveX=dx,moveY=dy;
-      if(!wheelGesture.intent){
-        wheelGesture.dx+=dx;wheelGesture.dy+=dy;
-        if(Math.hypot(wheelGesture.dx,wheelGesture.dy)&lt;4){e.preventDefault();return;}
-        wheelGesture.intent=Math.abs(wheelGesture.dx)&gt;1.2*Math.abs(wheelGesture.dy)?&#x27;rotate&#x27;:&#x27;pan&#x27;;
-        moveX=wheelGesture.dx;moveY=wheelGesture.dy;
-      }
-      if(wheelGesture.intent===&#x27;rotate&#x27;){
-        e.preventDefault();setBearing(bearing+moveX*.25);dragged=true;
-      }else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){e.preventDefault();pan(stage,-moveX,-moveY);}
+      // Wheel events report translation (or Ctrl-pinch), never a twist angle.
+      // Rotate only from a native rotation gesture or the angle of a touch pair.
+      if(e.ctrlKey){e.preventDefault();setZoom(zoom*Math.exp(Math.max(-1,Math.min(1,-dy*.01))),{stage,point:point(e)});return;}
+      e.preventDefault();pan(stage,-dx,-dy);
     },{passive:false});
     stage.addEventListener(&#x27;gesturestart&#x27;,e=&gt;{
       e.preventDefault();if(pinch)return;startInteraction(stage);
