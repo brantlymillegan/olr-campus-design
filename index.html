@@ -1301,7 +1301,7 @@ html>body { padding:0; }
 }
 /* The campus canvas fills the browser viewport; controls float above it. */
 html:has(body.olr-campus-app) { height:100%; overflow:hidden; overscroll-behavior:none; }
-body.olr-campus-app { display:flex; flex-direction:column; height:100vh; height:100dvh; min-height:0; overflow:hidden; overscroll-behavior:none; }
+body.olr-campus-app { display:flex; flex-direction:column; height:100vh; height:100dvh; min-height:0; padding:0; overflow:hidden; overscroll-behavior:none; }
 body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
 @media (max-width:767px), (max-width:1024px) and (pointer:coarse) {
   body.olr-campus-app { padding:0; }
@@ -3926,6 +3926,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;/aside&gt;
   &lt;style&gt;
 .olr-unified-map { position:relative; }
+#olr-campus-page.olr-unified-map[data-viewport=&quot;true&quot;] { padding:0; gap:0; }
 .olr-unified-map[data-external-tools=&quot;true&quot;] #fc-parking-comparison &gt; .viz-row,
 .olr-unified-map[data-external-tools=&quot;true&quot;] &gt; .olr-map-compass { display:none !important; }
 .olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport { overflow:hidden; touch-action:none; overscroll-behavior:none; }
