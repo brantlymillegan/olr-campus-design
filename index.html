@@ -3126,7 +3126,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;output data-map-zoom-value aria-label=&quot;Zoom level&quot;&gt;100%&lt;/output&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot; title=&quot;Zoom in (+)&quot;&gt;+&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; title=&quot;Reset map (0)&quot;&gt;Fit&lt;/button&gt;
-&lt;/div&gt;
+&lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers sideways to rotate · Pinch to zoom · Drag to move&lt;/p&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
     &lt;svg class=&quot;campus-map&quot; data-map=&quot;existing&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-existing-title fc-existing-desc&quot;&gt;&lt;/svg&gt;
@@ -3555,7 +3555,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;/script&gt;
 
   &lt;/section&gt;
-  &lt;button type=&quot;button&quot; class=&quot;olr-map-compass&quot; data-map-compass aria-label=&quot;Return map to north&quot; title=&quot;Two-finger twist to rotate. Option/Alt + two-finger scroll also rotates. Click for north.&quot;&gt;
+  &lt;button type=&quot;button&quot; class=&quot;olr-map-compass&quot; data-map-compass aria-label=&quot;Return map to north&quot; title=&quot;Swipe two fingers sideways to rotate. Click to return north to the top.&quot;&gt;
     &lt;svg data-map-compass-needle viewBox=&quot;0 0 48 48&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
       &lt;text x=&quot;24&quot; y=&quot;12&quot; text-anchor=&quot;middle&quot;&gt;N&lt;/text&gt;
       &lt;path d=&quot;M24 16 L32 36 L24 31 L16 36 Z&quot; fill=&quot;currentColor&quot;/&gt;
@@ -3580,6 +3580,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-unified-map .olr-map-zoom { display:flex; align-items:center; flex-wrap:nowrap; gap:4px; margin-left:auto; }
 .olr-unified-map .olr-map-zoom output { min-width:4em; text-align:center; font-size:12px; font-variant-numeric:tabular-nums; }
 .olr-unified-map .olr-map-zoom .btn { min-width:36px; }
+.olr-unified-map .olr-map-gesture-help { flex:0 0 100%; margin:0; color:var(--muted-foreground); font-size:12px; line-height:1.4; }
 .olr-unified-map .olr-room-details { position:absolute; z-index:20; left:18px; bottom:36px; width:min(320px,calc(100% - 36px)); box-sizing:border-box; max-height:min(280px,45%); overflow:auto; border:1px solid var(--border); background:var(--background); color:var(--foreground); border-radius:10px; box-shadow:0 4px 24px #0002; padding:12px 16px; }
 .olr-unified-map .olr-room-details-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .olr-unified-map #olr-room-close { padding:0; flex:none; width:30px; height:30px; font-size:20px; line-height:1; }
@@ -4124,7 +4125,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(name){e.preventDefault();command(name);}
   });
   for(const stage of stages){
-    let drag=null,pinch=null,native=null,dragged=false;
+    let drag=null,pinch=null,native=null,dragged=false,wheelGesture=null;
     const local=(x,y)=&gt;{const b=stage.getBoundingClientRect();return{x:x-finite(b.left),y:y-finite(b.top)};};
     const point=e=&gt;Number.isFinite(e.clientX)&amp;&amp;Number.isFinite(e.clientY)?local(e.clientX,e.clientY):screenPoint(stage);
     const pair=(touches,ids)=&gt;{
@@ -4141,9 +4142,24 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(pinch||native){e.preventDefault();return;}
       const unit=e.deltaMode===1?16:e.deltaMode===2?measure(stage)?.height||1:1;
       const dx=finite(e.deltaX)*unit,dy=finite(e.deltaY)*unit;
-      if(e.altKey){e.preventDefault();setBearing(bearing+(Math.abs(dx)&gt;Math.abs(dy)?dx:dy)*.25,{stage,point:point(e)});dragged=true;}
-      else if(e.ctrlKey){e.preventDefault();setZoom(zoom*Math.exp(Math.max(-1,Math.min(1,-dy*.01))),{stage,point:point(e)});}
-      else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){e.preventDefault();pan(stage,-dx,-dy);}
+      // Chromium delivers trackpad swipes as wheel events, without a twist angle.
+      // A sideways swipe rotates directly; a vertical swipe keeps panning.
+      // Lock the intent for the full swipe so diagonal noise cannot switch modes.
+      if(e.ctrlKey){wheelGesture=null;e.preventDefault();setZoom(zoom*Math.exp(Math.max(-1,Math.min(1,-dy*.01))),{stage,point:point(e)});return;}
+      if(e.altKey){wheelGesture=null;e.preventDefault();setBearing(bearing+(Math.abs(dx)&gt;Math.abs(dy)?dx:dy)*.25,{stage,point:point(e)});dragged=true;return;}
+      const now=Number.isFinite(e.timeStamp)?e.timeStamp:Date.now();
+      if(!wheelGesture||now-wheelGesture.time&gt;180||now&lt;wheelGesture.time)wheelGesture={time:now,intent:null,dx:0,dy:0};
+      wheelGesture.time=now;
+      let moveX=dx,moveY=dy;
+      if(!wheelGesture.intent){
+        wheelGesture.dx+=dx;wheelGesture.dy+=dy;
+        if(Math.hypot(wheelGesture.dx,wheelGesture.dy)&lt;4){e.preventDefault();return;}
+        wheelGesture.intent=Math.abs(wheelGesture.dx)&gt;1.2*Math.abs(wheelGesture.dy)?&#x27;rotate&#x27;:&#x27;pan&#x27;;
+        moveX=wheelGesture.dx;moveY=wheelGesture.dy;
+      }
+      if(wheelGesture.intent===&#x27;rotate&#x27;){
+        e.preventDefault();setBearing(bearing+moveX*.25);dragged=true;
+      }else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){e.preventDefault();pan(stage,-moveX,-moveY);}
     },{passive:false});
     stage.addEventListener(&#x27;gesturestart&#x27;,e=&gt;{
       e.preventDefault();if(pinch)return;
