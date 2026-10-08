@@ -3547,7 +3547,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     }else{
       const school=data.existing.buildings.find(b=&gt;b.id===887530),annex=data.existing.buildings.find(b=&gt;b.id===880586);
       buildingLabel(887530,compact?&#x27;School&#x27;:&#x27;Lower school&#x27;,58,school.label_xy[1],-90);
-      line([annex.label_xy,[-120,276]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1});buildingLabel(880586,compact?&#x27;Annex&#x27;:&#x27;Art / K4 annex&#x27;,-182,276);
+      buildingLabel(880586,compact?&#x27;K4 / Art&#x27;:&#x27;Art / K4 annex&#x27;,...annex.label_xy);
       if(data.hallReference.show&amp;&amp;!compact)label(&#x27;Existing Hall access&#x27;,-270,-70);
     }
     svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
