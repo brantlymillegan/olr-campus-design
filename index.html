@@ -1415,7 +1415,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   <button type="button" class="campus-compass" id="campus-compass" aria-label="North is up. Click to align Building 1 with the screen.">
     <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
   </button>
-  <button type="button" class="btn campus-old-buildings" id="campus-old-buildings" aria-pressed="true" aria-label="Show old building outlines">Old buildings</button>
+  <button type="button" class="btn campus-old-buildings" id="campus-old-buildings" aria-pressed="true" aria-label="Show old building outlines" aria-keyshortcuts="O">Old buildings</button>
   <div class="campus-camera-tools" id="campus-camera-tools">
     <div class="campus-zoom-tools" role="group" aria-label="Map zoom">
       <button type="button" class="btn" data-campus-zoom="out" aria-label="Zoom out" aria-keyshortcuts="-"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 10h12"/></svg></button>
@@ -1429,7 +1429,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     </label>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=e3c912203818e6e6" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=8f5c751f9a9a9274" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -3306,7 +3306,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot;&gt;&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path d=&quot;M4 10h12M10 4v12&quot;/&gt;&lt;/svg&gt;&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; aria-label=&quot;Reset map&quot;&gt;Fit&lt;/button&gt;
 &lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers to move · Pinch to zoom · Twist to rotate&lt;/p&gt;
-    &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-old-buildings&quot; aria-pressed=&quot;true&quot; aria-label=&quot;Show old building outlines&quot;&gt;Old buildings&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-old-buildings&quot; aria-pressed=&quot;true&quot; aria-label=&quot;Show old building outlines&quot; aria-keyshortcuts=&quot;O&quot;&gt;Old buildings&lt;/button&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
     &lt;svg class=&quot;campus-map&quot; data-map=&quot;existing&quot; role=&quot;img&quot; aria-describedby=&quot;fc-existing-desc&quot;&gt;&lt;/svg&gt;
@@ -3371,9 +3371,10 @@ html&gt;body{padding:0}&lt;/style&gt;
     if(save)select(view,true);
     document.dispatchEvent(new CustomEvent(&#x27;olr-map-layer-change&#x27;));
   };
-  oldBuildingsButton.addEventListener(&#x27;click&#x27;,()=&gt;{
+  function toggleOldBuildings(){
     if(!oldBuildingsButton.disabled)root.setOldBuildingsVisible(!showOldBuildings);
-  });
+  }
+  oldBuildingsButton.addEventListener(&#x27;click&#x27;,toggleOldBuildings);
   function select(next,save=false){
     next=views.includes(next)?next:lastSingleView;
     const changingView=next!==view;
@@ -3874,14 +3875,18 @@ html&gt;body{padding:0}&lt;/style&gt;
   document.addEventListener(&#x27;keydown&#x27;,event=&gt;{
     if(document.getElementById(&#x27;olr-campus-section&#x27;).hidden)return;
 
-    if(event.defaultPrevented||event.repeat||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||event.key.toLowerCase()!==&#x27;t&#x27;)return;
+    const key=event.key.toLowerCase();
+    if(event.defaultPrevented||event.repeat||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||![&#x27;t&#x27;,&#x27;o&#x27;].includes(key))return;
     if(event.target instanceof Element&amp;&amp;event.target.closest(&#x27;input,textarea,select,[contenteditable]:not([contenteditable=&quot;false&quot;]),[role=&quot;textbox&quot;]&#x27;))return;
-    event.preventDefault();toggleMap();
+    if(key===&#x27;o&#x27;&amp;&amp;oldBuildingsButton.disabled)return;
+    event.preventDefault();if(key===&#x27;o&#x27;)toggleOldBuildings();else toggleMap();
   });
   window.addEventListener(&#x27;message&#x27;,event=&gt;{
     if(document.getElementById(&#x27;olr-campus-section&#x27;).hidden)return;
 
-    if(event.source===window.parent&amp;&amp;event.data?.type===&#x27;fc-toggle-campus-view&#x27;)toggleMap();
+    if(event.source!==window.parent)return;
+    if(event.data?.type===&#x27;fc-toggle-campus-view&#x27;)toggleMap();
+    if(event.data?.type===&#x27;olr-toggle-old-buildings&#x27;)toggleOldBuildings();
   });
   document.addEventListener(&#x27;keydown&#x27;,storyEvent=&gt;{
     if(storyEvent.defaultPrevented||storyEvent.repeat||storyEvent.isComposing||storyEvent.ctrlKey||storyEvent.metaKey||storyEvent.altKey||storyEvent.shiftKey||![&#x27;f&#x27;,&#x27;b&#x27;].includes(storyEvent.key.toLowerCase()))return;
@@ -5755,9 +5760,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const frame = document.getElementById('codex-visualization');
   document.addEventListener('keydown', event => {
     const key=event.key.toLowerCase();
-    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','n','+','=','-','0'].includes(key)) return;
+    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','o','n','+','=','-','0'].includes(key)) return;
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
-    const data=key==='t'?{type:'olr-toggle-active-view'}:key==='f'?{type:'olr-toggle-story'}:key==='b'?{type:'olr-toggle-buildings'}:
+    const data=key==='t'?{type:'olr-toggle-active-view'}:key==='f'?{type:'olr-toggle-story'}:key==='b'?{type:'olr-toggle-buildings'}:key==='o'?{type:'olr-toggle-old-buildings'}:
       {type:'olr-zoom-command',command:key==='0'?'fit':key==='n'?'north':key==='-'?'out':'in'};
     event.preventDefault();frame.contentWindow?.postMessage(data, '*');
   });
