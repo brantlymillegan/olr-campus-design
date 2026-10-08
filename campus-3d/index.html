@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f0e8">
+  <meta name="description" content="Explore the proposed Our Lady of the Rosary campus in 3D, including the church, Guadalupe Hall, new school buildings, gardens and playgrounds.">
+  <title>New campus in 3D · Our Lady of the Rosary</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./viewer.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+</head>
+<body>
+  <main id="viewer" aria-label="New campus exterior model">
+    <img class="preview" id="preview" src="./campus-overview.png" alt="Aerial exterior view of the proposed Our Lady of the Rosary campus">
+    <div id="canvas-wrap"></div>
+    <header class="masthead">
+      <a class="back" href="../" aria-label="Return to campus maps"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m6-6-6 6 6 6"/></svg><span>Campus maps</span></a>
+      <div class="title"><p>OUR LADY OF THE ROSARY</p><h1>A new campus, together.</h1><span>Exterior concept · Greenville, South Carolina</span></div>
+      <details class="downloads panel" id="downloads">
+        <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg><span>Download model</span></summary>
+        <div class="download-menu">
+          <a href="./OLR-New-Campus.blend" download><span>Blender model</span><small>.blend · editable source</small></a>
+          <a href="./OLR-New-Campus.glb" download><span>Universal 3D model</span><small>.glb · glTF format</small></a>
+          <a href="./campus-overview.png" download><span>Campus overview</span><small>.png · rendered view</small></a>
+          <a href="./church-courtyard.png" download><span>Church &amp; courtyard</span><small>.png · rendered view</small></a>
+          <a href="./playground-gardens.png" download><span>Playgrounds &amp; gardens</span><small>.png · rendered view</small></a>
+          <a href="./church-east.png" download><span>Church from the east</span><small>.png · rendered view</small></a>
+        </div>
+      </details>
+    </header>
+    <div class="loading panel" id="loading" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span id="loading-text">Preparing your campus…</span></div>
+    <div class="error panel" id="error" hidden role="alert"><strong>The interactive model could not load.</strong><p>The rendered overview is still available. Try reloading, or download the model to explore in Blender.</p><button id="retry" type="button">Try again</button></div>
+    <nav class="views panel" aria-label="Campus viewpoints">
+      <button type="button" data-view="overview" aria-pressed="true" disabled><span class="view-num">01</span>Campus</button>
+      <button type="button" data-view="church" aria-pressed="false" disabled><span class="view-num">02</span>Church &amp; courtyard</button>
+      <button type="button" data-view="playgrounds" aria-pressed="false" disabled><span class="view-num">03</span>Playgrounds &amp; gardens</button>
+    </nav>
+    <div class="navigation panel" role="group" aria-label="3D camera controls">
+      <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (−)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+      <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (+)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg></button>
+      <button type="button" id="fit" aria-label="Fit campus to screen" title="Fit campus (0)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m6 0h4v-4"/></svg></button>
+      <span class="divider"></span>
+      <button type="button" id="fullscreen" aria-label="Enter full screen" title="Full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 2H2v5m11-5h5v5M2 13v5h5m6 0h5v-5"/></svg></button>
+    </div>
+    <footer><span class="concept">Proposed campus · exterior study</span><details class="help"><summary aria-label="How to navigate the model">?</summary><div class="panel"><strong>Explore the campus</strong><p><b>Orbit</b> Drag with one finger or the left mouse button.</p><p><b>Pan</b> Drag with two fingers or the right mouse button.</p><p><b>Zoom</b> Pinch or scroll.</p><p><b>Keyboard</b> Focus the model, then use arrow keys to pan, + / − to zoom, and 0 to reset.</p><p class="help-note">The church exterior follows photo references. New buildings and landscaping are conceptual. Guadalupe Hall, Benedict Hall, the office and houses are simplified forms.</p></div></details></footer>
+    <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+    <noscript><div class="error panel">This interactive model needs JavaScript. You can still view the rendered overview or download the Blender model above.</div></noscript>
+  </main>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>
