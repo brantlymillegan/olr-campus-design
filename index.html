@@ -2,7 +2,7 @@
 <html lang="en" data-visualize-standalone>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>OLR Campus and Floor Plans</title>
@@ -1259,7 +1259,17 @@ html>body { padding:0; }
   box-sizing:border-box; width:264px; max-width:calc(100vw - 24px); padding:10px; margin:0;
   border:1px solid color-mix(in srgb,var(--foreground) 20%,var(--background)); border-radius:14px;
   background:var(--background); color:var(--foreground); box-shadow:0 3px 18px #0002;
+  grid-template-columns:minmax(0,1fr) 36px;
+  grid-template-areas:"title title" "maps maps" "floors floors" "camera north" "display display" "status status";
 }
+.campus-tools-title { grid-area:title; }
+.campus-map-switch { grid-area:maps; }
+.campus-new-floors { grid-area:floors; }
+.campus-camera-tools { grid-area:camera; }
+.campus-compass { grid-area:north; }
+.campus-display-tools { grid-area:display; }
+#campus-fullscreen-status { grid-area:status; }
+.campus-tools-toggle { display:none; grid-area:toggle; }
 .campus-tool-panel [hidden] { display:none !important; }
 .campus-tools-title { font-size:11px; font-weight:600; color:var(--muted-foreground); }
 .campus-tool-panel .btn { flex:none; min-height:28px; padding:3px 9px; font-size:12px; line-height:1.25; }
@@ -1282,6 +1292,39 @@ html>body { padding:0; }
 .campus-tool-panel #campus-fullscreen-status { font-size:11px; line-height:1.4; }
 @media (pointer:coarse) {
   .campus-tool-panel .btn, .campus-tool-panel .campus-theme-control select { min-height:34px; }
+}
+/* The campus canvas fills the browser viewport; controls float above it. */
+html:has(body.olr-campus-app) { height:100%; overflow:hidden; overscroll-behavior:none; }
+body.olr-campus-app { display:flex; flex-direction:column; height:100vh; height:100dvh; min-height:0; overflow:hidden; overscroll-behavior:none; }
+body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
+@media (max-width:767px), (max-width:1024px) and (pointer:coarse) {
+  body.olr-campus-app { padding:0; }
+  .campus-tool-panel {
+    top:max(8px,env(safe-area-inset-top)); right:max(8px,env(safe-area-inset-right));
+    width:auto; padding:6px; gap:4px; border-radius:12px;
+    max-width:calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:auto;
+    grid-template-columns:auto 40px 40px; grid-template-areas:"maps toggle north";
+  }
+  .campus-tool-panel .campus-tools-title { display:none; }
+  .campus-tool-panel .campus-map-switch { gap:2px; }
+  .campus-tool-panel .campus-map-switch .btn { min-width:0; padding:4px 8px; }
+  .campus-tool-panel .btn { min-height:40px; }
+  .campus-tool-panel .campus-tools-toggle { display:grid; place-items:center; padding:0; width:40px; }
+  .campus-tools-toggle circle { fill:var(--background); }
+  .campus-tool-panel .campus-compass { width:40px; height:40px; }
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-new-floors,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-camera-tools,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-display-tools,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) #campus-fullscreen-status { display:none; }
+  .campus-tool-panel[data-mobile-expanded="true"] {
+    width:244px; grid-template-columns:minmax(0,1fr) 40px 40px;
+    grid-template-areas:"maps toggle north" "floors floors floors" "camera camera camera" "display display display" "status status status";
+  }
+  .campus-tool-panel .campus-new-floors { margin:0 0 2px 8px; padding-top:3px; }
+  .campus-tool-panel .campus-new-floors .btn { flex:1; padding:4px 6px; }
+  .campus-tool-panel .campus-theme-control select { min-height:40px; font-size:16px; }
+  .campus-tool-panel .campus-display-tools { flex-wrap:wrap; }
 }
 </style>
 <script id="olr-theme-shell">
@@ -1336,29 +1379,32 @@ html>body { padding:0; }
 })();
 </script>
 </head>
-<body>
+<body class="olr-campus-app">
 <header class="campus-page-toolbar campus-tool-panel" aria-label="Map tools">
   <span class="campus-tools-title">OLR Campus</span>
   <div class="campus-map-switch" role="group" aria-label="Campus map">
     <button type="button" class="btn" data-campus-map="shifted" aria-pressed="true" aria-controls="campus-new-floors" title="New design (T switches maps)">New</button>
     <button type="button" class="btn" data-campus-map="existing" aria-pressed="false" title="Current campus (T switches maps)">Current</button>
   </div>
+  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map tools" aria-expanded="false" aria-controls="campus-new-floors campus-camera-tools campus-display-tools" title="Map tools">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
+  </button>
+  <button type="button" class="campus-compass" id="campus-compass" aria-label="Reset north" title="Click to reset north (N). Drag to rotate.">
+    <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
+  </button>
   <div class="campus-new-floors" id="campus-new-floors" role="group" aria-label="New design floor">
     <button type="button" class="btn" data-campus-floor="0" aria-pressed="false" title="Building outlines (B)">Buildings</button>
     <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" title="First floor (F switches floors)">1st floor</button>
     <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" title="Second floor (F switches floors)">2nd floor</button>
   </div>
-  <div class="campus-camera-tools">
+  <div class="campus-camera-tools" id="campus-camera-tools">
     <div class="campus-zoom-tools" role="group" aria-label="Map zoom">
       <button type="button" class="btn" data-campus-zoom="out" aria-label="Zoom out" title="Zoom out (−)">−</button>
       <button type="button" class="btn" data-campus-zoom="in" aria-label="Zoom in" title="Zoom in (+)">+</button>
       <button type="button" class="btn" data-campus-zoom="fit" title="Fit campus to screen (0)">Fit</button>
     </div>
-    <button type="button" class="campus-compass" id="campus-compass" aria-label="Reset north" title="Click to reset north (N). Drag to rotate.">
-      <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
-    </button>
   </div>
-  <div class="campus-display-tools">
+  <div class="campus-display-tools" id="campus-display-tools">
     <label class="campus-theme-control text-small" for="campus-theme">Theme
       <select class="form-select" id="campus-theme"><option value="system" selected>System</option><option value="light">Light</option><option value="dark">Dark</option></select>
     </label>
@@ -3765,7 +3811,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-unified-map { position:relative; }
 .olr-unified-map[data-external-tools=&quot;true&quot;] #fc-parking-comparison &gt; .viz-row,
 .olr-unified-map[data-external-tools=&quot;true&quot;] &gt; .olr-map-compass { display:none !important; }
-.olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport { overflow:hidden; }
+.olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport { overflow:hidden; touch-action:none; overscroll-behavior:none; }
 .olr-unified-map .olr-map-compass { position:absolute; top:var(--olr-compass-top,64px); right:18px; z-index:10; display:grid; place-items:center; width:48px; height:48px; box-sizing:border-box; padding:3px; border:1px solid var(--border); border-radius:50%; background:var(--background); color:var(--foreground); box-shadow:0 2px 8px #0002; cursor:pointer; touch-action:none; }
 .olr-unified-map .olr-map-compass:focus-visible { outline:2px solid var(--foreground); outline-offset:3px; }
 .olr-unified-map [data-map-compass-needle] { display:block; width:40px; height:40px; overflow:visible; transform-origin:center; transform-box:view-box; pointer-events:none; }
@@ -3784,6 +3830,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-unified-map #olr-room-location { color:var(--muted-foreground); margin:2px 0 10px; }
 .olr-unified-map [data-campus-floor-room]:focus-visible { stroke:var(--foreground); stroke-width:2; outline:none; }
 @media (max-width:767px) {
+  #olr-campus-page.olr-unified-map[data-viewport=&quot;true&quot;] { padding:0; gap:0; }
   .olr-unified-map #fc-parking-comparison &gt; .viz-row &gt; .nav { flex-basis:100%; }
   .olr-unified-map #fc-parking-comparison &gt; .viz-row { gap:6px; }
   .olr-unified-map #cf-floor-controls { flex:1 1 220px; }
@@ -3791,6 +3838,9 @@ html&gt;body{padding:0}&lt;/style&gt;
   .olr-unified-map .olr-map-zoom { flex:1 1 170px; justify-content:flex-end; }
   .olr-unified-map #cf-floor-controls .btn, .olr-unified-map .olr-map-zoom .btn { min-height:40px; padding:7px 10px; }
   .olr-unified-map .olr-room-details { position:fixed; left:12px; bottom:12px; width:calc(100% - 24px); max-height:35vh; }
+}
+@media (max-width:1024px) and (pointer:coarse) {
+  #olr-campus-page.olr-unified-map[data-viewport=&quot;true&quot;] { padding:0; gap:0; }
 }
 
 &lt;/style&gt;
@@ -4154,8 +4204,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const northAngle = finite(root.dataset.mapNorthAngle);
   const wrap = n =&gt; ((n + 180) % 360 + 360) % 360 - 180;
   const radians = n =&gt; n * Math.PI / 180;
-  const media = window.matchMedia?.(&#x27;(max-width: 767px), (max-width: 1024px) and (pointer: coarse)&#x27;);
-  let widthOnly = Boolean(media?.matches), parentSized = false, viewportHeight = null;
+  let widthOnly = false, parentSized = false, viewportHeight = null;
   let zoom = 1, bearing = 0, center = null, pending = false;
   const stateFor = stage =&gt; {
     if (!states.has(stage)) states.set(stage, {});
@@ -4170,7 +4219,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     root.dataset.layout = widthOnly ? &#x27;width&#x27; : &#x27;fit&#x27;;
     root.dataset.camera = &#x27;true&#x27;;
     if (widthOnly) { root.style.removeProperty(&#x27;height&#x27;); delete root.dataset.viewport; }
-    else if (viewportHeight !== null) { root.dataset.viewport = &#x27;true&#x27;; root.style.height = `${viewportHeight}px`; }
+    else { root.dataset.viewport = &#x27;true&#x27;; root.style.height = viewportHeight !== null ? `${viewportHeight}px` : &#x27;100dvh&#x27;; }
   }
   function redraw() {
     if (pending) return;
@@ -4384,7 +4433,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     stage.addEventListener(&#x27;touchstart&#x27;,e=&gt;{
       dragged=false;
       if(e.touches.length&gt;=2){beginPinch(e.touches);e.preventDefault();}
-      else if(zoom&gt;1||Math.abs(bearing)&gt;.001){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
+      else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
     },{passive:false});
     stage.addEventListener(&#x27;touchmove&#x27;,e=&gt;{
       if(e.touches.length&gt;=2){
@@ -4403,7 +4452,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const endTouch=e=&gt;{
       pinch=null;drag=null;
       if(e.touches.length&gt;=2)beginPinch(e.touches);
-      else if(e.touches.length===1&amp;&amp;(zoom&gt;1||Math.abs(bearing)&gt;.001)){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
+      else if(e.touches.length===1&amp;&amp;(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001)){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
     };
     stage.addEventListener(&#x27;touchend&#x27;,endTouch);stage.addEventListener(&#x27;touchcancel&#x27;,endTouch);
   }
@@ -4429,7 +4478,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(parentSized&amp;&amp;widthOnly===nextWidth&amp;&amp;viewportHeight===nextHeight)return;
     parentSized=true;widthOnly=nextWidth;viewportHeight=nextHeight;layout();redraw();
   });
-  media?.addEventListener(&#x27;change&#x27;,()=&gt;{if(!parentSized){widthOnly=media.matches;layout();redraw();}});
   if(typeof ResizeObserver===&#x27;function&#x27;){
     const sizes=new WeakMap(),observer=new ResizeObserver(entries=&gt;{
       let changed=false;
@@ -5370,7 +5418,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   });
   document.addEventListener('fullscreenchange', syncButton);
   document.addEventListener('webkitfullscreenchange', syncButton);
-  if (!supported) showStatus('Use your browser’s full-screen command; the map already uses the full page width.');
+  if (!supported) showStatus('The map fills the available screen. Your browser controls full-screen mode.');
   syncButton();
 })();
 </script>
@@ -5384,13 +5432,14 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let lastHeight = -1;
   let lastMode = '';
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
+  const fullScreenMap = Boolean(document.querySelector('.campus-tool-panel'));
 
   function sendViewport() {
     queued = null;
     const width = Math.floor(frame.clientWidth);
     const height = Math.floor(frame.clientHeight);
     const target = frame.contentWindow;
-    const mode = mobile?.matches ? 'width' : 'fit';
+    const mode = fullScreenMap ? 'fit' : mobile?.matches ? 'width' : 'fit';
     if (!target || !Number.isFinite(width) || width <= 0) return;
     if (mode === 'fit' && (!Number.isFinite(height) || height <= 0)) return;
     if (!forceNext && mode === lastMode && width === lastWidth && (mode === 'width' || height === lastHeight)) return;
@@ -5454,10 +5503,28 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const floorGroup = document.getElementById('campus-new-floors');
   const compass = document.getElementById('campus-compass');
   const needle = document.getElementById('campus-compass-needle');
+  const toggle = document.getElementById('campus-tools-toggle');
+  const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
+  let expanded = false;
+  function expand(next) {
+    expanded = next;
+    panel.dataset.mobileExpanded = String(expanded);
+    toggle?.setAttribute('aria-expanded',String(expanded));
+    toggle?.setAttribute('aria-label',expanded ? 'Hide map tools' : 'Show map tools');
+  }
+  toggle?.addEventListener('click',()=>expand(!expanded));
+  mobile?.addEventListener('change',()=>expand(false));
+  document.addEventListener('keydown',event=>{
+    if (event.key === 'Escape' && expanded && mobile?.matches) { expand(false);toggle?.focus?.(); }
+  });
+  expand(false);
   const send = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const connect = () => send('connect');
   maps.forEach(b=>b.addEventListener('click',()=>send('map',b.dataset.campusMap)));
-  floors.forEach(b=>b.addEventListener('click',()=>send('floor',Number(b.dataset.campusFloor))));
+  floors.forEach(b=>b.addEventListener('click',()=>{
+    send('floor',Number(b.dataset.campusFloor));
+    if (mobile?.matches) { expand(false);toggle?.focus?.(); }
+  }));
   zoom.forEach(b=>b.addEventListener('click',()=>send('zoom',b.dataset.campusZoom)));
   window.addEventListener('message', event => {
     if (event.source !== frame.contentWindow) return;
