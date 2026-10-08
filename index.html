@@ -1383,25 +1383,25 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
 <header class="campus-page-toolbar campus-tool-panel" aria-label="Map tools">
   <span class="campus-tools-title">OLR Campus</span>
   <div class="campus-map-switch" role="group" aria-label="Campus map">
-    <button type="button" class="btn" data-campus-map="shifted" aria-pressed="true" aria-controls="campus-new-floors" title="New design (T switches maps)">New</button>
-    <button type="button" class="btn" data-campus-map="existing" aria-pressed="false" title="Current campus (T switches maps)">Current</button>
+    <button type="button" class="btn" data-campus-map="shifted" aria-pressed="true" aria-controls="campus-new-floors" aria-label="New design" aria-keyshortcuts="T">New</button>
+    <button type="button" class="btn" data-campus-map="existing" aria-pressed="false" aria-label="Current campus" aria-keyshortcuts="T">Current</button>
   </div>
-  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map tools" aria-expanded="false" aria-controls="campus-new-floors campus-camera-tools campus-display-tools" title="Map tools">
+  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map tools" aria-expanded="false" aria-controls="campus-new-floors campus-camera-tools campus-display-tools">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
   </button>
-  <button type="button" class="campus-compass" id="campus-compass" aria-label="Reset north" title="Click to reset north (N). Drag to rotate.">
+  <button type="button" class="campus-compass" id="campus-compass" aria-label="Reset north" aria-keyshortcuts="N">
     <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
   </button>
   <div class="campus-new-floors" id="campus-new-floors" role="group" aria-label="New design floor">
-    <button type="button" class="btn" data-campus-floor="0" aria-pressed="false" title="Building outlines (B)">Buildings</button>
-    <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" title="First floor (F switches floors)">1st floor</button>
-    <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" title="Second floor (F switches floors)">2nd floor</button>
+    <button type="button" class="btn" data-campus-floor="0" aria-pressed="false" aria-label="Building outlines" aria-keyshortcuts="B">Buildings</button>
+    <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" aria-label="First floor" aria-keyshortcuts="F">1st floor</button>
+    <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" aria-label="Second floor" aria-keyshortcuts="F">2nd floor</button>
   </div>
   <div class="campus-camera-tools" id="campus-camera-tools">
     <div class="campus-zoom-tools" role="group" aria-label="Map zoom">
-      <button type="button" class="btn" data-campus-zoom="out" aria-label="Zoom out" title="Zoom out (−)">−</button>
-      <button type="button" class="btn" data-campus-zoom="in" aria-label="Zoom in" title="Zoom in (+)">+</button>
-      <button type="button" class="btn" data-campus-zoom="fit" title="Fit campus to screen (0)">Fit</button>
+      <button type="button" class="btn" data-campus-zoom="out" aria-label="Zoom out" aria-keyshortcuts="-">−</button>
+      <button type="button" class="btn" data-campus-zoom="in" aria-label="Zoom in" aria-keyshortcuts="+">+</button>
+      <button type="button" class="btn" data-campus-zoom="fit" aria-label="Fit campus to screen" aria-keyshortcuts="0">Fit</button>
     </div>
   </div>
   <div class="campus-display-tools" id="campus-display-tools">
@@ -1413,7 +1413,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   <span id="campus-fullscreen-status" class="text-small" role="status" aria-live="polite" hidden></span>
 </header>
 
-<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="OLR Campus and Floor Plans" data-srcdoc="&lt;!doctype html&gt;
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" aria-label="OLR Campus and Floor Plans" data-srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
@@ -2993,7 +2993,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     // Only the long edges are drawn: both building entrances stay unobstructed.
     if (proposal.bridge) {
       const b = proposal.bridge;
-      const bridge = el(&#x27;g&#x27;, {&#x27;data-campus-floor-bridge&#x27;: floor, &#x27;data-tooltip&#x27;: data.bridge?.[`floor${floor}`] || (floor === 1 ? &#x27;Covered walk&#x27; : &#x27;Upper bridge&#x27;)}, overlay);
+      const bridge = el(&#x27;g&#x27;, {&#x27;data-campus-floor-bridge&#x27;: floor, &#x27;aria-label&#x27;: data.bridge?.[`floor${floor}`] || (floor === 1 ? &#x27;Covered walk&#x27; : &#x27;Upper bridge&#x27;)}, overlay);
       worldRect(b, {fill: &#x27;var(--background)&#x27;}, bridge);
       for (const yy of [b[1], b[3]]) el(&#x27;line&#x27;, {
         x1: x(b[0]), y1: y(yy), x2: x(b[2]), y2: y(yy),
@@ -3036,7 +3036,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       for (const r of rooms) {
         const roomShape = polygon(r.polygon, {fill: color(r.category), stroke: &#x27;var(--muted-foreground)&#x27;, &#x27;stroke-width&#x27;: .8,
           &#x27;data-campus-floor-room&#x27;: r.id, &#x27;data-building&#x27;: building.id, &#x27;data-floor&#x27;: floor,
-          &#x27;data-tooltip&#x27;: description(r), &#x27;aria-label&#x27;: description(r),
+          &#x27;aria-label&#x27;: description(r),
           role: &#x27;button&#x27;, tabindex: 0, cursor: &#x27;pointer&#x27;});
         const selectRoom = event =&gt; {
           if (event.defaultPrevented) return;
@@ -3274,21 +3274,21 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;/div&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-toggle-map&quot; aria-keyshortcuts=&quot;T&quot; hidden&gt;Switch map · T&lt;/button&gt;
     &lt;div id=&quot;cf-floor-controls&quot; class=&quot;viz-row&quot; role=&quot;group&quot; aria-label=&quot;Building detail&quot;&gt;
-      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;0&quot; aria-pressed=&quot;false&quot; aria-keyshortcuts=&quot;B&quot; title=&quot;Building outlines (B)&quot;&gt;Buildings&lt;/button&gt;
-      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;1&quot; aria-pressed=&quot;true&quot; aria-keyshortcuts=&quot;F&quot; title=&quot;First floor (F switches floors)&quot;&gt;1st floor&lt;/button&gt;
-      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;2&quot; aria-pressed=&quot;false&quot; aria-keyshortcuts=&quot;F&quot; title=&quot;Second floor (F switches floors)&quot;&gt;2nd floor&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;0&quot; aria-pressed=&quot;false&quot; aria-keyshortcuts=&quot;B&quot; aria-label=&quot;Building outlines&quot;&gt;Buildings&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;1&quot; aria-pressed=&quot;true&quot; aria-keyshortcuts=&quot;F&quot; aria-label=&quot;First floor&quot;&gt;1st floor&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-campus-floor=&quot;2&quot; aria-pressed=&quot;false&quot; aria-keyshortcuts=&quot;F&quot; aria-label=&quot;Second floor&quot;&gt;2nd floor&lt;/button&gt;
     &lt;/div&gt;
     &lt;div class=&quot;olr-map-zoom&quot; data-map-zoom-controls role=&quot;group&quot; aria-label=&quot;Map zoom&quot;&gt;
-  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;out&quot; aria-label=&quot;Zoom out&quot; aria-keyshortcuts=&quot;-&quot; title=&quot;Zoom out (−)&quot;&gt;−&lt;/button&gt;
-  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot; title=&quot;Zoom in (+)&quot;&gt;+&lt;/button&gt;
-  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; title=&quot;Reset map (0)&quot;&gt;Fit&lt;/button&gt;
+  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;out&quot; aria-label=&quot;Zoom out&quot; aria-keyshortcuts=&quot;-&quot;&gt;−&lt;/button&gt;
+  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot;&gt;+&lt;/button&gt;
+  &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; aria-label=&quot;Reset map&quot;&gt;Fit&lt;/button&gt;
 &lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers sideways to rotate · Pinch to zoom · Drag to move&lt;/p&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
-    &lt;svg class=&quot;campus-map&quot; data-map=&quot;existing&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-existing-title fc-existing-desc&quot;&gt;&lt;/svg&gt;
+    &lt;svg class=&quot;campus-map&quot; data-map=&quot;existing&quot; role=&quot;img&quot; aria-describedby=&quot;fc-existing-desc&quot;&gt;&lt;/svg&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-shifted-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-shifted-tab&quot;&gt;
-    &lt;svg class=&quot;campus-map&quot; data-map=&quot;shifted&quot; role=&quot;img&quot; aria-labelledby=&quot;fc-shifted-title fc-shifted-desc&quot;&gt;&lt;/svg&gt;
+    &lt;svg class=&quot;campus-map&quot; data-map=&quot;shifted&quot; role=&quot;img&quot; aria-describedby=&quot;fc-shifted-desc&quot;&gt;&lt;/svg&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 &lt;style&gt;
@@ -3375,7 +3375,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     const buildingSizes=new Map(data.buildingDimensions.entries.map(entry=&gt;[String(entry.id),entry]));
     // Stored areas come from the mapped footprint polygons, including recesses and projections.
     const footprintLabel=entry=&gt;`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${Math.round(entry.footprint_area_sf).toLocaleString(&#x27;en-US&#x27;)} SF`;
-    function dimensionTip(id,fallback=&#x27;&#x27;){
+    function dimensionDescription(id,fallback=&#x27;&#x27;){
       const entry=buildingSizes.get(String(id));
       if(!entry)return fallback;
       return `${fallback||entry.display_name} · ${entry.dimension_label}${entry.irregular_footprint?&#x27; overall&#x27;:&#x27;&#x27;}${entry.chamfer_legs_ft?&#x27; · 15 × 15 ft southeast corner cut&#x27;:&#x27;&#x27;} · ${footprintLabel(entry)} footprint · ${entry.approximate?&#x27;mapped estimate&#x27;:id===&#x27;benedict_hall&#x27;?&#x27;published nominal size&#x27;:&#x27;concept-plan size&#x27;}`;
@@ -3390,17 +3390,17 @@ html&gt;body{padding:0}&lt;/style&gt;
       const fontSize=roofHeader?Math.min(12,Math.max(8,scale*10)):interiorFont;
       const step=roofHeader||box?fontSize*1.2:14;
       const centerY=roofHeader?py+(5+step)/scale:py;
-      const attrs={&#x27;data-tooltip&#x27;:dimensionTip(id),&#x27;data-building-id&#x27;:id,...(roofHeader||box?{style:`font-size:${fontSize}px`}:{}),...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
+      const attrs={&#x27;aria-label&#x27;:dimensionDescription(id),&#x27;data-building-id&#x27;:id,...(roofHeader||box?{style:`font-size:${fontSize}px`}:{}),...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
       label(name,px,centerY+step/scale,{...attrs,&#x27;data-building-name&#x27;:id,...(roofHeader?{&#x27;data-campus-floor-building-label&#x27;:name}:{})});
       label(size,px,centerY,{...attrs,&#x27;data-building-size&#x27;:id});
       label(footprintLabel(entry),px,centerY-step/scale,{...attrs,&#x27;data-building-area&#x27;:id});
     }
-    svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionTip(entry.id)).join(&#x27;; &#x27;));
+    svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionDescription(entry.id)).join(&#x27;; &#x27;));
     function arrow(a,b){
       const ax=x(a[0]),ay=y(a[1]),bx=x(b[0]),by=y(b[1]),len=Math.hypot(bx-ax,by-ay),ux=(bx-ax)/len,uy=(by-ay)/len,h=Math.max(2,Math.min(4,5*scale));
       el(&#x27;path&#x27;,{d:`M${ax},${ay} L${bx},${by} M${bx-ux*2*h-uy*h},${by-uy*2*h+ux*h} L${bx},${by} L${bx-ux*2*h+uy*h},${by-uy*2*h-ux*h}`,fill:&#x27;none&#x27;,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.3,&#x27;data-traffic-arrow&#x27;:&#x27;north-entry-south-exit&#x27;},map);
     }
-    el(&#x27;title&#x27;,{id:`fc-${kind}-title`}).textContent=parkingDetail?&#x27;Parking bays for one-way southbound traffic&#x27;:detail?&#x27;Building 2 southeast diagonal cut&#x27;:proposed?&#x27;Proposed campus with east school entrance, north vehicle entry and south exit&#x27;:&#x27;Current campus with theater addition&#x27;;
+    svg.setAttribute(&#x27;aria-label&#x27;,parkingDetail?&#x27;Parking bays for one-way southbound traffic&#x27;:detail?&#x27;Building 2 southeast diagonal cut&#x27;:proposed?&#x27;Proposed campus with east school entrance, north vehicle entry and south exit&#x27;:&#x27;Current campus with theater addition&#x27;);
     el(&#x27;desc&#x27;,{id:`fc-${kind}-desc`}).textContent=proposed?data.building1NorthMove.description+&#x27; &#x27;+(proposal.southParkingAddition?.description||&#x27;&#x27;)+&#x27; &#x27;+(proposal.amphitheater?.description||&#x27;&#x27;)+&#x27; &#x27;+(proposal.picnicArea?.description||&#x27;&#x27;):&#x27;Existing campus buildings and mapped roads, with the theater addition shown beside the gym at the user’s request. Benedict Hall driveway is confirmed existing and is retained in the proposal. Existing and proposal share coordinates and scale. Proposed traffic arrows appear only in proposal views.&#x27;;
     const defs=el(&#x27;defs&#x27;);
     const frame=el(&#x27;clipPath&#x27;,{id:`fc-${kind}-clip`},defs);el(&#x27;rect&#x27;,{x:0,y:0,width,height},frame);
@@ -3425,35 +3425,35 @@ html&gt;body{padding:0}&lt;/style&gt;
       feature(p.rings,{fill:paving,&#x27;data-paving-id&#x27;:p.id},pavingGroup);
     }
     if(proposed){
-      if(proposal.southPlayground?.connected_polygon)poly(proposal.southPlayground.connected_polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;data-playground&#x27;:&#x27;east-and-south&#x27;,&#x27;data-tooltip&#x27;:`Connected playground · about ${Math.round(proposal.southPlayground.connected_gross_area_sf/100)*100} SF gross concept area`},map);
+      if(proposal.southPlayground?.connected_polygon)poly(proposal.southPlayground.connected_polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;data-playground&#x27;:&#x27;east-and-south&#x27;,&#x27;aria-label&#x27;:`Connected playground · about ${Math.round(proposal.southPlayground.connected_gross_area_sf/100)*100} SF gross concept area`},map);
       else rect(proposal.play,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;stroke-dasharray&#x27;:shifted?&#x27;none&#x27;:&#x27;4 3&#x27;},map);
-      if(proposal.westPlayground)poly(proposal.westPlayground.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;data-playground&#x27;:&#x27;west-slope&#x27;,&#x27;data-tooltip&#x27;:`Playground · ${proposal.westPlayground.area_label} estimated gross area. Boundary follows the approximate slope line; usable play area remains to be designed.`},map);
-      line(proposal.westRoadNewPaving,{stroke:paving,&#x27;stroke-width&#x27;:data.parking.road_width_ft*scale,&#x27;stroke-linejoin&#x27;:proposal.southRoadSquareTurn?&#x27;miter&#x27;:&#x27;round&#x27;,&#x27;data-west-drive&#x27;:&#x27;north-building-curve&#x27;,&#x27;data-road-width-ft&#x27;:data.parking.road_width_ft,&#x27;data-tooltip&#x27;:`${data.parking.road_width_ft} ft road · normally one-way north to south; occasional two-way use intended · tight fit beside gym requires survey confirmation`},map);
-      if(proposal.southRoadInsideCurve)poly(proposal.southRoadInsideCurve.paving_polygon,{fill:paving,&#x27;data-road-inside-curve&#x27;:&#x27;south-east-turn&#x27;,&#x27;data-tooltip&#x27;:&#x27;Curved inside bend&#x27;},map);
+      if(proposal.westPlayground)poly(proposal.westPlayground.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;data-playground&#x27;:&#x27;west-slope&#x27;,&#x27;aria-label&#x27;:`Playground · ${proposal.westPlayground.area_label} estimated gross area. Boundary follows the approximate slope line; usable play area remains to be designed.`},map);
+      line(proposal.westRoadNewPaving,{stroke:paving,&#x27;stroke-width&#x27;:data.parking.road_width_ft*scale,&#x27;stroke-linejoin&#x27;:proposal.southRoadSquareTurn?&#x27;miter&#x27;:&#x27;round&#x27;,&#x27;data-west-drive&#x27;:&#x27;north-building-curve&#x27;,&#x27;data-road-width-ft&#x27;:data.parking.road_width_ft,&#x27;aria-label&#x27;:`${data.parking.road_width_ft} ft road · normally one-way north to south; occasional two-way use intended · tight fit beside gym requires survey confirmation`},map);
+      if(proposal.southRoadInsideCurve)poly(proposal.southRoadInsideCurve.paving_polygon,{fill:paving,&#x27;data-road-inside-curve&#x27;:&#x27;south-east-turn&#x27;,&#x27;aria-label&#x27;:&#x27;Curved inside bend&#x27;},map);
       if(proposal.northParkingExtension){
         const extension=proposal.northParkingExtension;
-        const addition=el(&#x27;g&#x27;,{&#x27;data-north-parking-extension&#x27;:&#x27;single-row&#x27;,&#x27;data-space-count&#x27;:extension.stall_count,&#x27;data-tooltip&#x27;:`${extension.stall_count} spaces · 24 ft aisle entered from the east · landscaped frontage · after old-school and annex demolition`},map);
+        const addition=el(&#x27;g&#x27;,{&#x27;data-north-parking-extension&#x27;:&#x27;single-row&#x27;,&#x27;data-space-count&#x27;:extension.stall_count,&#x27;aria-label&#x27;:`${extension.stall_count} spaces · 24 ft aisle entered from the east · landscaped frontage · after old-school and annex demolition`},map);
         for(const polygon of extension.paved_polygons_xy)poly(polygon,{fill:paving,&#x27;data-north-extension-paving&#x27;:&#x27;new&#x27;},addition);
         for(const garden of extension.landscape_rects)rect(garden,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-north-landscaping&#x27;:&#x27;frontage-and-end-island&#x27;},addition);
         for(const walk of extension.walk_rects)rect(walk,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-north-frontage-walk&#x27;:&#x27;pedestrian&#x27;},addition);
         extension.stall_rects.forEach((bay,index)=&gt;{
           const reserved=extension.accessible_stall_indices_zero_based.includes(index);
-          rect(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:reserved?.9:.65,&#x27;data-north-parking-bay&#x27;:index+1,&#x27;data-north-accessible-reservation&#x27;:String(reserved),&#x27;data-tooltip&#x27;:reserved?&#x27;Accessible space reservation · concept layout&#x27;:&#x27;Additional parking space · 9 × 20 ft&#x27;},addition);
+          rect(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:reserved?.9:.65,&#x27;data-north-parking-bay&#x27;:index+1,&#x27;data-north-accessible-reservation&#x27;:String(reserved),&#x27;aria-label&#x27;:reserved?&#x27;Accessible space reservation · concept layout&#x27;:&#x27;Additional parking space · 9 × 20 ft&#x27;},addition);
         });
       }
       if(proposal.northParkingUpperRow?.stall_count&amp;&amp;proposal.northParkingUpperRow.paving_rect){
         const upper=proposal.northParkingUpperRow;
-        const row=el(&#x27;g&#x27;,{&#x27;data-north-upper-row&#x27;:&#x27;south-entry&#x27;,&#x27;data-space-count&#x27;:upper.stall_count,&#x27;data-tooltip&#x27;:&#x27;7 additional spaces · enter from the south using the 24 ft parking aisle below&#x27;},map);
+        const row=el(&#x27;g&#x27;,{&#x27;data-north-upper-row&#x27;:&#x27;south-entry&#x27;,&#x27;data-space-count&#x27;:upper.stall_count,&#x27;aria-label&#x27;:&#x27;7 additional spaces · enter from the south using the 24 ft parking aisle below&#x27;},map);
         rect(upper.paving_rect,{fill:paving},row);
         upper.stall_rects.forEach((bay,index)=&gt;{
-          line([[bay[0],bay[1]],[bay[0],bay[3]],[bay[2],bay[3]],[bay[2],bay[1]]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65,&#x27;data-north-upper-bay&#x27;:index+1,&#x27;data-entry-side&#x27;:&#x27;south&#x27;,&#x27;data-tooltip&#x27;:&#x27;Parking space · 9 × 20 ft · entrance at south edge&#x27;},row);
+          line([[bay[0],bay[1]],[bay[0],bay[3]],[bay[2],bay[3]],[bay[2],bay[1]]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65,&#x27;data-north-upper-bay&#x27;:index+1,&#x27;data-entry-side&#x27;:&#x27;south&#x27;,&#x27;aria-label&#x27;:&#x27;Parking space · 9 × 20 ft · entrance at south edge&#x27;},row);
         });
       }
-      const academicStyle={fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-building-envelope&#x27;:&#x27;academic&#x27;,&#x27;data-tooltip&#x27;:dimensionTip(&#x27;academic&#x27;,&#x27;Building 1 · shifted 65 ft north · east entrance projection · phase 1&#x27;)};
+      const academicStyle={fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-building-envelope&#x27;:&#x27;academic&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;academic&#x27;,&#x27;Building 1 · shifted 65 ft north · east entrance projection · phase 1&#x27;)};
       if(proposal.academic_outline_polygon)poly(proposal.academic_outline_polygon,academicStyle,map);else rect(proposal.academic,academicStyle,map);
-      poly(proposal.shared_polygon,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-tooltip&#x27;:dimensionTip(&#x27;shared&#x27;,&#x27;Building 2 · phase 2&#x27;)},map);
+      poly(proposal.shared_polygon,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;aria-label&#x27;:dimensionDescription(&#x27;shared&#x27;,&#x27;Building 2 · phase 2&#x27;)},map);
       if(detail)line(data.chamfer.former_corner,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;},map);
-      rect(proposal.bridge,{fill:&#x27;var(--muted-foreground)&#x27;,&#x27;data-tooltip&#x27;:dimensionTip(&#x27;bridge&#x27;)},map);
+      rect(proposal.bridge,{fill:&#x27;var(--muted-foreground)&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;bridge&#x27;)},map);
       const p=data.parking;
       poly(p.parking_pad,{fill:paving},map);
       for(const bay of p.stalls)poly(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:closeup?1.1:.65,&#x27;data-parking-bay&#x27;:&#x27;southbound-head-in-southwest&#x27;},map);
@@ -3461,17 +3461,17 @@ html&gt;body{padding:0}&lt;/style&gt;
       const walk=p.pedestrian_connection_rect,cross=p.crossing_rect;
       rect([walk[0],walk[1],cross[0],walk[3]],{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6},map);
       rect([cross[2],walk[1],walk[2],walk[3]],{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6},map);
-      const crossing=el(&#x27;g&#x27;,{&#x27;data-pedestrian-crossing&#x27;:&#x27;parking-to-covered-pickup&#x27;,&#x27;data-tooltip&#x27;:&#x27;Pedestrian crossing from west parking to covered waiting area&#x27;},map);
+      const crossing=el(&#x27;g&#x27;,{&#x27;data-pedestrian-crossing&#x27;:&#x27;parking-to-covered-pickup&#x27;,&#x27;aria-label&#x27;:&#x27;Pedestrian crossing from west parking to covered waiting area&#x27;},map);
       for(let px=cross[0]+1;px&lt;cross[2];px+=4)rect([px,cross[1],Math.min(px+2,cross[2]),cross[3]],{fill:&#x27;var(--background)&#x27;},crossing);
-      const canopyStyle={fill:&#x27;color-mix(in srgb,var(--viz-series-5) 30%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-covered-area&#x27;:&#x27;continuous-canopy&#x27;,&#x27;data-tooltip&#x27;:&#x27;8 ft canopy on Building 1’s west and south sides, ending at its southeast corner. Clear width depends on columns and doors.&#x27;};
+      const canopyStyle={fill:&#x27;color-mix(in srgb,var(--viz-series-5) 30%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-covered-area&#x27;:&#x27;continuous-canopy&#x27;,&#x27;aria-label&#x27;:&#x27;8 ft canopy on Building 1’s west and south sides, ending at its southeast corner. Clear width depends on columns and doors.&#x27;};
       if(data.canopyExtension)poly(data.canopyExtension.full_outline,canopyStyle,map);else rect(p.canopy_rect,canopyStyle,map);
       if(!closeup){
         const oldSchool=data.existing.buildings.find(b=&gt;b.id===887530);
-        feature(oldSchool.rings,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.2,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;,&#x27;data-tooltip&#x27;:&#x27;Old lower school stays during Phase 1; removed before Building 2 and playground&#x27;},map);
-        if(!shifted){poly(data.previousFit.overlap,{fill:&#x27;color-mix(in srgb,var(--destructive) 45%,transparent)&#x27;,stroke:&#x27;var(--destructive)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-tooltip&#x27;:&#x27;About 708 sq ft overlap with occupied old lower school&#x27;},map);line([[167.962893,55],[167.962893,227]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;stroke-dasharray&#x27;:&#x27;4 4&#x27;},map);}
+        feature(oldSchool.rings,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.2,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;,&#x27;aria-label&#x27;:&#x27;Old lower school stays during Phase 1; removed before Building 2 and playground&#x27;},map);
+        if(!shifted){poly(data.previousFit.overlap,{fill:&#x27;color-mix(in srgb,var(--destructive) 45%,transparent)&#x27;,stroke:&#x27;var(--destructive)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;aria-label&#x27;:&#x27;About 708 sq ft overlap with occupied old lower school&#x27;},map);line([[167.962893,55],[167.962893,227]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;stroke-dasharray&#x27;:&#x27;4 4&#x27;},map);}
       }
     }
-    poly(proposal.theater,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-theater&#x27;:&#x27;addition&#x27;,&#x27;data-tooltip&#x27;:dimensionTip(&#x27;theater&#x27;,&#x27;Theater addition beside the gym&#x27;)},map);
+    poly(proposal.theater,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-theater&#x27;:&#x27;addition&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;theater&#x27;,&#x27;Theater addition beside the gym&#x27;)},map);
     const northClip=el(&#x27;clipPath&#x27;,{id:`fc-${kind}-retained-north-clip`},defs);rect(data.retainedNorthParking.clip_rect,{},northClip);
     const northMask=el(&#x27;mask&#x27;,{id:`fc-${kind}-retained-north-mask`,maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height},defs);
     el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},northMask);
@@ -3484,19 +3484,19 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     const northArea=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#fc-${kind}-retained-north-clip)`,&#x27;data-north-parking-layer&#x27;:&#x27;retained&#x27;},map);
     const northPaving=data.existing.existing_paving.find(p=&gt;p.id===data.retainedNorthParking.source_id);
-    feature(northPaving.rings,{fill:paving,mask:`url(#fc-${kind}-retained-north-mask)`,&#x27;data-north-parking&#x27;:&#x27;retained&#x27;,&#x27;data-tooltip&#x27;:&#x27;Existing north parking, islands and street entrance retained; former school access stub removed in proposal&#x27;},northArea);
+    feature(northPaving.rings,{fill:paving,mask:`url(#fc-${kind}-retained-north-mask)`,&#x27;data-north-parking&#x27;:&#x27;retained&#x27;,&#x27;aria-label&#x27;:&#x27;Existing north parking, islands and street entrance retained; former school access stub removed in proposal&#x27;},northArea);
     if(proposed&amp;&amp;proposal.northAccessibleParking){
       const addition=proposal.northAccessibleParking;
-      const surface=el(&#x27;g&#x27;,{&#x27;data-north-accessible-surface&#x27;:&#x27;island-replacement&#x27;,&#x27;data-tooltip&#x27;:addition.description},map);
+      const surface=el(&#x27;g&#x27;,{&#x27;data-north-accessible-surface&#x27;:&#x27;island-replacement&#x27;,&#x27;aria-label&#x27;:addition.description},map);
       poly(addition.paving_polygon,{fill:paving,&#x27;data-north-island-removal&#x27;:&#x27;paved&#x27;},surface);
       for(const walk of addition.walk_polygons)poly(walk,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-north-accessible-walk&#x27;:&#x27;connected&#x27;},surface);
     }
     if(data.hallReference.show){
-      poly(!proposed&amp;&amp;data.hallReference.current_connected_polygon?data.hallReference.current_connected_polygon:data.hallReference.polygon,{fill:paving,&#x27;data-benedict-road&#x27;:&#x27;retained&#x27;,&#x27;data-tooltip&#x27;:data.hallReference.description},map);
+      poly(!proposed&amp;&amp;data.hallReference.current_connected_polygon?data.hallReference.current_connected_polygon:data.hallReference.polygon,{fill:paving,&#x27;data-benedict-road&#x27;:&#x27;retained&#x27;,&#x27;aria-label&#x27;:data.hallReference.description},map);
     }
     if(proposed&amp;&amp;proposal.benedictParking){
       const row=proposal.benedictParking;
-      const parking=el(&#x27;g&#x27;,{&#x27;data-benedict-parking&#x27;:&#x27;north-apron&#x27;,&#x27;data-space-count&#x27;:row.stall_count,&#x27;data-tooltip&#x27;:`${row.stall_count} parking spaces · ${row.bay_width_ft} × ${row.bay_depth_ft} ft · south of Benedict Hall`},map);
+      const parking=el(&#x27;g&#x27;,{&#x27;data-benedict-parking&#x27;:&#x27;north-apron&#x27;,&#x27;data-space-count&#x27;:row.stall_count,&#x27;aria-label&#x27;:`${row.stall_count} parking spaces · ${row.bay_width_ft} × ${row.bay_depth_ft} ft · south of Benedict Hall`},map);
       const ink={stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8};
       line([row.back_start,row.back_end],ink,parking);
       for(let i=0;i&lt;=row.stall_count;i++){
@@ -3508,11 +3508,11 @@ html&gt;body{padding:0}&lt;/style&gt;
     if(proposed&amp;&amp;proposal.gymCornerPaving)poly(proposal.gymCornerPaving,{fill:paving,&#x27;data-gym-corner&#x27;:&#x27;filled&#x27;},map);
     if(proposed&amp;&amp;proposal.southParkingAddition){
       const addition=proposal.southParkingAddition;
-      const parking=el(&#x27;g&#x27;,{&#x27;data-south-parking&#x27;:&#x27;addition&#x27;,&#x27;data-space-count&#x27;:addition.stall_count,&#x27;data-tooltip&#x27;:`${addition.stall_count} additional angled parking spaces · concept layout; vehicle maneuvering remains to be checked`},map);
-      for(const walk of addition.walk_rects||[])rect(walk,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-south-playground-walk&#x27;:&#x27;reserved&#x27;,&#x27;data-tooltip&#x27;:&#x27;6 ft pedestrian strip reserved between playground, parking and canopy&#x27;},parking);
+      const parking=el(&#x27;g&#x27;,{&#x27;data-south-parking&#x27;:&#x27;addition&#x27;,&#x27;data-space-count&#x27;:addition.stall_count,&#x27;aria-label&#x27;:`${addition.stall_count} additional angled parking spaces · concept layout; vehicle maneuvering remains to be checked`},map);
+      for(const walk of addition.walk_rects||[])rect(walk,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-south-playground-walk&#x27;:&#x27;reserved&#x27;,&#x27;aria-label&#x27;:&#x27;6 ft pedestrian strip reserved between playground, parking and canopy&#x27;},parking);
       for(const row of addition.rows){
         poly(row.paving_polygon,{fill:paving,&#x27;data-south-parking-row&#x27;:row.id},parking);
-        for(const [i,bay] of row.stall_polygons.entries())poly(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:closeup?1.1:.7,&#x27;data-south-parking-bay&#x27;:`${row.id}-${i+1}`,&#x27;data-tooltip&#x27;:&#x27;45° angled parking space · 9 × 20 ft vehicle envelope&#x27;},parking);
+        for(const [i,bay] of row.stall_polygons.entries())poly(bay,{fill:&#x27;none&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:closeup?1.1:.7,&#x27;data-south-parking-bay&#x27;:`${row.id}-${i+1}`,&#x27;aria-label&#x27;:&#x27;45° angled parking space · 9 × 20 ft vehicle envelope&#x27;},parking);
       }
     }
     if(proposed&amp;&amp;!detail){
@@ -3520,7 +3520,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       else{arrow([178,374],[175,351]);arrow([95,310],[60,310]);arrow([roadX,137],[roadX,105]);arrow([42,-30],[68,-30]);arrow(...data.retainedGymParking.exit_arrow);}
     }
     const gymParking=data.retainedGymParking;
-    const gymSpaces=el(&#x27;g&#x27;,{&#x27;data-gym-parking&#x27;:&#x27;retained&#x27;,&#x27;data-tooltip&#x27;:&#x27;Existing parking west of Gym · retained in both views · approximate aerial tracing&#x27;},map);
+    const gymSpaces=el(&#x27;g&#x27;,{&#x27;data-gym-parking&#x27;:&#x27;retained&#x27;,&#x27;aria-label&#x27;:&#x27;Existing parking west of Gym · retained in both views · approximate aerial tracing&#x27;},map);
     poly(gymParking.outline,{fill:paving,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7},gymSpaces);
     for(const divider of gymParking.dividers)line(divider,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7},gymSpaces);
     if(data.existingParkingMarkings){
@@ -3546,7 +3546,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         const clip=el(addPaving?&#x27;mask&#x27;:&#x27;clipPath&#x27;,{id:clipId,...(addPaving?{maskUnits:&#x27;userSpaceOnUse&#x27;,x:0,y:0,width,height}:{})},defs);
         feature(pavement.rings,{fill:&#x27;white&#x27;,&#x27;clip-rule&#x27;:&#x27;evenodd&#x27;},clip);
         for(const band of lot.pavement_bands||[])poly(band,{fill:&#x27;white&#x27;},clip);
-        const group=el(&#x27;g&#x27;,{&#x27;data-existing-parking-lot&#x27;:lot.id,[addPaving?&#x27;mask&#x27;:&#x27;clip-path&#x27;]:`url(#${clipId})`,&#x27;data-tooltip&#x27;:`${lot.label} · existing parking layout approximated from aerial images`},markings);
+        const group=el(&#x27;g&#x27;,{&#x27;data-existing-parking-lot&#x27;:lot.id,[addPaving?&#x27;mask&#x27;:&#x27;clip-path&#x27;]:`url(#${clipId})`,&#x27;aria-label&#x27;:`${lot.label} · existing parking layout approximated from aerial images`},markings);
         const ink={stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8};
         for(const row of lot.rows){
           if(row.views&amp;&amp;!row.views.includes(baseKind))continue;
@@ -3573,11 +3573,11 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     if(proposed&amp;&amp;proposal.northAccessibleParking){
       const addition=proposal.northAccessibleParking;
-      const group=el(&#x27;g&#x27;,{&#x27;data-north-accessible-parking&#x27;:&#x27;addition&#x27;,&#x27;data-space-count&#x27;:addition.stall_count,&#x27;data-tooltip&#x27;:`${addition.stall_count} accessible spaces · 11 ft bays · 5 ft shared access aisles`},map);
+      const group=el(&#x27;g&#x27;,{&#x27;data-north-accessible-parking&#x27;:&#x27;addition&#x27;,&#x27;data-space-count&#x27;:addition.stall_count,&#x27;aria-label&#x27;:`${addition.stall_count} accessible spaces · 11 ft bays · 5 ft shared access aisles`},map);
       const ink={stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8};
       addition.stall_polygons.forEach((bay,index)=&gt;{
         const [a,b,c,e]=bay;
-        line([e,a,b,c],{...ink,&#x27;data-north-accessible-bay&#x27;:index+1,&#x27;data-width-ft&#x27;:addition.bay_dimensions[index].width_ft,&#x27;data-depth-ft&#x27;:addition.bay_dimensions[index].depth_ft,&#x27;data-tooltip&#x27;:&#x27;Accessible parking space · 11 × 20 ft · adjacent 5 ft access aisle&#x27;},group);
+        line([e,a,b,c],{...ink,&#x27;data-north-accessible-bay&#x27;:index+1,&#x27;data-width-ft&#x27;:addition.bay_dimensions[index].width_ft,&#x27;data-depth-ft&#x27;:addition.bay_dimensions[index].depth_ft,&#x27;aria-label&#x27;:&#x27;Accessible parking space · 11 × 20 ft · adjacent 5 ft access aisle&#x27;},group);
         const cx=bay.reduce((sum,q)=&gt;sum+q[0],0)/4-.5,cy=bay.reduce((sum,q)=&gt;sum+q[1],0)/4;
         const symbol=el(&#x27;g&#x27;,{&#x27;data-accessible-parking-symbol&#x27;:index+1,&#x27;aria-label&#x27;:&#x27;Accessible parking&#x27;},group);
         el(&#x27;circle&#x27;,{cx:x(cx),cy:y(cy+1.8),r:.4*scale,fill:&#x27;var(--foreground)&#x27;},symbol);
@@ -3585,47 +3585,47 @@ html&gt;body{padding:0}&lt;/style&gt;
         line([[cx,cy+1],[cx,cy-.6],[cx+1.35,cy-.6],[cx+2,cy-2.05],[cx+2.65,cy-1.8]],{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:.3*scale,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;},symbol);
         line([[cx,cy+.35],[cx+1.25,cy+.35]],{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:.3*scale,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;},symbol);
       });
-      for(const [index,stop] of (addition.wheel_stop_rects||[]).entries())rect(stop,{fill:&#x27;var(--muted)&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-accessible-wheel-stop&#x27;:index+1,&#x27;data-tooltip&#x27;:&#x27;Wheel stop reservation · protect the pedestrian path&#x27;},group);
+      for(const [index,stop] of (addition.wheel_stop_rects||[]).entries())rect(stop,{fill:&#x27;var(--muted)&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-accessible-wheel-stop&#x27;:index+1,&#x27;aria-label&#x27;:&#x27;Wheel stop reservation · protect the pedestrian path&#x27;},group);
       addition.access_aisle_polygons.forEach((aisle,index)=&gt;{
         const clipId=`fc-${kind}-new-access-aisle-${index}`;
         const clip=el(&#x27;clipPath&#x27;,{id:clipId},defs);poly(aisle,{},clip);
-        const hatch=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#${clipId})`,&#x27;data-north-access-aisle&#x27;:index+1,&#x27;data-width-ft&#x27;:addition.shared_access_aisle_width_ft,&#x27;data-tooltip&#x27;:&#x27;5 × 20 ft shared access aisle · keep clear&#x27;},group);
+        const hatch=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#${clipId})`,&#x27;data-north-access-aisle&#x27;:index+1,&#x27;data-width-ft&#x27;:addition.shared_access_aisle_width_ft,&#x27;aria-label&#x27;:&#x27;5 × 20 ft shared access aisle · keep clear&#x27;},group);
         const [a,b,,e]=aisle;
         for(let u=-1;u&lt;=1;u+=.2)line([a.map((v,j)=&gt;v+u*(b[j]-v)),e.map((v,j)=&gt;v+(u+1)*(b[j]-a[j]))],{...ink,&#x27;stroke-width&#x27;:.65},hatch);
         poly(aisle,{fill:&#x27;none&#x27;,...ink},group);
       });
     }
     if(data.terrainSlopeEdge&amp;&amp;!closeup){
-      line(data.terrainSlopeEdge.points,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.4,&#x27;stroke-dasharray&#x27;:&#x27;6 3&#x27;,&#x27;data-slope-edge&#x27;:&#x27;approximate&#x27;,&#x27;data-tooltip&#x27;:&#x27;Approximate upper edge of slope toward Benedict Hall, inferred from county 4 ft contours. Short ticks point downhill; this is not a surveyed breakline.&#x27;},map);
+      line(data.terrainSlopeEdge.points,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.4,&#x27;stroke-dasharray&#x27;:&#x27;6 3&#x27;,&#x27;data-slope-edge&#x27;:&#x27;approximate&#x27;,&#x27;aria-label&#x27;:&#x27;Approximate upper edge of slope toward Benedict Hall, inferred from county 4 ft contours. Short ticks point downhill; this is not a surveyed breakline.&#x27;},map);
       for(const tick of data.terrainSlopeEdge.downhill_ticks)line(tick,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1.1,&#x27;data-slope-tick&#x27;:&#x27;downhill&#x27;},map);
     }
     if(proposed&amp;&amp;proposal.picnicArea&amp;&amp;!closeup){
       const a=proposal.picnicArea;
       const [cx,cy]=a.rotation_center_xy||[(a.rect[0]+a.rect[2])/2,(a.rect[1]+a.rect[3])/2];
       const alignment={transform:`rotate(${-Number(a.rotation_deg_xy||0)} ${x(cx)} ${y(cy)})`};
-      const picnic=el(&#x27;g&#x27;,{&#x27;data-picnic-area&#x27;:&#x27;benedict-north&#x27;,&#x27;data-tooltip&#x27;:a.description,...alignment},map);
+      const picnic=el(&#x27;g&#x27;,{&#x27;data-picnic-area&#x27;:&#x27;benedict-north&#x27;,&#x27;aria-label&#x27;:a.description,...alignment},map);
       rect(a.rect,{fill:outdoor,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7},picnic);
       a.tables_xy.forEach(([tx,ty],index)=&gt;{
-        const table=el(&#x27;g&#x27;,{&#x27;data-picnic-table&#x27;:index+1,&#x27;data-tooltip&#x27;:`Picnic table ${index+1} · 8 ft long with two benches`},picnic);
+        const table=el(&#x27;g&#x27;,{&#x27;data-picnic-table&#x27;:index+1,&#x27;aria-label&#x27;:`Picnic table ${index+1} · 8 ft long with two benches`},picnic);
         rect([tx-4,ty-1.5,tx+4,ty+1.5],{fill:&#x27;color-mix(in srgb,var(--viz-series-2) 45%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65},table);
         for(const offset of [-3,3])rect([tx-4,ty+offset-.5,tx+4,ty+offset+.5],{fill:&#x27;color-mix(in srgb,var(--viz-series-2) 45%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-picnic-bench&#x27;:offset&lt;0?&#x27;south&#x27;:&#x27;north&#x27;},table);
       });
       const [lx,ly]=a.label_xy;
-      label(a.name,lx,ly,{&#x27;data-picnic-label&#x27;:&#x27;name&#x27;,&#x27;data-tooltip&#x27;:a.description,...alignment});
+      label(a.name,lx,ly,{&#x27;data-picnic-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description,...alignment});
       if(scale&gt;=2)label(`${a.table_count} tables`,lx,ly-14/scale,{&#x27;data-picnic-label&#x27;:&#x27;tables&#x27;,...alignment});
     }
     if(proposed&amp;&amp;proposal.amphitheater&amp;&amp;!closeup){
       const a=proposal.amphitheater;
-      const amphitheater=el(&#x27;g&#x27;,{&#x27;data-amphitheater&#x27;:&#x27;hillside&#x27;,&#x27;data-tooltip&#x27;:a.description},map);
+      const amphitheater=el(&#x27;g&#x27;,{&#x27;data-amphitheater&#x27;:&#x27;hillside&#x27;,&#x27;aria-label&#x27;:a.description},map);
       rect(a.approach_walk_rect,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-amphitheater-part&#x27;:&#x27;approach&#x27;},amphitheater);
       poly(a.footprint_polygon,{fill:outdoor,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.7,&#x27;data-amphitheater-part&#x27;:&#x27;terraced-lawn&#x27;},amphitheater);
       for(const terrace of a.terraces)poly(terrace.polygon,{fill:&#x27;color-mix(in srgb,var(--viz-series-2) 32%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-amphitheater-terrace&#x27;:terrace.row},amphitheater);
       rect(a.central_aisle_rect,{fill:&#x27;var(--background)&#x27;,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-amphitheater-part&#x27;:&#x27;stepped-aisle&#x27;},amphitheater);
       for(let sx=-213;sx&lt;=-190;sx+=2.5)line([[sx,79],[sx,85]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.5},amphitheater);
-      rect(a.stage_rect,{fill:&#x27;color-mix(in srgb,var(--viz-series-5) 30%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-amphitheater-part&#x27;:&#x27;stage&#x27;,&#x27;data-tooltip&#x27;:&#x27;Amphitheater stage · 10 × 20 ft · 200 SF concept footprint&#x27;},amphitheater);
+      rect(a.stage_rect,{fill:&#x27;color-mix(in srgb,var(--viz-series-5) 30%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-amphitheater-part&#x27;:&#x27;stage&#x27;,&#x27;aria-label&#x27;:&#x27;Amphitheater stage · 10 × 20 ft · 200 SF concept footprint&#x27;},amphitheater);
       const [lx,ly]=a.label_xy;
       line(a.label_leader,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6},amphitheater);
-      label(&#x27;Amphitheater&#x27;,lx,ly,{&#x27;data-amphitheater-label&#x27;:&#x27;name&#x27;,&#x27;data-tooltip&#x27;:a.description});
+      label(&#x27;Amphitheater&#x27;,lx,ly,{&#x27;data-amphitheater-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description});
       if(scale&gt;=2){
         label(&#x27;Stage&#x27;,-222,82,{&#x27;data-amphitheater-label&#x27;:&#x27;stage&#x27;,transform:`rotate(-90 ${x(-222)} ${y(82)})`});
         label(&#x27;5 terraces · uphill →&#x27;,lx,ly-14/scale,{&#x27;data-amphitheater-label&#x27;:&#x27;terraces&#x27;});
@@ -3646,19 +3646,19 @@ html&gt;body{padding:0}&lt;/style&gt;
         el(&#x27;rect&#x27;,{x:0,y:0,width,height,fill:&#x27;white&#x27;},courtyardMask);
         poly(proposal.shared_polygon,{fill:&#x27;black&#x27;},courtyardMask);
       }
-      const group=el(&#x27;g&#x27;,proposed?{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,mask:`url(#${exclusion})`,&#x27;data-tooltip&#x27;:selection.description}:{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;data-tooltip&#x27;:&#x27;Existing walking paths and courtyard · approximate aerial tracing&#x27;},map);
+      const group=el(&#x27;g&#x27;,proposed?{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,mask:`url(#${exclusion})`,&#x27;aria-label&#x27;:selection.description}:{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing walking paths and courtyard · approximate aerial tracing&#x27;},map);
       for(const item of walks.polygons.filter(p=&gt;p.kind!==&#x27;lawn&#x27;))poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-walk-area&#x27;:item.id},group);
       for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;lawn&#x27;))poly(item.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-courtyard-lawn&#x27;:item.id},group);
       for(const path of walks.paths)line(path.points,{stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:path.width_ft*scale+1,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;},group);
-      for(const path of walks.paths)line(path.points,{stroke:pathColor,&#x27;stroke-width&#x27;:path.width_ft*scale,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;,&#x27;data-current-walking-path&#x27;:path.id,...(path.description?{&#x27;data-tooltip&#x27;:path.description}:{})},group);
+      for(const path of walks.paths)line(path.points,{stroke:pathColor,&#x27;stroke-width&#x27;:path.width_ft*scale,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;,&#x27;data-current-walking-path&#x27;:path.id,...(path.description?{&#x27;aria-label&#x27;:path.description}:{})},group);
       for(const f of walks.features){
-        el(&#x27;circle&#x27;,{cx:x(f.center[0]),cy:y(f.center[1]),r:f.radius_ft*scale,fill:pathColor,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65,&#x27;data-current-courtyard-feature&#x27;:f.id,&#x27;data-tooltip&#x27;:&#x27;Central courtyard feature&#x27;},group);
+        el(&#x27;circle&#x27;,{cx:x(f.center[0]),cy:y(f.center[1]),r:f.radius_ft*scale,fill:pathColor,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65,&#x27;data-current-courtyard-feature&#x27;:f.id,&#x27;aria-label&#x27;:&#x27;Central courtyard feature&#x27;},group);
         if(f.inner_radius_ft)el(&#x27;circle&#x27;,{cx:x(f.center[0]),cy:y(f.center[1]),r:f.inner_radius_ft*scale,fill:&#x27;var(--muted-foreground)&#x27;},group);
       }
     }
     for(const b of data.existing.buildings){
       if(proposed&amp;&amp;b.remove_in_proposal)continue;
-      feature(b.rings,{fill:building,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-tooltip&#x27;:dimensionTip(b.id,b.name),&#x27;data-building-footprint&#x27;:b.id},map);
+      feature(b.rings,{fill:building,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;aria-label&#x27;:dimensionDescription(b.id,b.name),&#x27;data-building-footprint&#x27;:b.id},map);
     }
     if(!closeup){
     buildingLabel(1022037,&#x27;Church&#x27;,compact?365:327,157);buildingLabel(&#x27;hall_corrected&#x27;,&#x27;Guadalupe Hall&#x27;,217,43);buildingLabel(880585,&#x27;Gym&#x27;,188,-102);
@@ -3679,7 +3679,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!closeup&amp;&amp;!combined){
         const entrance=[proposal.academic[0]+86,proposal.academic[3]-41];
         line([[entrance[0],entrance[1]-4],[entrance[0],entrance[1]+4]],{stroke:&#x27;var(--background)&#x27;,&#x27;stroke-width&#x27;:3,&#x27;data-main-entrance&#x27;:&#x27;east&#x27;},map);
-        el(&#x27;circle&#x27;,{cx:x(entrance[0]),cy:y(entrance[1]),r:3,fill:&#x27;var(--foreground)&#x27;,&#x27;data-tooltip&#x27;:&#x27;Main school entrance · east side · double doors between nurse and reception · 4 ft entrance projection&#x27;},map);
+        el(&#x27;circle&#x27;,{cx:x(entrance[0]),cy:y(entrance[1]),r:3,fill:&#x27;var(--foreground)&#x27;,&#x27;aria-label&#x27;:&#x27;Main school entrance · east side · double doors between nurse and reception · 4 ft entrance projection&#x27;},map);
         line([[85,276],[34,276],[34,entrance[1]],entrance],{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1},map);
         label(compact?&#x27;East entry&#x27;:&#x27;Main entrance&#x27;,85,284,{&#x27;text-anchor&#x27;:&#x27;middle&#x27;,&#x27;data-main-entrance-label&#x27;:&#x27;east&#x27;});
       }
@@ -3693,7 +3693,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
       if(proposal.southPlayground&amp;&amp;!closeup){
         const play=proposal.southPlayground,[lx,ly]=play.label_xy;
-        label(compact?&#x27;Play&#x27;:play.label,lx,ly+(compact?0:7/scale),{&#x27;data-south-playground-label&#x27;:&#x27;name&#x27;,&#x27;data-tooltip&#x27;:`${play.label} · ${play.area_label} estimated gross area`});
+        label(compact?&#x27;Play&#x27;:play.label,lx,ly+(compact?0:7/scale),{&#x27;data-south-playground-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:`${play.label} · ${play.area_label} estimated gross area`});
         if(!compact)label(play.area_label,lx,ly-7/scale,{&#x27;data-south-playground-label&#x27;:&#x27;area&#x27;});
       }
       const px=(proposal.play[0]+proposal.play[2])/2;
@@ -3708,8 +3708,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!compact&amp;&amp;!closeup&amp;&amp;!combined){
         const callout=shifted?&#x27;var(--muted-foreground)&#x27;:&#x27;var(--destructive)&#x27;;
         const gap=data.building1NorthMove.old_school_gap_ft;
-        line([[30,215],[30,286],[-115,286]],{stroke:callout,&#x27;stroke-width&#x27;:1});label(`Min. school gap: ${gap.toFixed(1)} ft`,-120,286,{&#x27;text-anchor&#x27;:&#x27;end&#x27;,&#x27;data-tooltip&#x27;:&#x27;Mapped gap to the existing lower school; construction clearance is not verified.&#x27;});
-        label(`Boundary gap ≈${Math.round(data.building1NorthMove.parcel_gap_ft)} ft`,-120,330,{&#x27;text-anchor&#x27;:&#x27;end&#x27;,&#x27;data-tooltip&#x27;:&#x27;Minimum mapped Building 1 to property-boundary distance. This is less than the earlier 50 ft planning reservation; setback review is required.&#x27;});
+        line([[30,215],[30,286],[-115,286]],{stroke:callout,&#x27;stroke-width&#x27;:1});label(`Min. school gap: ${gap.toFixed(1)} ft`,-120,286,{&#x27;text-anchor&#x27;:&#x27;end&#x27;,&#x27;aria-label&#x27;:&#x27;Mapped gap to the existing lower school; construction clearance is not verified.&#x27;});
+        label(`Boundary gap ≈${Math.round(data.building1NorthMove.parcel_gap_ft)} ft`,-120,330,{&#x27;text-anchor&#x27;:&#x27;end&#x27;,&#x27;aria-label&#x27;:&#x27;Minimum mapped Building 1 to property-boundary distance. This is less than the earlier 50 ft planning reservation; setback review is required.&#x27;});
         if(!proposal.courtyard){line([[160,112],[203,220]],{stroke:callout,&#x27;stroke-width&#x27;:1});label(&#x27;Corner gap: 21.8 ft&#x27;,280,220);}
       }
       if(parkingDetail){
@@ -3804,7 +3804,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;/script&gt;
 
   &lt;/section&gt;
-  &lt;button type=&quot;button&quot; class=&quot;olr-map-compass&quot; data-map-compass aria-label=&quot;Return map to north&quot; title=&quot;Swipe two fingers sideways to rotate. Click to return north to the top.&quot;&gt;
+  &lt;button type=&quot;button&quot; class=&quot;olr-map-compass&quot; data-map-compass aria-label=&quot;Return map to north&quot;&gt;
     &lt;svg data-map-compass-needle viewBox=&quot;0 0 48 48&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
       &lt;text x=&quot;24&quot; y=&quot;12&quot; text-anchor=&quot;middle&quot;&gt;N&lt;/text&gt;
       &lt;path d=&quot;M24 16 L32 36 L24 31 L16 36 Z&quot; fill=&quot;currentColor&quot;/&gt;
