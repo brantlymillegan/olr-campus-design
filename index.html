@@ -3464,7 +3464,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     if(!closeup){
     buildingLabel(1022037,&#x27;Church&#x27;,compact?365:327,157);buildingLabel(&#x27;hall_corrected&#x27;,&#x27;Guadalupe Hall&#x27;,217,43);buildingLabel(880585,&#x27;Gym&#x27;,188,-102);
-    if(!compact){line([[130,-90],[30,-107]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1});label(&#x27;Gym parking&#x27;,-43,-112);}
     if(!compact)buildingLabel(&#x27;theater&#x27;,&#x27;Theater&#x27;,254,-77,-90);
     buildingLabel(&#x27;benedict_hall&#x27;,compact?&#x27;Benedict&#x27;:&#x27;Benedict Hall&#x27;,-308,55);
     if(!compact){
@@ -3472,7 +3471,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       line([[-124.44,-158.95],[-124.44,-181]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(888497,&#x27;Future rectory&#x27;,-124.44,-200);
       line([[64.81,-146.89],[55,-177]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(901716,&#x27;MTH&#x27;,55,-200);
     }
-    label(&#x27;Frontage Road&#x27;,110,415);label(&#x27;James Drive&#x27;,-62,-246);
+    label(&#x27;Frontage Road&#x27;,110,415);label(&#x27;James Drive&#x27;,-62,-228.43,{transform:`rotate(1.6 ${x(-62)} ${y(-228.43)})`,&#x27;data-road-label&#x27;:&#x27;james-drive&#x27;});
     if(!compact)label(&#x27;Augusta Road&#x27;,494,138,{transform:`rotate(-83 ${x(494)} ${y(138)})`});
     }
     if(proposed){
@@ -3515,7 +3514,6 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!compact&amp;&amp;!closeup){
         label(`${data.parking.road_width_ft} ft · normally one-way`,45,344);
         label(&#x27;ENTRY&#x27;,250,368);label(&#x27;EXIT&#x27;,174,-212);
-        label(&#x27;Existing Hall access&#x27;,-270,-70);
       }
       if(!compact&amp;&amp;!closeup&amp;&amp;!combined){
         const callout=shifted?&#x27;var(--muted-foreground)&#x27;:&#x27;var(--destructive)&#x27;;
@@ -3548,7 +3546,6 @@ html&gt;body{padding:0}&lt;/style&gt;
       const school=data.existing.buildings.find(b=&gt;b.id===887530),annex=data.existing.buildings.find(b=&gt;b.id===880586);
       buildingLabel(887530,compact?&#x27;School&#x27;:&#x27;Lower school&#x27;,58,school.label_xy[1],-90);
       buildingLabel(880586,compact?&#x27;K4 / Art&#x27;:&#x27;Art / K4 annex&#x27;,...annex.label_xy);
-      if(data.hallReference.show&amp;&amp;!compact)label(&#x27;Existing Hall access&#x27;,-270,-70);
     }
     svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
     if(combined&amp;&amp;proposed){
