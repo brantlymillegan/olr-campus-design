@@ -3380,20 +3380,63 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!entry)return fallback;
       return `${fallback||entry.display_name} · ${entry.dimension_label}${entry.irregular_footprint?&#x27; overall&#x27;:&#x27;&#x27;}${entry.chamfer_legs_ft?&#x27; · 15 × 15 ft southeast corner cut&#x27;:&#x27;&#x27;} · ${footprintLabel(entry)} footprint · ${entry.approximate?&#x27;mapped estimate&#x27;:id===&#x27;benedict_hall&#x27;?&#x27;published nominal size&#x27;:&#x27;concept-plan size&#x27;}`;
     }
+    // Labels reveal more information only after zooming and when their text fits.
+    const labelZoom=window.olrMapZoom?.value??Math.max(1,scale/((rootWidth-24)/(xmax-xmin)));
+    const textWidth=text=&gt;[...text].reduce((sum,c)=&gt;sum+(/\s/.test(c)?3.6:/[ilI.,&#x27;’|]/.test(c)?3.6:/[MW@]/.test(c)?10:/[A-Z0-9×]/.test(c)?8:7),0);
+    function labelLayout(name,shortNames,details,availableWidth,availableHeight){
+      const width=availableWidth-8,height=availableHeight-6;
+      const wrap=(text,kind)=&gt;{
+        const lines=[];
+        for(const word of text.split(/\s+/)){
+          if(!lines.length||textWidth(lines.at(-1).text+&#x27; &#x27;+word)&gt;width)lines.push({text:word,kind});
+          else lines.at(-1).text+=&#x27; &#x27;+word;
+        }
+        return lines;
+      };
+      const variants=[];
+      if(labelZoom&gt;=2)variants.push({level:&#x27;full&#x27;,lines:[...wrap(name,&#x27;name&#x27;),...details.flatMap(d=&gt;wrap(d.text,d.kind))]});
+      if(labelZoom&gt;=1.5)variants.push({level:&#x27;name&#x27;,lines:wrap(name,&#x27;name&#x27;)});
+      for(const text of shortNames)variants.push({level:&#x27;compact&#x27;,lines:[{text,kind:&#x27;name&#x27;}]});
+      for(const variant of variants){
+        if(variant.lines.length*14&lt;=height&amp;&amp;variant.lines.every(line=&gt;textWidth(line.text)&lt;=width))return {...variant,fontSize:12,step:14};
+      }
+      // Tiny footprints receive a short name only if it remains readable inside.
+      for(const text of shortNames)if(textWidth(text)*10/12&lt;=availableWidth-2&amp;&amp;12&lt;=availableHeight-2)return {level:&#x27;compact&#x27;,lines:[{text,kind:&#x27;name&#x27;}],fontSize:10,step:12};
+      return null;
+    }
+    const buildingLabelBoxes={
+      &#x27;1022037&#x27;:[252,133,378,173],&#x27;hall_corrected&#x27;:[192,2,239,84],
+      &#x27;880585&#x27;:[154,-174,225,-43],&#x27;benedict_hall&#x27;:[-378,30,-240,80],
+      &#x27;887530&#x27;:[41,10,77,205],&#x27;880586&#x27;:[-65,241,-2,260],
+      &#x27;897613&#x27;:[307,-162,343,-144],&#x27;academic&#x27;:[-53,70,21,260],
+      &#x27;shared&#x27;:[47,124,149,196],&#x27;theater&#x27;:[234,-107,277,-44]
+    };
+    const buildingShortNames={
+      &#x27;1022037&#x27;:[&#x27;Church&#x27;,&#x27;Ch.&#x27;],&#x27;hall_corrected&#x27;:[&#x27;Guadalupe&#x27;,&#x27;Guad.&#x27;,&#x27;GH&#x27;],
+      &#x27;880585&#x27;:[&#x27;Gym&#x27;],&#x27;benedict_hall&#x27;:[&#x27;Benedict&#x27;,&#x27;Ben.&#x27;,&#x27;BH&#x27;],
+      &#x27;887530&#x27;:[&#x27;School&#x27;,&#x27;Sch.&#x27;],&#x27;880586&#x27;:[&#x27;K4/Art&#x27;,&#x27;K4&#x27;],
+      &#x27;897613&#x27;:[&#x27;Office&#x27;,&#x27;PO&#x27;],&#x27;888497&#x27;:[&#x27;Rectory&#x27;,&#x27;Rect.&#x27;,&#x27;R&#x27;],
+      &#x27;901716&#x27;:[&#x27;MTH&#x27;],&#x27;academic&#x27;:[&#x27;B1&#x27;],&#x27;shared&#x27;:[&#x27;B2&#x27;],&#x27;theater&#x27;:[&#x27;Theater&#x27;,&#x27;Th.&#x27;]
+    };
     function buildingLabel(id,name,px,py,rotation=0,roofHeader=false){
       if(combined&amp;&amp;!roofHeader&amp;&amp;(id===&#x27;academic&#x27;||id===&#x27;shared&#x27;))return;
       const entry=buildingSizes.get(String(id));
-      const size=compact||(roofHeader&amp;&amp;scale&lt;2)?`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${entry.dimensions_ft.join(&#x27;×&#x27;)}′`:entry.dimension_label;
-      // House labels scale down at Fit so all three lines stay within their footprints.
-      const box=entry.label_rect;
-      const interiorFont=box?Math.min(12,(box[2]-box[0])*scale/(Math.max(name.length,size.length,footprintLabel(entry).length)*.65),(box[3]-box[1])*scale/3.4):12;
-      const fontSize=roofHeader?Math.min(12,Math.max(8,scale*10)):interiorFont;
-      const step=roofHeader||box?fontSize*1.2:14;
-      const centerY=roofHeader?py+(5+step)/scale:py;
-      const attrs={&#x27;aria-label&#x27;:dimensionDescription(id),&#x27;data-building-id&#x27;:id,...(roofHeader||box?{style:`font-size:${fontSize}px`}:{}),...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
-      label(name,px,centerY+step/scale,{...attrs,&#x27;data-building-name&#x27;:id,...(roofHeader?{&#x27;data-campus-floor-building-label&#x27;:name}:{})});
-      label(size,px,centerY,{...attrs,&#x27;data-building-size&#x27;:id});
-      label(footprintLabel(entry),px,centerY-step/scale,{...attrs,&#x27;data-building-area&#x27;:id});
+      const site=id===&#x27;academic&#x27;?proposal.academic:proposal.shared;
+      const box=roofHeader?[site[0],py,site[2],py+24]:entry.label_rect||buildingLabelBoxes[id];
+      if(!box)return;
+      const vertical=Math.abs(rotation)%180===90;
+      const availableWidth=(vertical?box[3]-box[1]:box[2]-box[0])*scale;
+      const availableHeight=(vertical?box[2]-box[0]:box[3]-box[1])*scale;
+      const chosen=labelLayout(name,buildingShortNames[id]||[name],[{text:entry.dimension_label,kind:&#x27;size&#x27;},{text:footprintLabel(entry),kind:&#x27;area&#x27;}],availableWidth,availableHeight);
+      if(!chosen)return;
+      const {lines,fontSize,step}=chosen;
+      const cx=roofHeader?px:(box[0]+box[2])/2;
+      const cy=roofHeader?py+(5+(lines.length-1)*step/2)/scale:(box[1]+box[3])/2;
+      const attrs={&#x27;aria-label&#x27;:dimensionDescription(id),&#x27;data-building-id&#x27;:id,&#x27;data-label-detail&#x27;:chosen.level,&#x27;data-building-label-box&#x27;:box.join(&#x27; &#x27;),style:`font-size:${fontSize}px`,...(rotation?{transform:`rotate(${rotation} ${x(cx)} ${y(cy)})`}:{})};
+      lines.forEach((line,i)=&gt;label(line.text,cx,cy+((lines.length-1)/2-i)*step/scale,{
+        ...attrs,[`data-building-${line.kind}`]:id,
+        ...(roofHeader&amp;&amp;line.kind===&#x27;name&#x27;?{&#x27;data-campus-floor-building-label&#x27;:name}:{})
+      }));
     }
     svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionDescription(entry.id)).join(&#x27;; &#x27;));
     function arrow(a,b){
@@ -3610,8 +3653,8 @@ html&gt;body{padding:0}&lt;/style&gt;
         for(const offset of [-3,3])rect([tx-4,ty+offset-.5,tx+4,ty+offset+.5],{fill:&#x27;color-mix(in srgb,var(--viz-series-2) 45%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.5,&#x27;data-picnic-bench&#x27;:offset&lt;0?&#x27;south&#x27;:&#x27;north&#x27;},table);
       });
       const [lx,ly]=a.label_xy;
-      label(a.name,lx,ly,{&#x27;data-picnic-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description,...alignment});
-      if(scale&gt;=2)label(`${a.table_count} tables`,lx,ly-14/scale,{&#x27;data-picnic-label&#x27;:&#x27;tables&#x27;,...alignment});
+      label(labelZoom&lt;1.5?&#x27;Picnic&#x27;:a.name,lx,ly,{&#x27;data-picnic-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description,...alignment});
+      if(labelZoom&gt;=2&amp;&amp;scale&gt;=2)label(`${a.table_count} tables`,lx,ly-14/scale,{&#x27;data-picnic-label&#x27;:&#x27;tables&#x27;,...alignment});
     }
     if(proposed&amp;&amp;proposal.amphitheater&amp;&amp;!closeup){
       const a=proposal.amphitheater;
@@ -3624,8 +3667,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       rect(a.stage_rect,{fill:&#x27;color-mix(in srgb,var(--viz-series-5) 30%,var(--background))&#x27;,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8,&#x27;data-amphitheater-part&#x27;:&#x27;stage&#x27;,&#x27;aria-label&#x27;:&#x27;Amphitheater stage · 10 × 20 ft · 200 SF concept footprint&#x27;},amphitheater);
       const [lx,ly]=a.label_xy;
       line(a.label_leader,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.6},amphitheater);
-      label(&#x27;Amphitheater&#x27;,lx,ly,{&#x27;data-amphitheater-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description});
-      if(scale&gt;=2){
+      label(labelZoom&lt;1.5?&#x27;Amphi.&#x27;:&#x27;Amphitheater&#x27;,lx,ly,{&#x27;data-amphitheater-label&#x27;:&#x27;name&#x27;,&#x27;aria-label&#x27;:a.description});
+      if(labelZoom&gt;=2&amp;&amp;scale&gt;=2){
         label(&#x27;Stage&#x27;,-222,82,{&#x27;data-amphitheater-label&#x27;:&#x27;stage&#x27;,transform:`rotate(-90 ${x(-222)} ${y(82)})`});
         label(&#x27;5 terraces · uphill →&#x27;,lx,ly-14/scale,{&#x27;data-amphitheater-label&#x27;:&#x27;terraces&#x27;});
       }
@@ -3661,11 +3704,9 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
     if(!closeup){
     buildingLabel(1022037,&#x27;Church&#x27;,compact?365:327,157);buildingLabel(&#x27;hall_corrected&#x27;,&#x27;Guadalupe Hall&#x27;,217,43);buildingLabel(880585,&#x27;Gym&#x27;,188,-102);
-    if(!compact)buildingLabel(&#x27;theater&#x27;,&#x27;Theater&#x27;,254,-77,-90);
-    buildingLabel(&#x27;benedict_hall&#x27;,compact?&#x27;Benedict&#x27;:&#x27;Benedict Hall&#x27;,-308,55);
-    if(!compact){
-      buildingLabel(897613,&#x27;Parish office&#x27;,346,-151);
-    }
+    buildingLabel(&#x27;theater&#x27;,&#x27;Theater&#x27;,254,-77,-90);
+    buildingLabel(&#x27;benedict_hall&#x27;,&#x27;Benedict Hall&#x27;,-308,55);
+    buildingLabel(897613,&#x27;Parish office&#x27;,346,-151);
     for(const id of [888497,901716]){
       const entry=buildingSizes.get(String(id));
       buildingLabel(id,entry.display_name,...entry.label_xy);
@@ -3686,16 +3727,18 @@ html&gt;body{padding:0}&lt;/style&gt;
       if(!detail)buildingLabel(&#x27;academic&#x27;,&#x27;Building 1&#x27;,ax,(proposal.academic[1]+proposal.academic[3])/2,-90);
       if(proposal.westPlayground&amp;&amp;!closeup){
         const play=proposal.westPlayground,vertical=scale&lt;1.05,lx=vertical?-138:-145,ly=65;
-        const placement={&#x27;data-label-placement&#x27;:&#x27;inside&#x27;,...(vertical?{transform:`rotate(-90 ${x(lx)} ${y(ly)})`}:{})};
-        label(play.label,lx,ly+7/scale,{...placement,&#x27;data-west-playground-label&#x27;:&#x27;name&#x27;});
-        label(play.area_label,lx,ly-7/scale,{...placement,&#x27;data-west-playground-label&#x27;:&#x27;area&#x27;});
+        const chosen=labelLayout(play.label,[&#x27;Play&#x27;],[{text:play.area_label,kind:&#x27;area&#x27;}],(vertical?150:70)*scale,(vertical?35:100)*scale);
+        if(chosen){
+          const placement={&#x27;data-label-placement&#x27;:&#x27;inside&#x27;,&#x27;data-label-detail&#x27;:chosen.level,style:`font-size:${chosen.fontSize}px`,...(vertical?{transform:`rotate(-90 ${x(lx)} ${y(ly)})`}:{})};
+          chosen.lines.forEach((line,i)=&gt;label(line.text,lx,ly+((chosen.lines.length-1)/2-i)*chosen.step/scale,{...placement,&#x27;data-west-playground-label&#x27;:line.kind}));
+        }
       }
       if(!closeup){
         const play=proposal.playground,[lx,ly]=play.label_xy,box=play.label_rect;
-        const fontSize=Math.min(12,(box[2]-box[0])*scale/(Math.max(play.label.length,play.area_label.length)*.65),(box[3]-box[1])*scale/3.4);
-        const placement={style:`font-size:${fontSize}px`,&#x27;data-label-placement&#x27;:&#x27;inside&#x27;};
-        label(play.label,lx,ly+fontSize*.6/scale,{...placement,&#x27;data-playground-label&#x27;:&#x27;name&#x27;});
-        label(play.area_label,lx,ly-fontSize*.6/scale,{...placement,&#x27;data-playground-label&#x27;:&#x27;area&#x27;});
+        const chosen=labelLayout(play.label,[&#x27;Play&#x27;],[{text:play.area_label,kind:&#x27;area&#x27;}],(box[2]-box[0])*scale,(box[3]-box[1])*scale);
+        if(chosen)chosen.lines.forEach((line,i)=&gt;label(line.text,lx,ly+((chosen.lines.length-1)/2-i)*chosen.step/scale,{
+          style:`font-size:${chosen.fontSize}px`,&#x27;data-label-placement&#x27;:&#x27;inside&#x27;,&#x27;data-label-detail&#x27;:chosen.level,&#x27;data-playground-label&#x27;:line.kind
+        }));
       }
       if(!parkingDetail)buildingLabel(&#x27;shared&#x27;,&#x27;Building 2&#x27;,sx+(compact&amp;&amp;!detail?8/scale:0),153);
       if(proposal.northParkingExtension&amp;&amp;!closeup){
@@ -3734,8 +3777,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
     }else{
       const school=data.existing.buildings.find(b=&gt;b.id===887530),annex=data.existing.buildings.find(b=&gt;b.id===880586);
-      buildingLabel(887530,compact?&#x27;School&#x27;:&#x27;Lower school&#x27;,58,school.label_xy[1],-90);
-      buildingLabel(880586,compact?&#x27;K4 / Art&#x27;:&#x27;Art / K4 annex&#x27;,...annex.label_xy);
+      buildingLabel(887530,&#x27;Lower school&#x27;,58,school.label_xy[1],-90);
+      buildingLabel(880586,&#x27;Art / K4 annex&#x27;,...annex.label_xy);
     }
     svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
     if(combined&amp;&amp;proposed){
