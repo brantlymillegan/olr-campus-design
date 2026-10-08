@@ -3217,18 +3217,24 @@ html&gt;body{padding:0}&lt;/style&gt;
     function line(p,a={},parent=svg){return el(&#x27;polyline&#x27;,{points:p.map(q=&gt;`${x(q[0])},${y(q[1])}`).join(&#x27; &#x27;),fill:&#x27;none&#x27;,...a},parent);}
     function label(t,px,py,a={}){const n=el(&#x27;text&#x27;,{x:x(px),y:y(py),&#x27;text-anchor&#x27;:&#x27;middle&#x27;,&#x27;dominant-baseline&#x27;:&#x27;middle&#x27;,...a});n.textContent=t;return n;}
     const buildingSizes=new Map(data.buildingDimensions.entries.map(entry=&gt;[String(entry.id),entry]));
+    // Stored areas come from the mapped footprint polygons, including recesses and projections.
+    const footprintLabel=entry=&gt;`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${Math.round(entry.footprint_area_sf).toLocaleString(&#x27;en-US&#x27;)} SF`;
     function dimensionTip(id,fallback=&#x27;&#x27;){
       const entry=buildingSizes.get(String(id));
       if(!entry)return fallback;
-      return `${fallback||entry.display_name} · ${entry.dimension_label}${entry.irregular_footprint?&#x27; overall&#x27;:&#x27;&#x27;}${entry.chamfer_legs_ft?&#x27; · 15 × 15 ft southeast corner cut&#x27;:&#x27;&#x27;} · ${entry.approximate?&#x27;mapped estimate&#x27;:id===&#x27;benedict_hall&#x27;?&#x27;published nominal size&#x27;:&#x27;concept-plan size&#x27;}`;
+      return `${fallback||entry.display_name} · ${entry.dimension_label}${entry.irregular_footprint?&#x27; overall&#x27;:&#x27;&#x27;}${entry.chamfer_legs_ft?&#x27; · 15 × 15 ft southeast corner cut&#x27;:&#x27;&#x27;} · ${footprintLabel(entry)} footprint · ${entry.approximate?&#x27;mapped estimate&#x27;:id===&#x27;benedict_hall&#x27;?&#x27;published nominal size&#x27;:&#x27;concept-plan size&#x27;}`;
     }
-    function buildingLabel(id,name,px,py,rotation=0){
-      if(combined&amp;&amp;(id===&#x27;academic&#x27;||id===&#x27;shared&#x27;))return;
+    function buildingLabel(id,name,px,py,rotation=0,roofHeader=false){
+      if(combined&amp;&amp;!roofHeader&amp;&amp;(id===&#x27;academic&#x27;||id===&#x27;shared&#x27;))return;
       const entry=buildingSizes.get(String(id));
-      const size=compact?`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${entry.dimensions_ft.join(&#x27;×&#x27;)}′`:entry.dimension_label;
-      const attrs={&#x27;data-tooltip&#x27;:dimensionTip(id),&#x27;data-building-id&#x27;:id,...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
-      label(name,px,py+7/scale,{...attrs,&#x27;data-building-name&#x27;:id});
-      label(size,px,py-7/scale,{...attrs,&#x27;data-building-size&#x27;:id});
+      const size=compact||(roofHeader&amp;&amp;scale&lt;2)?`${entry.approximate?&#x27;≈&#x27;:&#x27;&#x27;}${entry.dimensions_ft.join(&#x27;×&#x27;)}′`:entry.dimension_label;
+      const fontSize=roofHeader?Math.min(12,Math.max(8,scale*10)):12;
+      const step=roofHeader?fontSize*1.2:14;
+      const centerY=roofHeader?py+(5+step)/scale:py;
+      const attrs={&#x27;data-tooltip&#x27;:dimensionTip(id),&#x27;data-building-id&#x27;:id,...(roofHeader?{style:`font-size:${fontSize}px`}:{}),...(rotation?{transform:`rotate(${rotation} ${x(px)} ${y(py)})`}:{})};
+      label(name,px,centerY+step/scale,{...attrs,&#x27;data-building-name&#x27;:id,...(roofHeader?{&#x27;data-campus-floor-building-label&#x27;:name}:{})});
+      label(size,px,centerY,{...attrs,&#x27;data-building-size&#x27;:id});
+      label(footprintLabel(entry),px,centerY-step/scale,{...attrs,&#x27;data-building-area&#x27;:id});
     }
     svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionTip(entry.id)).join(&#x27;; &#x27;));
     function arrow(a,b){
@@ -3489,7 +3495,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     buildingLabel(&#x27;benedict_hall&#x27;,compact?&#x27;Benedict&#x27;:&#x27;Benedict Hall&#x27;,-308,55);
     if(!compact){
       buildingLabel(897613,&#x27;Parish office&#x27;,346,-151);
-      line([[-124.44,-158.95],[-124.44,-181]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(888497,&#x27;Future rectory&#x27;,-124.44,-200);
+      line([[-124.44,-158.95],[-124.44,-181]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(888497,&#x27;Future rectory&#x27;,-124.44,-200+7/scale);
       line([[64.81,-146.89],[55,-177]],{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.8});buildingLabel(901716,&#x27;MTH&#x27;,55,-200);
     }
     label(&#x27;Frontage Road&#x27;,110,415);label(&#x27;James Drive&#x27;,-62,-228.43,{transform:`rotate(1.6 ${x(-62)} ${y(-228.43)})`,&#x27;data-road-label&#x27;:&#x27;james-drive&#x27;});
@@ -3565,8 +3571,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     if(combined&amp;&amp;proposed){
       siteFloorData??=JSON.parse(document.getElementById(&#x27;fp-data&#x27;).textContent);
       window.olrDrawCampusFloors({data:siteFloorData,proposal,floor:campusFloor,parent:map,el,x,y,scale});
-      for(const [name,box] of [[&#x27;Building 1&#x27;,proposal.academic],[&#x27;Building 2&#x27;,proposal.shared]]){
-        label(name,(box[0]+box[2])/2,box[3]+9/scale,{&#x27;data-campus-floor-building-label&#x27;:name});
+      for(const [id,name,box] of [[&#x27;academic&#x27;,&#x27;Building 1&#x27;,proposal.academic],[&#x27;shared&#x27;,&#x27;Building 2&#x27;,proposal.shared]]){
+        buildingLabel(id,name,(box[0]+box[2])/2,box[3],0,true);
       }
       svg.setAttribute(&#x27;aria-label&#x27;,`New campus with ${campusFloor===1?&#x27;first&#x27;:&#x27;second&#x27;}-floor plans inside Buildings 1 and 2`);
     }else svg.setAttribute(&#x27;aria-label&#x27;,proposed?&#x27;New campus · building outlines&#x27;:&#x27;Current campus · existing exterior layout&#x27;);
