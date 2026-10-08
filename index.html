@@ -1244,6 +1244,8 @@ html>body { padding:0; }
 #campus-fullscreen-status { flex-basis:100%; }
 #codex-visualization { display:block; width:100%; max-width:none; min-width:0; min-height:0; margin:0; border:0; }
 .campus-page-toolbar { padding:8px; }
+.campus-theme-control { display:inline-flex; align-items:center; gap:6px; }
+.campus-theme-control select { width:auto; min-width:6.5em; min-height:32px; }
 @media (min-width:768px) and (pointer:fine), (min-width:768px) and (pointer:none), (min-width:1025px) {
   html,body { height:100%; }
   html { overflow:hidden; }
@@ -1252,12 +1254,70 @@ html>body { padding:0; }
   #codex-visualization { height:0 !important; flex:1 1 0; }
 }
 </style>
+<script id="olr-theme-shell">
+(() => {
+  const key = 'olr-campus-theme';
+  const valid = value => ['system', 'light', 'dark'].includes(value);
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  let preference = 'system';
+  try {
+    const saved = window.localStorage.getItem(key);
+    if (valid(saved)) preference = saved;
+  } catch { /* Theme selection still works when storage is unavailable. */ }
+
+  const state = () => ({preference, resolved: preference === 'system' ? (media.matches ? 'dark' : 'light') : preference});
+  window.olrThemeState = state;
+  function apply() {
+    const current = state();
+    document.documentElement.dataset.theme = current.resolved;
+    document.documentElement.dataset.themePreference = preference;
+    document.documentElement.style.colorScheme = current.resolved;
+    const select = document.getElementById('campus-theme');
+    if (select) select.value = preference;
+    const frame = document.getElementById('codex-visualization');
+    if (frame) {
+      frame.style.colorScheme = current.resolved;
+      frame.contentWindow?.postMessage({type: 'olr-theme', ...current}, '*');
+    }
+  }
+  // Apply before the first paint and before the sandbox's bootstrap is created.
+  apply();
+  media.addEventListener('change', () => { if (preference === 'system') apply(); });
+  window.addEventListener('storage', event => {
+    if (event.key !== key && event.key !== null) return;
+    preference = valid(event.newValue) ? event.newValue : 'system';
+    apply();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('campus-theme');
+    const frame = document.getElementById('codex-visualization');
+    select?.addEventListener('change', () => {
+      if (!valid(select.value)) return;
+      preference = select.value;
+      try { window.localStorage.setItem(key, preference); } catch { /* Keep session choice. */ }
+      apply();
+    });
+    frame?.addEventListener('load', apply);
+    window.addEventListener('message', event => {
+      if (event.source === frame?.contentWindow && event.data?.type === 'olr-theme-ready') apply();
+    });
+    apply();
+  });
+})();
+</script>
 </head>
 <body>
 <header class="campus-page-toolbar">
   <span>OLR Campus</span>
   <div class="viz-row">
     <span class="text-small">T: Current/New · F: floors · B: buildings</span>
+    <label class="campus-theme-control text-small" for="campus-theme">Theme
+      <select class="form-select" id="campus-theme">
+        <option value="system" selected>System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
   <span id="campus-fullscreen-status" class="text-small" role="status" aria-live="polite" hidden></span>
@@ -2656,27 +2716,33 @@ html&gt;body{padding:0}&lt;/style&gt;
       postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
     });
   };
+  const validThemePreference = value =&gt; [&#x27;system&#x27;, &#x27;light&#x27;, &#x27;dark&#x27;].includes(value);
+  let themePreference = validThemePreference(initialGlobals.olrTheme?.preference) ? initialGlobals.olrTheme.preference : &#x27;system&#x27;;
+  let resolvedTheme = [&#x27;light&#x27;, &#x27;dark&#x27;].includes(initialGlobals.olrTheme?.resolved) ? initialGlobals.olrTheme.resolved : (mediaQuery.matches ? &#x27;dark&#x27; : &#x27;light&#x27;);
   const syncTheme = () =&gt; {
-    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
-    root.dataset.theme = theme;
+    root.dataset.theme = resolvedTheme;
+    root.dataset.themePreference = themePreference;
+    root.style.colorScheme = resolvedTheme;
     globalThis.openai = {
       ...globalThis.openai,
-      openExternal,
-      sendFollowUpMessage,
-      setWidgetState,
-      theme,
-      visualizationStyleVariables: {},
-      visualizationTheme: theme,
-      widgetState: state,
-      statePersistence,
-      stateModelContext: &quot;none&quot;,
+      openExternal, sendFollowUpMessage, setWidgetState,
+      theme: resolvedTheme, visualizationTheme: resolvedTheme,
+      visualizationStyleVariables: {}, widgetState: state,
+      statePersistence, stateModelContext: &#x27;none&#x27;
     };
-    globalThis.dispatchEvent(
-      new CustomEvent(&quot;openai:set_globals&quot;, {
-        detail: { globals: globalThis.openai },
-      }),
-    );
+    // Theme changes must not replay saved map state or clear the selected room.
+    globalThis.dispatchEvent(new CustomEvent(&#x27;openai:set_globals&#x27;, {
+      detail: {globals: {theme: resolvedTheme, visualizationTheme: resolvedTheme, visualizationStyleVariables: {}}}
+    }));
   };
+  globalThis.addEventListener(&#x27;message&#x27;, event =&gt; {
+    const message = event.data;
+    if (event.source !== parentWindow || message?.type !== &#x27;olr-theme&#x27; ||
+        !validThemePreference(message.preference) || ![&#x27;light&#x27;, &#x27;dark&#x27;].includes(message.resolved)) return;
+    themePreference = message.preference;
+    resolvedTheme = message.resolved;
+    syncTheme();
+  });
   const sendHeight = () =&gt; {
     postToHost(&quot;height&quot;, {
       height: Math.ceil(
@@ -2748,7 +2814,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     { capture: true },
   );
   document.currentScript?.remove();
-  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  // The outer shell resolves System and sends the active theme.
+  parentWindow.postMessage({type: &quot;olr-theme-ready&quot;}, &quot;*&quot;);
   globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
     if (event.defaultPrevented) {
       return;
@@ -5052,6 +5119,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     storage = null;
   }
   const initialGlobals = {
+    olrTheme: globalThis.olrThemeState(),
     widgetState: state,
     statePersistence: storage == null ? "none" : "local",
   };
