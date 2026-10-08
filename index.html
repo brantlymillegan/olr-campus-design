@@ -1253,6 +1253,36 @@ html>body { padding:0; }
   .campus-page-toolbar { padding:0; }
   #codex-visualization { height:0 !important; flex:1 1 0; }
 }
+
+.campus-tool-panel {
+  position:fixed; z-index:30; top:12px; right:12px; display:grid; gap:7px;
+  box-sizing:border-box; width:264px; max-width:calc(100vw - 24px); padding:10px; margin:0;
+  border:1px solid color-mix(in srgb,var(--foreground) 20%,var(--background)); border-radius:14px;
+  background:var(--background); color:var(--foreground); box-shadow:0 3px 18px #0002;
+}
+.campus-tool-panel [hidden] { display:none !important; }
+.campus-tools-title { font-size:11px; font-weight:600; color:var(--muted-foreground); }
+.campus-tool-panel .btn { flex:none; min-height:28px; padding:3px 9px; font-size:12px; line-height:1.25; }
+.campus-map-switch { display:flex; align-items:center; gap:4px; }
+.campus-map-switch .btn { min-width:58px; }
+.campus-tool-panel .btn[aria-pressed="true"] { background:var(--foreground); color:var(--background); border-color:var(--foreground); }
+.campus-new-floors { display:flex; gap:3px; margin:-3px 0 0 10px; padding:7px 0 0 7px; border-left:2px solid var(--foreground); }
+.campus-new-floors .btn { min-width:0; padding:3px 7px; font-size:11px; }
+.campus-camera-tools, .campus-display-tools { display:flex; align-items:center; justify-content:space-between; gap:7px; }
+.campus-camera-tools { border-top:1px solid var(--border); padding-top:7px; }
+.campus-zoom-tools { display:flex; gap:4px; }
+.campus-zoom-tools .btn { min-width:30px; }
+.campus-zoom-tools [data-campus-zoom="in"], .campus-zoom-tools [data-campus-zoom="out"] { font-size:18px; padding:0 7px; }
+.campus-tool-panel .campus-theme-control { font-size:11px; gap:5px; }
+.campus-tool-panel .campus-theme-control select { min-height:28px; min-width:6.5em; font-size:12px; }
+.campus-compass { display:grid; place-items:center; width:36px; height:36px; padding:2px; border:1px solid var(--border); border-radius:50%; color:var(--foreground); background:var(--background); cursor:pointer; touch-action:none; }
+.campus-compass:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+.campus-compass svg { width:30px; height:30px; transform-origin:center; pointer-events:none; }
+.campus-compass text { font:700 11px sans-serif; fill:currentColor; }
+.campus-tool-panel #campus-fullscreen-status { font-size:11px; line-height:1.4; }
+@media (pointer:coarse) {
+  .campus-tool-panel .btn, .campus-tool-panel .campus-theme-control select { min-height:34px; }
+}
 </style>
 <script id="olr-theme-shell">
 (() => {
@@ -1307,16 +1337,30 @@ html>body { padding:0; }
 </script>
 </head>
 <body>
-<header class="campus-page-toolbar">
-  <span>OLR Campus</span>
-  <div class="viz-row">
-    <span class="text-small">T: Current/New · F: floors · B: buildings</span>
+<header class="campus-page-toolbar campus-tool-panel" aria-label="Map tools">
+  <span class="campus-tools-title">OLR Campus</span>
+  <div class="campus-map-switch" role="group" aria-label="Campus map">
+    <button type="button" class="btn" data-campus-map="shifted" aria-pressed="true" aria-controls="campus-new-floors" title="New design (T switches maps)">New</button>
+    <button type="button" class="btn" data-campus-map="existing" aria-pressed="false" title="Current campus (T switches maps)">Current</button>
+  </div>
+  <div class="campus-new-floors" id="campus-new-floors" role="group" aria-label="New design floor">
+    <button type="button" class="btn" data-campus-floor="0" aria-pressed="false" title="Building outlines (B)">Buildings</button>
+    <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" title="First floor (F switches floors)">1st floor</button>
+    <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" title="Second floor (F switches floors)">2nd floor</button>
+  </div>
+  <div class="campus-camera-tools">
+    <div class="campus-zoom-tools" role="group" aria-label="Map zoom">
+      <button type="button" class="btn" data-campus-zoom="out" aria-label="Zoom out" title="Zoom out (−)">−</button>
+      <button type="button" class="btn" data-campus-zoom="in" aria-label="Zoom in" title="Zoom in (+)">+</button>
+      <button type="button" class="btn" data-campus-zoom="fit" title="Fit campus to screen (0)">Fit</button>
+    </div>
+    <button type="button" class="campus-compass" id="campus-compass" aria-label="Reset north" title="Click to reset north (N). Drag to rotate.">
+      <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
+    </button>
+  </div>
+  <div class="campus-display-tools">
     <label class="campus-theme-control text-small" for="campus-theme">Theme
-      <select class="form-select" id="campus-theme">
-        <option value="system" selected>System</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
+      <select class="form-select" id="campus-theme"><option value="system" selected>System</option><option value="light">Light</option><option value="dark">Dark</option></select>
     </label>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
@@ -3190,7 +3234,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;/div&gt;
     &lt;div class=&quot;olr-map-zoom&quot; data-map-zoom-controls role=&quot;group&quot; aria-label=&quot;Map zoom&quot;&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;out&quot; aria-label=&quot;Zoom out&quot; aria-keyshortcuts=&quot;-&quot; title=&quot;Zoom out (−)&quot;&gt;−&lt;/button&gt;
-  &lt;output data-map-zoom-value aria-label=&quot;Zoom level&quot;&gt;100%&lt;/output&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot; title=&quot;Zoom in (+)&quot;&gt;+&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; title=&quot;Reset map (0)&quot;&gt;Fit&lt;/button&gt;
 &lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers sideways to rotate · Pinch to zoom · Drag to move&lt;/p&gt;
@@ -3720,6 +3763,8 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;/aside&gt;
   &lt;style&gt;
 .olr-unified-map { position:relative; }
+.olr-unified-map[data-external-tools=&quot;true&quot;] #fc-parking-comparison &gt; .viz-row,
+.olr-unified-map[data-external-tools=&quot;true&quot;] &gt; .olr-map-compass { display:none !important; }
 .olr-unified-map[data-camera=&quot;true&quot;] .olr-canvas-viewport { overflow:hidden; }
 .olr-unified-map .olr-map-compass { position:absolute; top:var(--olr-compass-top,64px); right:18px; z-index:10; display:grid; place-items:center; width:48px; height:48px; box-sizing:border-box; padding:3px; border:1px solid var(--border); border-radius:50%; background:var(--background); color:var(--foreground); box-shadow:0 2px 8px #0002; cursor:pointer; touch-action:none; }
 .olr-unified-map .olr-map-compass:focus-visible { outline:2px solid var(--foreground); outline-offset:3px; }
@@ -3730,7 +3775,6 @@ html&gt;body{padding:0}&lt;/style&gt;
 .olr-unified-map #cf-floor-controls { display:flex; flex-wrap:nowrap; gap:4px; }
 .olr-unified-map #cf-floor-controls .btn[aria-pressed=&quot;true&quot;] { background:var(--foreground); color:var(--background); border-color:var(--foreground); }
 .olr-unified-map .olr-map-zoom { display:flex; align-items:center; flex-wrap:nowrap; gap:4px; margin-left:auto; }
-.olr-unified-map .olr-map-zoom output { min-width:4em; text-align:center; font-size:12px; font-variant-numeric:tabular-nums; }
 .olr-unified-map .olr-map-zoom .btn { min-width:36px; }
 .olr-unified-map .olr-map-gesture-help { flex:0 0 100%; margin:0; color:var(--muted-foreground); font-size:12px; line-height:1.4; }
 .olr-unified-map .olr-room-details { position:absolute; z-index:20; left:18px; bottom:36px; width:min(320px,calc(100% - 36px)); box-sizing:border-box; max-height:min(280px,45%); overflow:auto; border:1px solid var(--border); background:var(--background); color:var(--foreground); border-radius:10px; box-shadow:0 4px 24px #0002; padding:12px 16px; }
@@ -3792,7 +3836,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
 .olr-fit-viewer [data-map-zoom-controls] { display:flex; align-items:center; flex-wrap:nowrap; gap:4px; margin-left:auto; }
 .olr-fit-viewer [data-map-zoom] { min-width:36px; min-height:36px; padding:4px 10px; }
 .olr-fit-viewer [data-map-zoom=&quot;in&quot;], .olr-fit-viewer [data-map-zoom=&quot;out&quot;] { font-size:20px; line-height:1; }
-.olr-fit-viewer [data-map-zoom-value] { min-width:3.5em; text-align:center; font-variant-numeric:tabular-nums; font-size:12px; }
 .olr-fit-viewer [data-map-zoom]:disabled { opacity:.4; cursor:default; }
 &lt;/style&gt;
 &lt;script id=&quot;olr-fit-controls&quot;&gt;
@@ -4141,13 +4184,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     for (const button of root.querySelectorAll(&#x27;[data-map-zoom]&#x27;)) {
       button.disabled = button.dataset.mapZoom === &#x27;out&#x27; ? zoom &lt;= 1 : button.dataset.mapZoom === &#x27;in&#x27; ? zoom &gt;= 32 : false;
     }
-    for (const output of root.querySelectorAll(&#x27;[data-map-zoom-value]&#x27;)) output.textContent = `${Math.round(zoom * 100)}%`;
     root.dataset.zoomed = zoom &gt; 1 || Math.abs(bearing) &gt; .001 ? &#x27;true&#x27; : &#x27;false&#x27;;
     if (needle) needle.style.transform = `rotate(${bearing}deg)`;
     if (compass) {
       compass.dataset.bearing = String(bearing);
       compass.setAttribute(&#x27;aria-label&#x27;, Math.abs(bearing) &lt; .05 ? &#x27;North is up. Click to reset north.&#x27; : `North points ${Math.round((bearing+360)%360)} degrees clockwise from up. Click to reset north.`);
     }
+    window.dispatchEvent(new Event(&#x27;olr-camera-change&#x27;));
   }
   function measure(stage) {
     const state = stateFor(stage), d = state.dimensions;
@@ -4459,6 +4502,44 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(state.privateContent!=null)privateContent=state.privateContent;
     clearDetails();
   });
+})();
+
+(() =&gt; {
+  const root = document.getElementById(&#x27;olr-campus-page&#x27;);
+  if (!root) return;
+  let connected = false;
+  const floors = [...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
+  function publish() {
+    if (!connected) return;
+    const zoom = window.olrMapZoom;
+    window.parent.postMessage({type:&#x27;olr-tools-state&#x27;,
+      view: document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27; ? &#x27;existing&#x27; : &#x27;shifted&#x27;,
+      floor: Number(floors.find(b=&gt;b.getAttribute(&#x27;aria-pressed&#x27;) === &#x27;true&#x27;)?.dataset.campusFloor ?? 1),
+      zoom: zoom?.value ?? 1, minZoom: zoom?.min ?? 1, maxZoom: zoom?.max ?? 32,
+      bearing: window.olrMapCamera?.bearing ?? 0
+    }, &#x27;*&#x27;);
+  }
+  window.addEventListener(&#x27;message&#x27;, event =&gt; {
+    if (event.source !== window.parent || event.data?.type !== &#x27;olr-tools-command&#x27;) return;
+    const {command, value} = event.data;
+    if (command === &#x27;connect&#x27;) {
+      connected = true;
+      root.dataset.externalTools = &#x27;true&#x27;;
+      window.olrMapZoom?.restore();
+    } else if (!connected) return;
+    else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
+    else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
+      if (document.getElementById(&#x27;fc-shifted-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) !== &#x27;true&#x27;) document.getElementById(&#x27;fc-shifted-tab&#x27;).click();
+      floors.find(b=&gt;Number(b.dataset.campusFloor) === value)?.click();
+    } else if (command === &#x27;zoom&#x27; &amp;&amp; [&#x27;in&#x27;,&#x27;out&#x27;,&#x27;fit&#x27;].includes(value)) window.olrMapZoom?.[value]();
+    else if (command === &#x27;north&#x27;) window.olrMapCamera?.north();
+    else if (command === &#x27;rotate&#x27; &amp;&amp; Number.isFinite(value) &amp;&amp; Math.abs(value) &lt;= 180) window.olrMapCamera?.setBearing(window.olrMapCamera.bearing + value);
+    else return;
+    publish();
+  });
+  document.addEventListener(&#x27;olr-map-view-change&#x27;, publish);
+  window.addEventListener(&#x27;olr-camera-change&#x27;, publish);
+  window.parent.postMessage({type:&#x27;olr-tools-ready&#x27;}, &#x27;*&#x27;);
 })();
 
   &lt;/script&gt;
@@ -5354,12 +5435,60 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const frame = document.getElementById('codex-visualization');
   document.addEventListener('keydown', event => {
     const key=event.key.toLowerCase();
-    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','+','=','-','0'].includes(key)) return;
+    if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','n','+','=','-','0'].includes(key)) return;
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
     const data=key==='t'?{type:'olr-toggle-active-view'}:key==='f'?{type:'olr-toggle-story'}:key==='b'?{type:'olr-toggle-buildings'}:
-      {type:'olr-zoom-command',command:key==='0'?'fit':key==='-'?'out':'in'};
+      {type:'olr-zoom-command',command:key==='0'?'fit':key==='n'?'north':key==='-'?'out':'in'};
     event.preventDefault();frame.contentWindow?.postMessage(data, '*');
   });
+})();
+</script>
+<script id="olr-tools-shell">
+(() => {
+  const frame = document.getElementById('codex-visualization');
+  const panel = document.querySelector('.campus-tool-panel');
+  if (!frame || !panel) return;
+  const maps = [...panel.querySelectorAll('[data-campus-map]')];
+  const floors = [...panel.querySelectorAll('[data-campus-floor]')];
+  const zoom = [...panel.querySelectorAll('[data-campus-zoom]')];
+  const floorGroup = document.getElementById('campus-new-floors');
+  const compass = document.getElementById('campus-compass');
+  const needle = document.getElementById('campus-compass-needle');
+  const send = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
+  const connect = () => send('connect');
+  maps.forEach(b=>b.addEventListener('click',()=>send('map',b.dataset.campusMap)));
+  floors.forEach(b=>b.addEventListener('click',()=>send('floor',Number(b.dataset.campusFloor))));
+  zoom.forEach(b=>b.addEventListener('click',()=>send('zoom',b.dataset.campusZoom)));
+  window.addEventListener('message', event => {
+    if (event.source !== frame.contentWindow) return;
+    const s = event.data;
+    if (s?.type === 'olr-tools-ready') { connect(); return; }
+    if (s?.type !== 'olr-tools-state' || !['existing','shifted'].includes(s.view) || ![0,1,2].includes(s.floor) ||
+        ![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite)) return;
+    maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap === s.view)));
+    floorGroup.hidden = s.view !== 'shifted';
+    floors.forEach(b=>{ b.disabled = s.view !== 'shifted'; b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor) === s.floor)); });
+    zoom.forEach(b=>b.disabled = b.dataset.campusZoom === 'out' ? s.zoom <= s.minZoom : b.dataset.campusZoom === 'in' ? s.zoom >= s.maxZoom : false);
+    needle.style.transform = `rotate(${s.bearing}deg)`;
+    compass.setAttribute('aria-label',Math.abs(s.bearing) < .05 ? 'North is up. Click to reset north.' : `North points ${Math.round((s.bearing+360)%360)} degrees clockwise from up. Click to reset north.`);
+  });
+  let drag = null, moved = false;
+  const angle = event => { const b=compass.getBoundingClientRect(); return Math.atan2(event.clientY-b.top-b.height/2,event.clientX-b.left-b.width/2)*180/Math.PI; };
+  compass.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    drag = {id:event.pointerId, angle:angle(event), x:event.clientX, y:event.clientY}; moved=false;
+    compass.setPointerCapture?.(event.pointerId);
+  });
+  compass.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id || (!moved && Math.hypot(event.clientX-drag.x,event.clientY-drag.y) <= 4)) return;
+    const next=angle(event), delta=((next-drag.angle+540)%360)-180;
+    send('rotate',delta); drag.angle=next; moved=true; event.preventDefault();
+  });
+  for (const type of ['pointerup','pointercancel','lostpointercapture']) compass.addEventListener(type,()=>{drag=null;});
+  compass.addEventListener('click', event => { if (moved) {moved=false;event.preventDefault();return;} send('north'); });
+  frame.addEventListener('load',connect);
+  window.addEventListener('pageshow',connect);
+  connect();
 })();
 </script>
 </body>
