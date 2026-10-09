@@ -1,11 +1,11 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "34f7fa4a557ea98c920a83bf39d37e832fbff6ec70428f2bd64e533640bc27eb",
+  "revision": "f466ca9dd0c894817d297a4cbdee51f95b8770c314eaeca1c69eedacc8aed689",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-362f0e320e4aa95150d981605a1e6b68e8a95dc123c36851ab828e8ac9326ade.json",
-    "sha256": "362f0e320e4aa95150d981605a1e6b68e8a95dc123c36851ab828e8ac9326ade",
-    "bytes": 38409,
+    "url": "./pdf-inputs/campus-pdf-inputs-2bad7fd65570771fa29169946d2aad2636a442b9a540fe66db64607910c13b9e.json",
+    "sha256": "2bad7fd65570771fa29169946d2aad2636a442b9a540fe66db64607910c13b9e",
+    "bytes": 38410,
     "mime": "application/json"
   },
   "generator": {
@@ -49,10 +49,10 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=c0804f2963cf53fe",
-    "revision": "c0804f2963cf53fe",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=89787f1d198ff0e4",
+    "revision": "89787f1d198ff0e4",
     "asset_revision": "bcccc9ad476baff6",
-    "files_sha256": "bb7c470f114aed6a72a59cf0cdc5e11dbdb81e66b4d92325d2dca487744e5f77",
+    "files_sha256": "2a86478e15e0548e5b4a7be641a78fed818074139abb5b0c7445844453c72925",
     "files": [
       {
         "url": "./campus-3d/campus-atmosphere.js",
@@ -80,7 +80,7 @@
       },
       {
         "url": "./campus-3d/campus-plan-ground.js",
-        "sha256": "b54ac2f7f9059475edaf71bf0c630cc7a278234b920855eaa3752a9a3a85f579",
+        "sha256": "271fd7a1e5068d1492c8db28a0e5e20e7a8aa67447ffbe4c2c1294cb847cb8b1",
         "bytes": 10171,
         "mime": "text/javascript"
       },
@@ -98,7 +98,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "78587a1d49d27926d0865d3dacefc06add8ad76d89a29fa56082f5108d92852f",
+        "sha256": "a676996b8fc82e96f844663cd92c18e90c06e8a2ad0c641a77d18aa97d3bc096",
         "bytes": 4343,
         "mime": "text/html"
       },
@@ -110,7 +110,7 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "c041992bf6691d0db2f038ccdf6acfcfa15a9bf04c66196e24adc723c3d77488",
+        "sha256": "460b1bf49558a713e1ce7bb468d10898a4f770448407388a3e4105bb4ebf0ae8",
         "bytes": 40053,
         "mime": "text/javascript"
       }
