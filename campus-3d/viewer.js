@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
-import { createCampusWalk } from './campus-walk.js?v=8a52e4a4141b9ea1';
+import { createCampusWalk } from './campus-walk.js?v=61f6dd2d83543432';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -27,8 +27,8 @@ let renderer, camera, scene, extent = 200;
 let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
 const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-let model, frame = null;
-let walk = null, lastDrawTime = null;
+let model, frame = null, frameHost = null;
+let walk = null, lastDrawTime = null, walkPresentation = '3d';
 let resetAerialInput = () => {};
 let target = new THREE.Vector3();
 
@@ -48,21 +48,30 @@ function fail(error) {
 }
 
 function draw(timestamp) {
-  frame = null;
+  frame = null; frameHost = null;
   if (!active || document.hidden) return;
   const dt = lastDrawTime === null ? 0 : Math.min(.05, (timestamp - lastDrawTime) / 1000);
   walk?.update(dt);
-  if (lightingDirty && campusLighting) {
+  const showingModel = walkPresentation === '3d';
+  if (showingModel && lightingDirty && campusLighting) {
     campusLighting.setTime(timeOfDay);
     lightingDirty = false;
     updateOutlineColor();
   }
-  renderer.render(scene, walk?.camera || camera);
-  renderedFrames++;
+  // The plan shares the physics loop, but its hidden 3D canvas does no GPU work.
+  if (showingModel) { renderer.render(scene, walk?.camera || camera); renderedFrames++; }
   lastDrawTime = walk?.needsAnimation ? timestamp : null;
   if (walk?.needsAnimation) requestDraw();
 }
-function requestDraw() { if (active && !document.hidden && renderer && camera && frame === null) frame = requestAnimationFrame(draw); }
+function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
+function requestDraw() {
+  if (active && !document.hidden && renderer && camera && frame === null) {
+    // Hidden iframe RAFs can be throttled. In plan mode the visible parent owns
+    // the physics clock; the hidden model does not render a second scene.
+    frameHost = walkPresentation === '2d' && EMBEDDED ? window.parent : window;
+    frame = frameHost.requestAnimationFrame(draw);
+  }
+}
 // Older parent frames may still send a mode command; dragging stays Rotate.
 function setDragMode(_mode, announce = true) {
   if (!renderer) return;
@@ -335,7 +344,14 @@ function installEmbeddedNavigation() {
 window.addEventListener('message', event => {
   if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
-  if (['walk-place', 'walk-start', 'walk-exit', 'walk-run'].includes(command)) {
+  if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
+    if (walkPresentation !== value) { walk?.pause(); cancelDraw(); }
+    walkPresentation = value;
+    if (value === '3d' && walk?.mode === 'walking') renderer?.domElement.focus({preventScroll:true});
+    requestDraw();
+    return;
+  }
+  if (['walk-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input'].includes(command)) {
     if (active) walk?.command(command, value);
     return;
   }
@@ -349,8 +365,8 @@ window.addEventListener('message', event => {
     savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
-    if (!active) { walk?.exit(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
-    if (!active && frame !== null) { cancelAnimationFrame(frame); frame = null; }
+    if (!active) { walk?.pause(); resetAerialInput(); lastDrawTime = null; }
+    if (!active) cancelDraw();
     requestDraw();
   } else if (command === 'theme') {
     if (['system', 'light', 'dark'].includes(value?.preference)) themePreference = value.preference;
@@ -374,6 +390,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
+  get walkPresentation() { return walkPresentation; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
     const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(walk?.camera || camera);
@@ -460,6 +477,8 @@ async function init() {
     getAerialCamera: () => camera,
     getAerialPose: () => structuredClone(embeddedCamera),
     requestDraw,
+    canFocus: () => walkPresentation === '3d',
+    onPose: pose => { if (walkPresentation === '2d') post({type:'olr-3d-walk-pose', ...pose}); },
     onChange: state => {
       resetAerialInput();
       updateOutlineColor();

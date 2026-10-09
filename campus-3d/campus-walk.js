@@ -147,7 +147,7 @@ function closestSegments(p, q, a, b, resultP, resultQ) {
   resultP.copy(d1).multiplyScalar(s).add(p); resultQ.copy(d2).multiplyScalar(t).add(a);
 }
 
-export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, requestDraw, onChange = () => {} }) {
+export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, requestDraw, onChange = () => {}, onPose = () => {}, canFocus = () => true }) {
   const surfaces = makeSurfaceIndex(model);
   const camera = new THREE.PerspectiveCamera(65, 1, .08, 2000);
   camera.rotation.order = 'YXZ';
@@ -155,6 +155,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   let yaw = Math.PI / 2, pitch = 0, velocityY = 0, groundY = 0, groundSurface = '';
   let feedback = '', collisionCount = 0, movedSpeed = 0, lastAnnouncement = '';
   let pendingPlacement = null, placementDown = null, lookPointer = null;
+  let lastPose = null;
   const feet = new THREE.Vector3(), velocity = new THREE.Vector3();
   const keys = new Set(), padDirections = new Set();
   const captured = new Set();
@@ -205,8 +206,15 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     onChange(snapshot());
   }
   function message(text) { feedback = text; announce(); }
-  function syncCamera() { camera.position.copy(feet).y += EYE; camera.rotation.set(pitch, yaw, 0, 'YXZ'); camera.updateMatrixWorld(); }
-  function focusCanvas() { if (!document.hidden) canvas.focus({ preventScroll: true }); }
+  function syncCamera() {
+    camera.position.copy(feet).y += EYE; camera.rotation.set(pitch, yaw, 0, 'YXZ'); camera.updateMatrixWorld();
+    // The 2D plan follows this same walker without copying its physics state.
+    // Publish only changed poses; mode and feedback still use onChange.
+    if (lastPose && lastPose.x === feet.x && lastPose.y === feet.y && lastPose.z === feet.z && lastPose.yaw === yaw && lastPose.pitch === pitch) return;
+    lastPose = { x: feet.x, y: feet.y, z: feet.z, yaw, pitch };
+    onPose({ siteFeet: { x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }, yawRadians: yaw, pitchRadians: pitch, grounded, jumping: !grounded });
+  }
+  function focusCanvas() { if (!document.hidden && canFocus()) canvas.focus({ preventScroll: true }); }
   function wake() { suspended = false; requestDraw(); }
   function pause() {
     keys.clear(); padDirections.clear(); lookPointer = null; placementDown = null; pendingPlacement = null;
@@ -285,8 +293,39 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (mode !== 'walking' || !grounded) return;
     velocityY = JUMP_SPEED; grounded = false; wake();
   }
+  const moveCodes = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
+  const moveDirections = new Set(['forward', 'backward', 'left', 'right']);
+  function look(dx, dy, touch) {
+    const sensitivity = touch ? .004 : .003;
+    yaw -= dx * sensitivity;
+    pitch = THREE.MathUtils.clamp(pitch - dy * sensitivity, -Math.PI * .46, Math.PI * .46);
+    syncCamera(); wake();
+  }
   function command(name, value) {
     if (name === 'walk-exit') { exit(); return true; }
+    if (name === 'walk-input') {
+      if (value?.kind === 'pause') { pause(); return true; }
+      if (mode !== 'walking') return false;
+      if (value?.kind === 'key' && moveCodes.has(value.code) && typeof value.down === 'boolean') {
+        if (value.down) {
+          if (value.code === 'Space' && !keys.has('Space')) jump();
+          keys.add(value.code); announce(); wake();
+        } else { keys.delete(value.code); announce(); requestDraw(); }
+        return true;
+      }
+      if (value?.kind === 'move' && moveDirections.has(value.direction) && typeof value.down === 'boolean') {
+        if (value.down) { padDirections.add(value.direction); wake(); }
+        else { padDirections.delete(value.direction); requestDraw(); }
+        return true;
+      }
+      if (value?.kind === 'look' && Number.isFinite(value.dx) && Number.isFinite(value.dy) && typeof value.touch === 'boolean') {
+        look(value.dx, value.dy, value.touch); return true;
+      }
+      return false;
+    }
+    if (name === 'walk-place-at' && mode === 'placing' && Number.isFinite(value?.x) && Number.isFinite(value?.y)) {
+      return startAt(value.x * FT, -value.y * FT, placementYaw());
+    }
     if (name === 'walk-place') {
       pause(); mode = 'placing'; suspended = false; marker.visible = false;
       feedback = 'Click or tap an open lawn or path. Esc returns to the aerial view.';
@@ -379,10 +418,8 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     stop(event);
     if (mode === 'placing') { pendingPlacement = { x: event.clientX, y: event.clientY }; wake(); return; }
     if (lookPointer?.id !== event.pointerId) return;
-    const sensitivity = lookPointer.touch ? .004 : .003;
-    yaw -= (event.clientX - lookPointer.x) * sensitivity;
-    pitch = THREE.MathUtils.clamp(pitch - (event.clientY - lookPointer.y) * sensitivity, -Math.PI * .46, Math.PI * .46);
-    lookPointer.x = event.clientX; lookPointer.y = event.clientY; syncCamera(); wake();
+    look(event.clientX - lookPointer.x, event.clientY - lookPointer.y, lookPointer.touch);
+    lookPointer.x = event.clientX; lookPointer.y = event.clientY;
   }, { capture: true });
   function release(event) {
     if (mode === 'aerial') return;
@@ -401,7 +438,6 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(type, release, { capture: true });
   canvas.addEventListener('wheel', event => { if (mode !== 'aerial') stop(event); }, { capture: true, passive: false });
   canvas.addEventListener('contextmenu', event => { if (mode !== 'aerial') event.preventDefault(); });
-  const moveCodes = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
   canvas.addEventListener('keydown', event => {
     if (mode === 'aerial' || event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.code === 'Escape') { stop(event); exit(); return; }
