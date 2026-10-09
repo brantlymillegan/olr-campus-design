@@ -4,3 +4,9 @@
 @media(max-width:400px){.title h1{font-size:27px}.views{left:12px;right:12px}.views button{padding:9px 6px;font-size:9px}.masthead{padding:18px}.concept{letter-spacing:0}}
 @media(max-height:550px) and (min-width:761px){.masthead{padding:18px 24px;gap:15px}.title h1{font-size:28px}.views{left:24px;bottom:46px}.navigation{right:24px;bottom:46px}footer{inset:auto 24px 11px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Visible drag modes work with a primary mouse button or one finger. */
+.navigation button[data-drag-mode]{width:auto;padding:0 10px;font-size:11px}.navigation button[data-drag-mode][aria-pressed=true]{background:var(--forest);color:#fffdf6}canvas[data-drag-mode=pan]{cursor:grab}canvas[data-drag-mode=pan]:active{cursor:grabbing}
+@media(min-width:761px) and (max-width:820px){.views{bottom:126px}}
+@media(max-width:760px){.navigation{left:20px;right:20px;justify-content:center}.navigation button{width:38px}.navigation button[data-drag-mode]{width:auto}}
+@media(max-width:400px){.navigation{left:12px;right:12px;gap:1px}.navigation button{width:36px}.navigation button[data-drag-mode]{padding:0 8px}}

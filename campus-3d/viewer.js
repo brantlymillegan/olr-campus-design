@@ -9,6 +9,7 @@ const status = document.getElementById('status');
 const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
 const viewButtons = [...document.querySelectorAll('[data-view]')];
+const dragModeButtons = [...document.querySelectorAll('[data-drag-mode]')];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let renderer, camera, controls, scene, extent = 200, fitDistance = 280;
 let model, sceneBounds, presets = {}, activeView = 'overview', transition = null, frame = null;
@@ -94,6 +95,21 @@ function zoom(factor) {
   controls.update();
   requestDraw();
 }
+function setDragMode(mode, announce = true) {
+  if (!controls) return;
+  const pan = mode === 'pan';
+  controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.touches.ONE = pan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  renderer.domElement.dataset.dragMode = mode;
+  dragModeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.dragMode === mode)));
+  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${pan ? 'pan' : 'rotate'}. Use the Rotate and Pan buttons to switch. Right-drag or drag with two fingers to pan; scroll or pinch to zoom. Keyboard: arrow keys to pan, plus and minus to zoom, zero to reset.`);
+  if (announce) status.textContent = pan ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to look around the campus.';
+}
+function beginNavigation() {
+  transition = null;
+  activeView = null;
+  viewButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+}
 
 async function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
@@ -108,7 +124,6 @@ async function init() {
   wrap.appendChild(renderer.domElement);
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('role', 'img');
-  renderer.domElement.setAttribute('aria-label', 'Interactive new campus exterior model. Drag to orbit, right-drag to pan, scroll to zoom. Keyboard: arrow keys to pan, plus and minus to zoom, zero to reset.');
   renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); fail(new Error('WebGL context lost')); });
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf3f0e8);
@@ -132,22 +147,21 @@ async function init() {
   controls.maxPolarAngle = Math.PI * 0.487;
   controls.minPolarAngle = 0.06;
   controls.screenSpacePanning = true;
+  controls.enablePan = true;
   controls.zoomSpeed = 0.8;
   controls.rotateSpeed = 0.6;
   controls.listenToKeyEvents(renderer.domElement);
+  setDragMode('rotate', false);
   controls.addEventListener('change', requestDraw);
-  controls.addEventListener('start', () => {
-    transition = null;
-    activeView = null;
-    viewButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
-  });
+  controls.addEventListener('start', beginNavigation);
   renderer.domElement.addEventListener('keydown', event => {
+    if (event.key.startsWith('Arrow')) beginNavigation();
     if (['+', '=', '-', '_', '0'].includes(event.key)) {
       event.preventDefault();
       if (event.key === '0') selectView('overview');
       else zoom(event.key === '+' || event.key === '=' ? 0.8 : 1.25);
     }
-  });
+  }, { capture: true });
   function resize() {
     const { width, height } = wrap.getBoundingClientRect();
     renderer.setSize(width, height);
@@ -204,6 +218,7 @@ async function init() {
   renderer.shadowMap.needsUpdate = true;
   selectView('overview', false);
   viewButtons.forEach(button => button.disabled = false);
+  dragModeButtons.forEach(button => button.disabled = false);
   ['fit', 'zoom-in', 'zoom-out'].forEach(id => document.getElementById(id).disabled = false);
   loading.hidden = true;
   document.body.classList.add('ready');
@@ -211,6 +226,7 @@ async function init() {
   requestDraw();
 }
 viewButtons.forEach(button => button.addEventListener('click', () => selectView(button.dataset.view)));
+dragModeButtons.forEach(button => button.addEventListener('click', () => setDragMode(button.dataset.dragMode)));
 document.getElementById('fit').addEventListener('click', () => selectView('overview'));
 document.getElementById('zoom-in').addEventListener('click', () => zoom(0.8));
 document.getElementById('zoom-out').addEventListener('click', () => zoom(1.25));
