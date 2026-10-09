@@ -72,6 +72,21 @@ function makeSurfaceIndex(model) {
     }
     return highest;
   }
+  // Read-only aerial clearance in world meters. Sample a two-foot buffer in
+  // both horizontal axes, including roofs that cannot support the walker.
+  function clearanceHeight(x, z) {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
+    let highest = null;
+    for (const dx of [-2 * FT, 0, 2 * FT]) {
+      for (const dz of [-2 * FT, 0, 2 * FT]) {
+        for (const index of [ground, solids]) {
+          const surface = height(index, x + dx, z + dz);
+          if (surface && (highest === null || surface.y > highest)) highest = surface.y;
+        }
+      }
+    }
+    return highest ?? 0;
+  }
   function groundAt(x, z, clearance = true) {
     // Every standable point must have real landform underneath it. The model's
     // decorative cut edge and bottom slab can never become a walking surface.
@@ -108,7 +123,7 @@ function makeSurfaceIndex(model) {
     }
     return support;
   }
-  return { groundAt, solidSupportAt, nearSolids, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount }) };
+  return { groundAt, clearanceHeight, solidSupportAt, nearSolids, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount }) };
 }
 
 // Closest points between two finite line segments (including degenerate ends).
@@ -431,6 +446,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   return Object.freeze({
     get mode() { return mode; }, get camera() { return mode === 'walking' ? camera : null; }, get state() { return snapshot(); },
     get needsAnimation() { const input = movement(); return mode === 'walking' && !suspended && (Boolean(input.x || input.z) || !grounded); },
+    clearanceHeight: surfaces.clearanceHeight,
     command, update, resize, pause, exit
   });
 }

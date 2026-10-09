@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
-import { createCampusWalk } from './campus-walk.js?v=e0a044da0a3790b6';
+import { createCampusWalk } from './campus-walk.js?v=8a52e4a4141b9ea1';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -10,6 +10,7 @@ const FEET = 0.3048;
 const CAMPUS_BEARING = 9.067253590763931;
 const DEFAULT_TILT = 25;
 const MIN_TILT = 0, MAX_TILT = 85;
+const AERIAL_FOV = 50;
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 let themePreference = 'system', resolvedTheme = 'light', active = false;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
@@ -23,6 +24,9 @@ const status = document.getElementById('status');
 const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
 let renderer, camera, scene, extent = 200;
+let aerialDistance = 1200;
+const navigationRay = new THREE.Raycaster();
+const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let model, frame = null;
 let walk = null, lastDrawTime = null;
 let resetAerialInput = () => {};
@@ -70,8 +74,8 @@ function setDragMode(_mode, announce = true) {
   }
 }
 
-// Enter with the same ground-plane scale and compass bearing as the map, then
-// allow a full orbit while retaining the center and scale for the return to 2D.
+// Preserve the map's scale at the view center. Perspective then makes nearer
+// objects larger and farther objects smaller as the camera orbits the campus.
 function publishCamera() {
   if (!model) return;
   post({ type: 'olr-3d-state', camera: structuredClone(embeddedCamera), dragMode });
@@ -79,15 +83,31 @@ function publishCamera() {
 function applyEmbeddedCamera(announce = false) {
   if (!camera) return;
   const rect = wrap.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
   const width = Math.max(1, rect.width), height = Math.max(1, rect.height);
   embeddedCamera.width = width; embeddedCamera.height = height;
   const unitsPerPixel = FEET / embeddedCamera.scale;
-  Object.assign(camera, { left: -width * unitsPerPixel / 2, right: width * unitsPerPixel / 2, top: height * unitsPerPixel / 2, bottom: -height * unitsPerPixel / 2, zoom: 1 });
+  const requestedDistance = height * unitsPerPixel / (2 * Math.tan(THREE.MathUtils.degToRad(AERIAL_FOV / 2)));
   const theta = THREE.MathUtils.degToRad(embeddedCamera.bearing - CAMPUS_BEARING);
   const focus = new THREE.Vector3(embeddedCamera.center.x * FEET, 0, -embeddedCamera.center.y * FEET);
   const tilt = THREE.MathUtils.degToRad(embeddedCamera.tilt);
   const direction = new THREE.Vector3(Math.sin(theta) * Math.sin(tilt), Math.cos(tilt), Math.cos(theta) * Math.sin(tilt));
-  camera.position.copy(focus).addScaledVector(direction, 1200);
+  aerialDistance = Math.max(requestedDistance, 6 * FEET / direction.y);
+  // Dolly back before a close aerial view enters a roof or terrain. Reuse the
+  // walker's spatial index, and report the adjusted scale to the 2D toolbar.
+  for (let attempt = 0; attempt < 96; attempt++) {
+    camera.position.copy(focus).addScaledVector(direction, aerialDistance);
+    if (!walk || camera.position.y >= walk.clearanceHeight(camera.position.x, camera.position.z) + 6 * FEET) break;
+    aerialDistance *= 1.08;
+  }
+  camera.position.copy(focus).addScaledVector(direction, aerialDistance);
+  const constrained = aerialDistance > requestedDistance * (1 + 1e-10);
+  if (constrained) {
+    const ratio = requestedDistance / aerialDistance;
+    embeddedCamera.scale *= ratio;
+    embeddedCamera.zoom = Math.max(1, embeddedCamera.zoom * ratio);
+  }
+  Object.assign(camera, { aspect: width / height, fov: AERIAL_FOV, zoom: 1, far: Math.max(5000, aerialDistance + extent * 4) });
   // Retain the compass bearing even directly overhead, where world-up would
   // be parallel to the viewing direction and lookAt cannot resolve yaw.
   camera.up.set(-Math.sin(theta), 0, -Math.cos(theta));
@@ -95,28 +115,50 @@ function applyEmbeddedCamera(announce = false) {
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
   requestDraw();
-  if (announce) publishCamera();
+  if (announce || constrained) publishCamera();
 }
-function groundOffset(dx, dy) {
+function groundAt(point) {
+  const rect = wrap.getBoundingClientRect();
+  navigationRay.setFromCamera(new THREE.Vector2(point.x / rect.width * 2 - 1, 1 - point.y / rect.height * 2), camera);
+  // A tilted perspective view can include sky. Do not anchor navigation to a
+  // backwards or near-horizon intersection thousands of feet off campus.
+  if (navigationRay.ray.direction.y >= -1e-5) return null;
+  const hit = navigationRay.ray.intersectPlane(navigationGround, new THREE.Vector3());
+  return hit && hit.distanceTo(camera.position) <= aerialDistance * 8 ? hit : null;
+}
+function centerGroundOffset(dx, dy) {
   const theta = THREE.MathUtils.degToRad(embeddedCamera.bearing - CAMPUS_BEARING);
   const c = Math.cos(theta), s = Math.sin(theta), scale = embeddedCamera.scale;
   const foreshortening = Math.cos(THREE.MathUtils.degToRad(embeddedCamera.tilt));
   return { x: (c * dx + s * dy / foreshortening) / scale, y: (s * dx - c * dy / foreshortening) / scale };
 }
-function panEmbedded(dx, dy, announce = true) {
-  const delta = groundOffset(dx, dy);
-  embeddedCamera.center.x -= delta.x; embeddedCamera.center.y -= delta.y;
+function panEmbedded(dx, dy, announce = true, point) {
+  const rect = wrap.getBoundingClientRect();
+  const end = point || { x: rect.width / 2, y: rect.height / 2 };
+  const from = groundAt({ x: end.x - dx, y: end.y - dy }), to = groundAt(end);
+  if (from && to) {
+    embeddedCamera.center.x += (from.x - to.x) / FEET;
+    embeddedCamera.center.y -= (from.z - to.z) / FEET;
+  } else {
+    const delta = centerGroundOffset(dx, dy);
+    embeddedCamera.center.x -= delta.x; embeddedCamera.center.y -= delta.y;
+  }
   applyEmbeddedCamera(announce);
 }
 function zoomEmbedded(factor, point, announce = true) {
   const nextZoom = THREE.MathUtils.clamp(embeddedCamera.zoom * factor, 1, 32);
   const actual = nextZoom / embeddedCamera.zoom;
   const rect = wrap.getBoundingClientRect();
-  const offset = groundOffset((point?.x ?? rect.width / 2) - rect.width / 2, (point?.y ?? rect.height / 2) - rect.height / 2);
-  embeddedCamera.center.x += offset.x * (1 - 1 / actual);
-  embeddedCamera.center.y += offset.y * (1 - 1 / actual);
+  const cursor = point || { x: rect.width / 2, y: rect.height / 2 };
+  const before = groundAt(cursor);
   embeddedCamera.scale *= actual;
   embeddedCamera.zoom = nextZoom;
+  applyEmbeddedCamera();
+  const after = before && groundAt(cursor);
+  if (after) {
+    embeddedCamera.center.x += (before.x - after.x) / FEET;
+    embeddedCamera.center.y -= (before.z - after.z) / FEET;
+  }
   applyEmbeddedCamera(announce);
 }
 function orbitEmbedded(yaw, tilt = 0, announce = true) {
@@ -233,7 +275,7 @@ function installEmbeddedNavigation() {
     const next = snapshot();
     if (gesture) {
       const dx = next.x - gesture.x, dy = next.y - gesture.y;
-      if (pointers.size > 1 || pointer.pan || event.shiftKey) panEmbedded(dx, dy, false);
+      if (pointers.size > 1 || pointer.pan || event.shiftKey) panEmbedded(dx, dy, false, next);
       else orbitEmbedded(-dx * 0.3, -dy * 0.3, false);
       if (next.distance && gesture.distance) {
         zoomEmbedded(next.distance / gesture.distance, next, false);
@@ -255,7 +297,10 @@ function installEmbeddedNavigation() {
     if (event.ctrlKey || event.metaKey) {
       const rect = canvas.getBoundingClientRect();
       zoomEmbedded(Math.exp(-event.deltaY * unit * 0.008), { x: event.clientX - rect.left, y: event.clientY - rect.top });
-    } else panEmbedded(-event.deltaX * unit, -event.deltaY * unit);
+    } else {
+      const rect = canvas.getBoundingClientRect();
+      panEmbedded(-event.deltaX * unit, -event.deltaY * unit, true, { x: event.clientX - rect.left, y: event.clientY - rect.top });
+    }
   }, { passive: false });
   // Safari reports an actual trackpad pinch/twist separately from a two-finger
   // scroll. Wheel deltas alone must never change the compass bearing.
@@ -299,9 +344,9 @@ window.addEventListener('message', event => {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
     const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
     embeddedCamera = { ...embeddedCamera, ...value, dragMode, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? THREE.MathUtils.clamp(value.tilt, MIN_TILT, MAX_TILT) : DEFAULT_TILT, zoom };
-    savedEmbeddedCamera = structuredClone(embeddedCamera);
     if (typeof value.oldBuildings === 'boolean') setOldOutlines(value.oldBuildings);
     applyEmbeddedCamera();
+    savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
     if (!active) { walk?.exit(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
@@ -368,11 +413,12 @@ async function init() {
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.15;
   scene.add(sun, sun.target);
-  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.2, 5000);
+  camera = new THREE.PerspectiveCamera(AERIAL_FOV, 1, 0.1, 5000);
   setDragMode(dragMode, false);
   installEmbeddedNavigation();
   function resize() {
     const { width, height } = wrap.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
     renderer.setSize(Math.max(1, width), Math.max(1, height));
     embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
     applyEmbeddedCamera(Boolean(model && active));
