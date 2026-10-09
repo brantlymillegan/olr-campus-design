@@ -11,6 +11,8 @@ const CELL = 3, SLOPE_COS = Math.cos(50 * Math.PI / 180);
 const CAMPUS_BEARING = 9.067253590763931;
 const EPS = .008;
 const MAX_FLIGHT_ELEVATION = 500 * FT;
+const MAX_FLIGHT_BANK = Math.PI / 15; // 12 degrees, reached near a 90 degree/second turn.
+const BANK_TURN_SECONDS = .12, BANK_EASE_SECONDS = .22;
 
 function walkThroughObject(object) {
   for (let node = object; node; node = node.parent) if (node.userData?.walkThrough === true) return true;
@@ -205,6 +207,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   camera.rotation.order = 'YXZ';
   let mode = 'aerial', navigationMode = 'walking', runningToggle = false, grounded = true, suspended = false;
   let yaw = Math.PI / 2, pitch = 0, velocityY = 0, groundY = 0, groundSurface = '';
+  let roll = 0, pendingBankYaw = 0, bankTurnRate = 0;
   let jumpCount = 0;
   let feedback = '', collisionCount = 0, movedSpeed = 0, lastAnnouncement = '';
   let pendingPlacement = null, placementDown = null, lookPointer = null;
@@ -251,7 +254,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       pointerLocked: pointerLocked(), normalSpeedFeetPerSecond: WALK_SPEED / FT,
       runSpeedFeetPerSecond: RUN_SPEED / FT, jumpHeightFeet: JUMP_HEIGHT / FT,
       superJumpHeightFeet: SUPER_JUMP_HEIGHT / FT, jumpCount,
-      yawRadians: yaw, pitchRadians: pitch, collisionCount, feedback, message: feedback,
+      yawRadians: yaw, pitchRadians: pitch, rollRadians: roll, turnRateRadiansPerSecond: bankTurnRate, collisionCount, feedback, message: feedback,
       boundsFeet: Object.freeze({ minX: surfaces.terrainBounds.min.x / FT, maxX: surfaces.terrainBounds.max.x / FT, minY: -surfaces.terrainBounds.max.z / FT, maxY: -surfaces.terrainBounds.min.z / FT }),
       collisionGeometry: surfaces.diagnostics
     });
@@ -278,12 +281,12 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   }
   function message(text) { feedback = text; announce(); }
   function syncCamera() {
-    camera.position.copy(feet).y += EYE; camera.rotation.set(pitch, yaw, 0, 'YXZ'); camera.updateMatrixWorld();
+    camera.position.copy(feet).y += EYE; camera.rotation.set(pitch, yaw, roll, 'YXZ'); camera.updateMatrixWorld();
     // The 2D plan follows this same walker without copying its physics state.
     // Publish only changed poses; mode and feedback still use onChange.
-    if (lastPose && lastPose.x === feet.x && lastPose.y === feet.y && lastPose.z === feet.z && lastPose.yaw === yaw && lastPose.pitch === pitch) return;
-    lastPose = { x: feet.x, y: feet.y, z: feet.z, yaw, pitch };
-    onPose({ siteFeet: { x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }, yawRadians: yaw, pitchRadians: pitch, grounded, jumping: mode === 'walking' && !grounded });
+    if (lastPose && lastPose.x === feet.x && lastPose.y === feet.y && lastPose.z === feet.z && lastPose.yaw === yaw && lastPose.pitch === pitch && lastPose.roll === roll) return;
+    lastPose = { x: feet.x, y: feet.y, z: feet.z, yaw, pitch, roll };
+    onPose({ siteFeet: { x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }, yawRadians: yaw, pitchRadians: pitch, rollRadians: roll, grounded, jumping: mode === 'walking' && !grounded });
   }
   function focusCanvas() { if (!document.hidden && canFocus()) canvas.focus({ preventScroll: true }); }
   function releaseMouseLook() {
@@ -309,15 +312,19 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   function wake() { suspended = false; requestDraw(); }
   function pause() {
     releaseMouseLook();
+    // A presentation toggle can blur the canvas: keep its exact banked pose,
+    // discard old turn input, and finish leveling without resuming movement.
+    pendingBankYaw = 0; bankTurnRate = 0;
     keys.clear(); padDirections.clear(); lookPointer = null; placementDown = null; pendingPlacement = null;
     for (const id of captured) { try { canvas.releasePointerCapture(id); } catch {} }
     captured.clear(); movedSpeed = 0; velocity.set(0, 0, 0); suspended = true;
     for (const button of hud.querySelectorAll('[data-walk-move]')) button.removeAttribute('data-held');
     announce();
+    if (mode === 'flying' && roll !== 0) requestDraw();
   }
   function exit() {
     pause(); mode = 'aerial'; marker.visible = false; feedback = ''; velocityY = 0; jumpCount = 0;
-    grounded = true; runningToggle = false; announce(); requestDraw();
+    grounded = true; runningToggle = false; roll = 0; syncCamera(); announce(); requestDraw();
   }
   function collisionAt(x, z, footY) {
     if (presentation === '2d') return null;
@@ -371,7 +378,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (!placement.valid) { message(placement.reason); return false; }
     pause(); mode = navigationMode; suspended = false; marker.visible = false;
     feet.set(x, placement.surface.y, z); resumeModelOnMove = false; groundY = feet.y; groundSurface = placement.surface.name;
-    yaw = facing; pitch = 0; velocityY = 0; jumpCount = 0; velocity.set(0, 0, 0); grounded = mode === 'walking';
+    yaw = facing; pitch = 0; roll = 0; velocityY = 0; jumpCount = 0; velocity.set(0, 0, 0); grounded = mode === 'walking';
     feedback = ''; syncCamera(); announce(); focusCanvas(); requestDraw();
     return true;
   }
@@ -409,7 +416,11 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const moveDirections = new Set(['forward', 'backward', 'left', 'right', 'up', 'down']);
   function look(dx, dy, touch) {
     const sensitivity = touch ? .004 : .003;
-    yaw -= dx * sensitivity;
+    const yawDelta = -dx * sensitivity;
+    yaw += yawDelta;
+    // All mouse, drag, touch and forwarded look input shares this accumulator.
+    // Bound only the visual impulse from abnormal pointer-lock spikes.
+    if (mode === 'flying') pendingBankYaw = THREE.MathUtils.clamp(pendingBankYaw + yawDelta, -Math.PI / 3, Math.PI / 3);
     pitch = THREE.MathUtils.clamp(pitch - dy * sensitivity, -Math.PI * .46, Math.PI * .46);
     syncCamera(); wake();
   }
@@ -450,7 +461,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       return startAt(value.x * FT, -value.y * FT, placementYaw());
     }
     if (name === 'walk-place' || name === 'fly-place') {
-      pause(); mode = 'placing'; suspended = false; marker.visible = false;
+      pause(); mode = 'placing'; roll = 0; suspended = false; marker.visible = false;
       if (presentation === '2d') flatGroundY = 0;
       navigationMode = name === 'fly-place' ? 'flying' : 'walking';
       feedback = presentation === '2d' ? 'Click or tap a starting point on the plan. End cancels placement.' : 'Click or tap a lawn, path, or roof. End cancels placement.';
@@ -507,11 +518,31 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     const length = Math.hypot(forward, side, up) || 1;
     return { x: (-Math.sin(yaw) * forward + Math.cos(yaw) * side) / length, y: up / length, z: (-Math.cos(yaw) * forward - Math.sin(yaw) * side) / length };
   }
+  function bankNeedsAnimation() {
+    return mode === 'flying' && (pendingBankYaw !== 0 || bankTurnRate !== 0 || roll !== 0);
+  }
+  function updateBank(elapsed) {
+    if (mode !== 'flying') { roll = 0; pendingBankYaw = 0; bankTurnRate = 0; return; }
+    if (elapsed === 0) return; // An idle-loop wake must not consume its input.
+    const turnBlend = -Math.expm1(-elapsed / BANK_TURN_SECONDS);
+    bankTurnRate += (pendingBankYaw / elapsed - bankTurnRate) * turnBlend;
+    bankTurnRate = THREE.MathUtils.clamp(bankTurnRate, -4, 4);
+    pendingBankYaw = 0;
+    const target = THREE.MathUtils.clamp(bankTurnRate * MAX_FLIGHT_BANK / (Math.PI / 2), -MAX_FLIGHT_BANK, MAX_FLIGHT_BANK);
+    roll += (target - roll) * -Math.expm1(-elapsed / BANK_EASE_SECONDS);
+    if (Math.abs(bankTurnRate) < .0001) bankTurnRate = 0;
+    if (bankTurnRate === 0 && Math.abs(roll) < .00001) roll = 0;
+  }
   function update(dt) {
     if (mode === 'placing') { if (pendingPlacement) { showPlacement(pendingPlacement); pendingPlacement = null; } return; }
     if (!navigating()) return;
-    suspended = false;
     const elapsed = THREE.MathUtils.clamp(Number.isFinite(dt) ? dt : 0, 0, .05);
+    // Banking follows real turn speed even on slower devices; movement keeps
+    // its existing small physics step independently of this visual easing.
+    updateBank(THREE.MathUtils.clamp(Number.isFinite(dt) ? dt : 0, 0, .25));
+    // Level while paused, but never use these extra frames to resume flight.
+    if (suspended && mode === 'flying') { syncCamera(); return; }
+    suspended = false;
     // An input can wake the render loop with dt=0. Keep its jump impulse alive
     // until time advances rather than treating the unchanged feet as a landing.
     if (elapsed === 0) { movedSpeed = 0; velocity.set(0, velocityY, 0); syncCamera(); return; }
@@ -661,7 +692,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const rect = canvas.getBoundingClientRect(); resize(rect.width, rect.height);
   return Object.freeze({
     get mode() { return mode; }, get camera() { return navigating() ? camera : null; }, get state() { return snapshot(); },
-    get needsAnimation() { const input = movement(); return navigating() && !suspended && (Boolean(input.x || input.y || input.z) || (mode === 'walking' && !grounded)); },
+    get needsAnimation() { const input = movement(); return navigating() && (bankNeedsAnimation() || (!suspended && (Boolean(input.x || input.y || input.z) || (mode === 'walking' && !grounded)))); },
     clearanceHeight: surfaces.clearanceHeight,
     setFlatBounds(bounds) { if (Array.isArray(bounds) && bounds.length === 4 && bounds.every(Number.isFinite)) flatBounds = [...bounds]; },
     command, update, resize, pause, exit

@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=456ee855afa7f73c';
+import { createCampusWalk } from './campus-walk.js?v=9d2907b51d4376a6';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=78d265ee5868c3d1';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -57,7 +57,7 @@ function fail(error) {
 function draw(timestamp) {
   frame = null; frameHost = null;
   if (!modelReady || !active || document.hidden) return;
-  const dt = lastDrawTime === null ? 0 : Math.min(.05, (timestamp - lastDrawTime) / 1000);
+  const dt = lastDrawTime === null ? 0 : Math.max(0, (timestamp - lastDrawTime) / 1000);
   walk?.update(dt);
   const showingModel = walkPresentation === '3d';
   if (showingModel && lightingDirty && campusLighting) {
