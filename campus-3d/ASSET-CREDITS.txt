@@ -95,3 +95,27 @@ https://www.artic.edu/artworks/111436
 Virgin and Child with an Angel — Sandro Botticelli, 1475–85
 https://www.artic.edu/artworks/80530
 
+
+
+Building 1 entrance shrine — Madonna and Child
+
+"Madonna and child" by Emm (emm / edemaistre).
+Creator: https://sketchfab.com/edemaistre
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Original model:
+https://sketchfab.com/3d-models/madonna-and-child-74e4278b29214c7eb0268628477e8bcd
+Public metadata:
+https://api.sketchfab.com/v3/models/74e4278b29214c7eb0268628477e8bcd
+Downloaded from the Allen Institute for AI Objaverse public mirror:
+https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-082/74e4278b29214c7eb0268628477e8bcd.glb
+
+Modifications: the scanned rocky terrain base was removed and the underside
+was capped. Rear-scalp texture discoloration beneath the crown was neutralized,
+while the original pale-stone texture and sculpted detail were retained.
+White crowns were added to Mary and the Child, together with a modeled bronze
+rosary. The crowned sculpture was uniformly scaled to five feet high, oriented
+and mounted in the new Building 1 entrance shrine. The original creator does
+not endorse the campus design or adaptation.
