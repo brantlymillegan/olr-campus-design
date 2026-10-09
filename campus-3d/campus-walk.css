@@ -1,0 +1,47 @@
+.campus-walk-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; font: 12px/1.45 Arial, Helvetica, sans-serif; color: #f6f7f2; }
+.campus-walk-hud[hidden] { display: none !important; }
+.campus-walk-banner { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); width: min(460px, calc(100% - 250px)); padding: 12px 15px; background: #16241de8; border: 1px solid #ffffff50; border-radius: 12px; box-shadow: 0 3px 18px #0002; }
+.campus-walk-banner strong { font-size: 13px; font-weight: 600; }
+.campus-walk-banner p { margin: 5px 0 0; }
+.campus-walk-help { font-size: 11px; color: #dce4db; }
+.campus-walk-touch-help { display: none; }
+.campus-walk-actions { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; width: 218px; pointer-events: auto; }
+.campus-walk-hud button { min-height: 44px; border: 1px solid #ffffff9c; border-radius: 9px; color: #17271d; background: #fffef5ee; font: 12px Arial, Helvetica, sans-serif; padding: 10px 14px; cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.campus-walk-hud button:hover { background: #fff; }
+.campus-walk-hud button:focus-visible { outline: 3px solid #efb63f; outline-offset: 3px; }
+.campus-walk-hud button[aria-pressed=true], .campus-walk-hud button[data-held] { color: #fff; background: #285239; border-color: #c1dcc5; }
+#campus-walk-exit { width: 100%; }
+.campus-walk-reticle { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 1px solid #ffffffa8; border-radius: 50%; box-shadow: 0 0 0 1px #0005; }
+.campus-walk-reticle::after { content: ''; position: absolute; left: 5px; top: 5px; width: 2px; height: 2px; background: white; border-radius: 50%; }
+.campus-walk-pad { display: none; position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; pointer-events: auto; }
+.campus-walk-pad button { padding: 0; font-size: 25px; line-height: 1; }
+.campus-walk-pad [data-walk-move=forward] { grid-column: 2; grid-row: 1; }
+.campus-walk-pad [data-walk-move=left] { grid-column: 1; grid-row: 2; }
+.campus-walk-pad [data-walk-move=backward] { grid-column: 2; grid-row: 2; }
+.campus-walk-pad [data-walk-move=right] { grid-column: 3; grid-row: 2; }
+.campus-walk-hud[data-mode=placing] .campus-walk-pad, .campus-walk-hud[data-mode=placing] .campus-walk-reticle, .campus-walk-hud[data-mode=placing] #campus-walk-jump, .campus-walk-hud[data-mode=placing] #campus-walk-run, .campus-walk-hud[data-mode=placing] .campus-walk-help { display: none; }
+canvas[data-walk-mode=placing] { cursor: crosshair !important; }
+canvas[data-walk-mode=walking] { cursor: grab !important; }
+canvas[data-walk-mode=walking]:active { cursor: grabbing !important; }
+@media (pointer: coarse), (max-width: 760px) {
+  .campus-walk-pad { display: grid; }
+  .campus-walk-actions { width: 152px; bottom: max(14px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); gap: 4px; }
+  .campus-walk-actions button { flex: 1; padding: 10px 8px; }
+  #campus-walk-exit { flex-basis: 100%; }
+  .campus-walk-pad { bottom: max(14px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); }
+  .campus-walk-banner { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(120px + env(safe-area-inset-bottom)); width: auto; padding: 9px 12px; font-size: 11px; }
+  .campus-walk-banner strong { font-size: 12px; }
+  .campus-walk-help { font-size: 10px; }
+  .campus-walk-keyboard-help { display: none; }
+  .campus-walk-touch-help { display: inline; }
+  .campus-walk-hud[data-mode=placing] .campus-walk-banner { bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 350px) {
+  .campus-walk-pad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(2, 44px); gap: 3px; left: 8px; }
+  .campus-walk-actions { width: 140px; right: 8px; }
+}
+@media (max-height: 500px) and (min-width: 600px) {
+  .campus-walk-banner { left: 160px; right: 180px; bottom: 14px; width: auto; }
+  .campus-walk-help { display: none; }
+  .campus-walk-hud[data-mode=placing] .campus-walk-banner { left: 14px; right: 180px; bottom: 14px; }
+}

@@ -1,5 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
+import { createCampusWalk } from './campus-walk.js?v=e0a044da0a3790b6';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -22,6 +23,8 @@ const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
 let renderer, camera, scene, extent = 200;
 let model, frame = null;
+let walk = null, lastDrawTime = null;
+let resetAerialInput = () => {};
 let target = new THREE.Vector3();
 
 document.getElementById('retry').addEventListener('click', () => location.reload());
@@ -39,16 +42,20 @@ function fail(error) {
   post({ type: 'olr-3d-error', message: 'The interactive campus model could not load.' });
 }
 
-function draw() {
+function draw(timestamp) {
   frame = null;
   if (!active || document.hidden) return;
+  const dt = lastDrawTime === null ? 0 : Math.min(.05, (timestamp - lastDrawTime) / 1000);
+  walk?.update(dt);
   if (lightingDirty && campusLighting) {
     campusLighting.setTime(timeOfDay);
     lightingDirty = false;
     updateOutlineColor();
   }
-  renderer.render(scene, camera);
+  renderer.render(scene, walk?.camera || camera);
   renderedFrames++;
+  lastDrawTime = walk?.needsAnimation ? timestamp : null;
+  if (walk?.needsAnimation) requestDraw();
 }
 function requestDraw() { if (active && !document.hidden && renderer && camera && frame === null) frame = requestAnimationFrame(draw); }
 function setDragMode(mode, announce = true) {
@@ -139,7 +146,12 @@ function applyTheme(explicitResolved) {
 }
 function updateOutlineColor() {
   const darkScene = (campusLighting?.state?.daylight ?? lightingAtTime(timeOfDay).daylight) < .3;
-  oldOutlines?.traverse(object => { if (object.isLine) object.material.color.set(darkScene ? 0xffffff : 0x303030); });
+  oldOutlines?.traverse(object => {
+    if (!object.isLine) return;
+    object.material.color.set(darkScene ? 0xffffff : 0x303030);
+    // At eye level the map overlay must sit behind real walls and ground.
+    object.material.depthTest = walk?.mode === 'walking';
+  });
 }
 function publishLighting() {
   const { minutes, phase } = lightingAtTime(timeOfDay);
@@ -196,6 +208,7 @@ function installEmbeddedNavigation() {
   const canvas = renderer.domElement;
   const pointers = new Map();
   let gesture = null, safariGesture = null;
+  resetAerialInput = () => { pointers.clear(); gesture = null; safariGesture = null; };
   function snapshot() {
     const points = [...pointers.values()];
     if (!points.length) return null;
@@ -205,7 +218,7 @@ function installEmbeddedNavigation() {
   }
   canvas.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('pointerdown', event => {
-    if (!active || (event.pointerType === 'mouse' && ![0, 2].includes(event.button))) return;
+    if (!active || (walk && walk.mode !== 'aerial') || (event.pointerType === 'mouse' && ![0, 2].includes(event.button))) return;
     event.preventDefault(); canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId);
     const rect = canvas.getBoundingClientRect();
@@ -213,7 +226,7 @@ function installEmbeddedNavigation() {
     gesture = snapshot();
   });
   canvas.addEventListener('pointermove', event => {
-    if (!pointers.has(event.pointerId) || !active || safariGesture) return;
+    if (!pointers.has(event.pointerId) || !active || safariGesture || (walk && walk.mode !== 'aerial')) return;
     const rect = canvas.getBoundingClientRect();
     const pointer = pointers.get(event.pointerId);
     pointers.set(event.pointerId, { ...pointer, x: event.clientX - rect.left, y: event.clientY - rect.top });
@@ -237,7 +250,7 @@ function installEmbeddedNavigation() {
   });
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
-    if (!active || safariGesture) return;
+    if (!active || safariGesture || (walk && walk.mode !== 'aerial')) return;
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? embeddedCamera.height : 1;
     if (event.ctrlKey || event.metaKey) {
       const rect = canvas.getBoundingClientRect();
@@ -247,9 +260,11 @@ function installEmbeddedNavigation() {
   // Safari reports an actual trackpad pinch/twist separately from a two-finger
   // scroll. Wheel deltas alone must never change the compass bearing.
   canvas.addEventListener('gesturestart', event => {
+    if (!active || (walk && walk.mode !== 'aerial')) return;
     event.preventDefault(); safariGesture = { scale: event.scale || 1, rotation: event.rotation || 0 };
   }, { passive: false });
   canvas.addEventListener('gesturechange', event => {
+    if (!active || (walk && walk.mode !== 'aerial')) return;
     event.preventDefault(); if (!safariGesture) return;
     zoomEmbedded((event.scale || 1) / safariGesture.scale, undefined, false);
     rotateEmbedded((event.rotation || 0) - safariGesture.rotation, false);
@@ -258,6 +273,7 @@ function installEmbeddedNavigation() {
   }, { passive: false });
   canvas.addEventListener('gestureend', event => { event.preventDefault(); safariGesture = null; }, { passive: false });
   canvas.addEventListener('keydown', event => {
+    if (!active || (walk && walk.mode !== 'aerial')) return;
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, textarea, select, [contenteditable=true]')) return;
     const deltas = { ArrowLeft: [48, 0], ArrowRight: [-48, 0], ArrowUp: [0, 48], ArrowDown: [0, -48] };
     if (deltas[event.key]) {
@@ -274,6 +290,11 @@ function installEmbeddedNavigation() {
 window.addEventListener('message', event => {
   if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
+  if (['walk-place', 'walk-start', 'walk-exit', 'walk-run'].includes(command)) {
+    if (active) walk?.command(command, value);
+    return;
+  }
+  if (walk && walk.mode !== 'aerial' && ['camera', 'drag-mode', 'zoom', 'rotate', 'north', 'compass', 'fit'].includes(command)) return;
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
     const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
@@ -283,6 +304,7 @@ window.addEventListener('message', event => {
     applyEmbeddedCamera();
   } else if (command === 'active') {
     active = Boolean(value);
+    if (!active) { walk?.exit(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     if (!active && frame !== null) { cancelAnimationFrame(frame); frame = null; }
     requestDraw();
   } else if (command === 'theme') {
@@ -306,9 +328,10 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
+  get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
-    const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(camera);
+    const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(walk?.camera || camera);
     const rect = wrap.getBoundingClientRect();
     return { x: (point.x + 1) * rect.width / 2, y: (1 - point.y) * rect.height / 2 };
   }
@@ -353,6 +376,7 @@ async function init() {
     renderer.setSize(Math.max(1, width), Math.max(1, height));
     embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
     applyEmbeddedCamera(Boolean(model && active));
+    walk?.resize(Math.max(1, width), Math.max(1, height));
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
@@ -385,11 +409,25 @@ async function init() {
   campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
   campusLighting.setTime(timeOfDay);
   lightingDirty = false;
+  walk = createCampusWalk({
+    model, canvas: renderer.domElement,
+    getAerialCamera: () => camera,
+    getAerialPose: () => structuredClone(embeddedCamera),
+    requestDraw,
+    onChange: state => {
+      resetAerialInput();
+      updateOutlineColor();
+      post({ type: 'olr-3d-walk', ...state });
+      requestDraw();
+    }
+  });
+  walk.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
   loading.hidden = true;
   document.body.classList.add('ready');
   post({ type: 'olr-3d-ready' });
+  post({ type: 'olr-3d-walk', ...walk.state });
   publishLighting();
   requestDraw();
 }
@@ -399,7 +437,11 @@ async function init() {
 if (EMBEDDED) {
   setupTheme();
   setupTimeOfDay();
-  document.addEventListener('visibilitychange', requestDraw);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { walk?.pause(); resetAerialInput(); lastDrawTime = null; }
+    requestDraw();
+  });
+  window.addEventListener('blur', () => { walk?.pause(); resetAerialInput(); lastDrawTime = null; });
   init().catch(fail);
 } else {
   location.replace(new URL('../?view=3d', location.href).href);
