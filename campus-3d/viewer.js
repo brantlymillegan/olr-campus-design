@@ -15,7 +15,7 @@ let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null, dragMode = 'rotate';
 const materialColors = new Map();
-const ASSET_REVISION = '3c7a3d10273585ea';
+const ASSET_REVISION = '34038d30916f2863';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
