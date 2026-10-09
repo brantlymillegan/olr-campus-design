@@ -119,3 +119,20 @@ White crowns were added to Mary and the Child, together with a modeled bronze
 rosary. The crowned sculpture was uniformly scaled to five feet high, oriented
 and mounted in the new Building 1 entrance shrine. The original creator does
 not endorse the campus design or adaptation.
+
+guardian-angel campus statue replacement
+Artwork: Schutzengel (Guardian Angel with child, Judenau)
+Creator: noe-3d.at
+Source: https://sketchfab.com/3d-models/schutzengel-bd16f76552084f8296e2ff50a24a05e2
+Repository: https://zenodo.org/records/21355937
+License: CC-BY-4.0 — https://creativecommons.org/licenses/by/4.0/
+Adaptation: Used repository optimized scan; normalized origin and scale; reduced AO/roughness map to 1024 pixels; preserved sculpted geometry, base-color and normal textures; resized and oriented to the existing campus pedestal.
+
+st-benedict campus statue replacement
+Artwork: Hl. Benedikt von Nursia
+Creator: noe-3d.at
+Source: https://sketchfab.com/3d-models/hl-benedikt-von-nursia-96eadf67a4244051a3115c04149d5951
+Repository: https://zenodo.org/records/21376678
+License: CC0-1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+Adaptation: Retained the repository optimized 90,232-triangle geometry; normalized to Z-up, front -Y, base 0 and 1 meter height; Retained the existing 2048-pixel baked normal map; Resized diffuse texture from 2048 to 1024 and ambient-occlusion/roughness texture from 2048 to 512; Preserved the complete figure, book, chalice, hands and original small carved base
+
