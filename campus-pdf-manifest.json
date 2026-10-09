@@ -1,0 +1,728 @@
+{
+  "version": 4,
+  "cache_key": "c2727576724d410e15dfd2891948dc001a7b3b218f6cc862fe1192ed82d2a5f0",
+  "public_html_sha256": "184887a4e56b823ce7ff5c077e3d56454e73563e58b9edb742ffcc51fcfad5d8",
+  "combined_source_sha256": "975a2dbd3637f26075600c3439b607617f8b567d4456717c50a39e313984f610",
+  "exporter_sha256": "da82b102442ca3c9a70eb2b3e2ba36653f58994df0d20e620996d6c4f919e8d0",
+  "renderer_harness_sha256": "8bde2227c12d94a61325554b2dd09a6402457daa1c8b23aa0e0bac8c5d535274",
+  "renderer_elements_sha256": "f0999ce34fdc94c7e5a71609df0f0971a589fccb3e944911490dc18aa2a23988",
+  "perspective_manifest_sha256": "ce9754c85a52128cd10dbee202f2ac76b32e55ceaf5a0140249aff1d026ce5c6",
+  "cover_config_sha256": "2295205c97dca432a28f593c6f4876cb569d4d83d72ccc0378941aa4075cf814",
+  "build_date": "2026-10-09",
+  "pdf_library_sha256": "0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f",
+  "cover_logo_sha256": "d7b4e89076862401a441f1ed727cd5d60e70621f49e97ba92af2810eded8fec4",
+  "specs_data_sha256": "e27a5969833fa03d3bfc85efde2405cd0de3ee9f25c90935425bbd3c4aa1eb1a",
+  "specs_renderer_sha256": "f57d180ab57654f243eaf3d890683d9d2c1ad14ef028300c1589497ea3d2769c",
+  "input_fingerprints_sha256": "561e2ae131469b063ad0956f03e843cde66a50120682e409345fbdafd6839a03",
+  "created_at": "2026-10-09T15:40:46.681Z",
+  "download_date": {
+    "version": 1,
+    "field": "olr.download-date",
+    "build_date": "2026-10-09",
+    "rect_points": {
+      "x": 36,
+      "y": 567,
+      "width": 1152,
+      "height": 19.5
+    },
+    "rectangle": {
+      "x": 36,
+      "y": 567,
+      "width": 1152,
+      "height": 19.5,
+      "units": "PDF points",
+      "origin": "bottom-left",
+      "page": 1
+    }
+  },
+  "filename": "OLR-Master-Plan-Millegan-10-09-2026.pdf",
+  "title": "Our Lady of the Rosary - Master Plan Proposal",
+  "page_count": 16,
+  "page_titles": [
+    "Master Plan Proposal",
+    "Current campus",
+    "New campus: buildings",
+    "New campus: 1st floor - Buildings 1 and 2",
+    "New campus: 2nd floor - Buildings 1 and 2",
+    "New campus: 3D view from Frontage Road",
+    "New campus: 3D view from James Drive",
+    "New campus: 3D campus overview",
+    "New campus: 3D playground and Guardian Angel garden",
+    "New building specifications",
+    "Current and proposed spaces",
+    "Building 1 \u00b7 1st floor \u00b7 1 of 2",
+    "Building 1 \u00b7 1st floor \u00b7 2 of 2",
+    "Building 1 \u00b7 2nd floor",
+    "Building 2 \u00b7 1st floor",
+    "Building 2 \u00b7 2nd floor"
+  ],
+  "page_size_inches": [
+    17,
+    11
+  ],
+  "theme": "light",
+  "vector": false,
+  "cover_pages": 1,
+  "vector_map_pages": 4,
+  "rendered_3d_pages": 4,
+  "specifications_pages": 7,
+  "specifications_room_count": 62,
+  "specs_appendix": {
+    "first_page": 10,
+    "page_count": 7,
+    "room_ids": [
+      "b1-f1-S1",
+      "b1-f1-L",
+      "b1-f1-W1",
+      "b1-f1-W2",
+      "b1-f1-M",
+      "b1-f1-S2",
+      "b1-f1-V",
+      "b1-f1-O1",
+      "b1-f1-N",
+      "b1-f1-NW",
+      "b1-f1-O3",
+      "b1-f1-C01",
+      "b1-f1-C02",
+      "b1-f1-C03",
+      "b1-f1-C04",
+      "b1-f1-R",
+      "b1-f1-ST",
+      "b1-f1-C07",
+      "b1-f1-C08",
+      "b1-f1-G",
+      "b1-f1-B",
+      "b1-f2-S1",
+      "b1-f2-L",
+      "b1-f2-M",
+      "b1-f2-S2",
+      "b1-f2-C17",
+      "b1-f2-C09",
+      "b1-f2-C10",
+      "b1-f2-C11",
+      "b1-f2-C12",
+      "b1-f2-C13",
+      "b1-f2-C14",
+      "b1-f2-C15",
+      "b1-f2-C16",
+      "b1-f2-G",
+      "b1-f2-B",
+      "b2-f1-stair-west",
+      "b2-f1-stair-east",
+      "b2-f1-elevator",
+      "b2-f1-teacher-lounge",
+      "b2-f1-staff-wc",
+      "b2-f1-staff-wc-2",
+      "b2-f1-girls-bathroom",
+      "b2-f1-boys-bathroom",
+      "b2-f1-music",
+      "b2-f1-music-store",
+      "b2-f1-art",
+      "b2-f1-art-store",
+      "b2-f1-enhanced-learning",
+      "b2-f1-enhanced-store",
+      "b2-f2-stair-west",
+      "b2-f2-stair-east",
+      "b2-f2-elevator",
+      "b2-f2-library",
+      "b2-f2-girls-bathroom",
+      "b2-f2-boys-bathroom",
+      "b2-f2-science",
+      "b2-f2-science-store",
+      "b2-f2-spare-1",
+      "b2-f2-spare-1-store",
+      "b2-f2-spare-2",
+      "b2-f2-spare-2-store"
+    ],
+    "data_sha256": "e27a5969833fa03d3bfc85efde2405cd0de3ee9f25c90935425bbd3c4aa1eb1a"
+  },
+  "spec_layout": [
+    {
+      "page": 10,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 11,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 12,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [
+        "b1-f1-S1",
+        "b1-f1-L",
+        "b1-f1-W1",
+        "b1-f1-W2",
+        "b1-f1-M",
+        "b1-f1-S2",
+        "b1-f1-V",
+        "b1-f1-O1",
+        "b1-f1-N",
+        "b1-f1-NW",
+        "b1-f1-O3"
+      ],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 13,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [
+        "b1-f1-C01",
+        "b1-f1-C02",
+        "b1-f1-C03",
+        "b1-f1-C04",
+        "b1-f1-R",
+        "b1-f1-ST",
+        "b1-f1-C07",
+        "b1-f1-C08",
+        "b1-f1-G",
+        "b1-f1-B"
+      ],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 14,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [
+        "b1-f2-S1",
+        "b1-f2-L",
+        "b1-f2-M",
+        "b1-f2-S2",
+        "b1-f2-C17",
+        "b1-f2-C09",
+        "b1-f2-C10",
+        "b1-f2-C11",
+        "b1-f2-C12",
+        "b1-f2-C13",
+        "b1-f2-C14",
+        "b1-f2-C15",
+        "b1-f2-C16",
+        "b1-f2-G",
+        "b1-f2-B"
+      ],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 15,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [
+        "b2-f1-stair-west",
+        "b2-f1-stair-east",
+        "b2-f1-elevator",
+        "b2-f1-teacher-lounge",
+        "b2-f1-staff-wc",
+        "b2-f1-staff-wc-2",
+        "b2-f1-girls-bathroom",
+        "b2-f1-boys-bathroom",
+        "b2-f1-music",
+        "b2-f1-music-store",
+        "b2-f1-art",
+        "b2-f1-art-store",
+        "b2-f1-enhanced-learning",
+        "b2-f1-enhanced-store"
+      ],
+      "outside": [],
+      "overflow": false
+    },
+    {
+      "page": 16,
+      "width": 1536,
+      "height": 930,
+      "scrollWidth": 1536,
+      "scrollHeight": 930,
+      "room_ids": [
+        "b2-f2-stair-west",
+        "b2-f2-stair-east",
+        "b2-f2-elevator",
+        "b2-f2-library",
+        "b2-f2-girls-bathroom",
+        "b2-f2-boys-bathroom",
+        "b2-f2-science",
+        "b2-f2-science-store",
+        "b2-f2-spare-1",
+        "b2-f2-spare-1-store",
+        "b2-f2-spare-2",
+        "b2-f2-spare-2-store"
+      ],
+      "outside": [],
+      "overflow": false
+    }
+  ],
+  "pdf_sha256": "680343d186b3b52478a4fafb9fc5ca64dccc3377fa4007c90d4eb1435fa9d136",
+  "pdf_bytes": 5013571,
+  "preview_sha256": "c258b4844b07456ba9774a2e486902764546f8a18e75b42b375967b5cc813b04",
+  "renderer": "Canonical campus SVG and Blender perspectives, printed by Chromium",
+  "browser_version": "154.0.8037.98",
+  "pages": [
+    {
+      "number": 1,
+      "title": "Master Plan Proposal",
+      "type": "cover",
+      "organization": "Our Lady of the Rosary",
+      "author": "Brantly Millegan",
+      "date": "October 9, 2026",
+      "website": "brantlymillegan.github.io/olr-campus-design/",
+      "logo_sha256": "d7b4e89076862401a441f1ed727cd5d60e70621f49e97ba92af2810eded8fec4",
+      "logo_source": "https://olr.church/wp-content/uploads/2023/04/olr-logo.png",
+      "view_id": "playground-gardens",
+      "image_sha256": "08cf018fa58e7843c7fee1af8968cc917546fd49ea38431011dc766259ded6ac",
+      "image_dimensions": [
+        3072,
+        2049
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Current campus",
+      "type": "vector-map",
+      "map": "existing",
+      "floor": 0,
+      "bounds_ft": [
+        -500,
+        -275,
+        530,
+        445
+      ],
+      "scale_px_per_ft": 1.2916666666666667,
+      "scale_bar_ft": 100,
+      "room_count": 0,
+      "room_label_count": 0,
+      "room_label_detail_counts": {},
+      "svg_node_count": 512,
+      "geographic_north_rotation_degrees": 9.067253590763931,
+      "crop_edge_labels_removed": 0,
+      "crop_edge_statues_removed": 0
+    },
+    {
+      "number": 3,
+      "title": "New campus: buildings",
+      "type": "vector-map",
+      "map": "shifted",
+      "floor": 0,
+      "bounds_ft": [
+        -500,
+        -275,
+        530,
+        445
+      ],
+      "scale_px_per_ft": 1.2916666666666667,
+      "scale_bar_ft": 100,
+      "room_count": 0,
+      "room_label_count": 0,
+      "room_label_detail_counts": {},
+      "svg_node_count": 629,
+      "geographic_north_rotation_degrees": 9.067253590763931,
+      "crop_edge_labels_removed": 0,
+      "crop_edge_statues_removed": 0
+    },
+    {
+      "number": 4,
+      "title": "New campus: 1st floor - Buildings 1 and 2",
+      "type": "vector-map",
+      "map": "shifted",
+      "floor": 1,
+      "bounds_ft": [
+        -75,
+        50,
+        171,
+        285
+      ],
+      "scale_px_per_ft": 3.9574468085106385,
+      "scale_bar_ft": 25,
+      "room_count": 35,
+      "room_label_count": 30,
+      "room_label_detail_counts": {
+        "full": 15,
+        "name": 3,
+        "compact": 6,
+        "area": 5,
+        "short-name": 1
+      },
+      "svg_node_count": 1304,
+      "geographic_north_rotation_degrees": 9.067253590763931,
+      "crop_edge_labels_removed": 37,
+      "crop_edge_statues_removed": 2
+    },
+    {
+      "number": 5,
+      "title": "New campus: 2nd floor - Buildings 1 and 2",
+      "type": "vector-map",
+      "map": "shifted",
+      "floor": 2,
+      "bounds_ft": [
+        -75,
+        50,
+        171,
+        285
+      ],
+      "scale_px_per_ft": 3.9574468085106385,
+      "scale_bar_ft": 25,
+      "room_count": 27,
+      "room_label_count": 25,
+      "room_label_detail_counts": {
+        "full": 17,
+        "name": 1,
+        "compact": 5,
+        "area": 2
+      },
+      "svg_node_count": 1132,
+      "geographic_north_rotation_degrees": 9.067253590763931,
+      "crop_edge_labels_removed": 37,
+      "crop_edge_statues_removed": 2
+    },
+    {
+      "number": 6,
+      "title": "New campus: 3D view from Frontage Road",
+      "type": "3d-perspective",
+      "view_id": "frontage-road",
+      "image_sha256": "7124046746c1275dbaa73df2e42e2a7486da66e4c0513aaec411a038966340d9",
+      "image_dimensions": [
+        3072,
+        1860
+      ],
+      "model_sha256": "2e4cde0d993163fbb55d3fc339a52ced74974d61fceb40fb11d3087d0c8c750e",
+      "camera": {
+        "position_ft": [
+          80,
+          495,
+          175
+        ],
+        "target_ft": [
+          130,
+          105,
+          10
+        ],
+        "lens_mm": 23,
+        "shift_y": -0.1
+      }
+    },
+    {
+      "number": 7,
+      "title": "New campus: 3D view from James Drive",
+      "type": "3d-perspective",
+      "view_id": "james-drive",
+      "image_sha256": "c4400d35f6fa40b2462a7f060e3729f83233967529796a8591958541f08507a7",
+      "image_dimensions": [
+        3072,
+        1860
+      ],
+      "model_sha256": "2e4cde0d993163fbb55d3fc339a52ced74974d61fceb40fb11d3087d0c8c750e",
+      "camera": {
+        "position_ft": [
+          -80,
+          -290,
+          180
+        ],
+        "target_ft": [
+          100,
+          95,
+          10
+        ],
+        "lens_mm": 28,
+        "shift_y": -0.07
+      }
+    },
+    {
+      "number": 8,
+      "title": "New campus: 3D campus overview",
+      "type": "3d-perspective",
+      "view_id": "campus-overview",
+      "image_sha256": "4e879c1d2d355a68e5ab565349b497185b34347e169c428aedeb69edb33ee59b",
+      "image_dimensions": [
+        3072,
+        1860
+      ],
+      "model_sha256": "2e4cde0d993163fbb55d3fc339a52ced74974d61fceb40fb11d3087d0c8c750e",
+      "camera": {
+        "position_ft": [
+          -800,
+          -720,
+          750
+        ],
+        "target_ft": [
+          10,
+          80,
+          4
+        ],
+        "lens_mm": 40
+      }
+    },
+    {
+      "number": 9,
+      "title": "New campus: 3D playground and Guardian Angel garden",
+      "type": "3d-perspective",
+      "view_id": "playground-gardens",
+      "image_sha256": "08cf018fa58e7843c7fee1af8968cc917546fd49ea38431011dc766259ded6ac",
+      "image_dimensions": [
+        3072,
+        2049
+      ],
+      "model_sha256": "2e4cde0d993163fbb55d3fc339a52ced74974d61fceb40fb11d3087d0c8c750e",
+      "camera": {
+        "position_ft": [
+          -239.35553444751628,
+          -92.18081199482522,
+          129.37224389533966
+        ],
+        "target_ft": [
+          114.9943334568776,
+          100.32696279248414,
+          0
+        ],
+        "lens_mm": 29.313100363978613,
+        "shift_x": -0.09913678799598277,
+        "shift_y": -0.054870317650571494
+      }
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [],
+      "section": "overview",
+      "category_ids": [
+        "lower-school",
+        "middle-school",
+        "specialist",
+        "spare",
+        "office",
+        "health",
+        "teachers-lounge",
+        "library",
+        "conference",
+        "restrooms",
+        "general-storage",
+        "services",
+        "circulation-core"
+      ],
+      "building_ids": [
+        "b1",
+        "b2"
+      ],
+      "summary": {
+        "gross_sf": 53531,
+        "net_room_sf": 40991.305556,
+        "other_sf": 12539.694444,
+        "room_count": 62,
+        "classrooms": {
+          "grade": 13,
+          "specialist": 4,
+          "spare": 3
+        },
+        "fixtures": {
+          "wc": 37,
+          "urinal": 4,
+          "sink": 29
+        }
+      },
+      "bridge_area_sf": 216,
+      "number": 10,
+      "title": "New building specifications"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [],
+      "section": "comparisons",
+      "comparison_group_ids": [
+        "lower-school",
+        "middle-school"
+      ],
+      "office_package_ids": [
+        "office",
+        "office-staff-wcs",
+        "teachers-lounge"
+      ],
+      "baseline_ids": [
+        "lower-school",
+        "middle-school",
+        "upper-school",
+        "office",
+        "office-staff-area"
+      ],
+      "number": 11,
+      "title": "Current and proposed spaces"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [
+        "b1-f1-S1",
+        "b1-f1-L",
+        "b1-f1-W1",
+        "b1-f1-W2",
+        "b1-f1-M",
+        "b1-f1-S2",
+        "b1-f1-V",
+        "b1-f1-O1",
+        "b1-f1-N",
+        "b1-f1-NW",
+        "b1-f1-O3"
+      ],
+      "section": "room-directory",
+      "building_id": "b1",
+      "floor": 1,
+      "part": 1,
+      "parts": 2,
+      "room_count": 11,
+      "net_room_sf": 2941.5,
+      "fixtures": {
+        "wc": 3,
+        "urinal": 0,
+        "sink": 3
+      },
+      "number": 12,
+      "title": "Building 1 \u00b7 1st floor \u00b7 1 of 2"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [
+        "b1-f1-C01",
+        "b1-f1-C02",
+        "b1-f1-C03",
+        "b1-f1-C04",
+        "b1-f1-R",
+        "b1-f1-ST",
+        "b1-f1-C07",
+        "b1-f1-C08",
+        "b1-f1-G",
+        "b1-f1-B"
+      ],
+      "section": "room-directory",
+      "building_id": "b1",
+      "floor": 1,
+      "part": 2,
+      "parts": 2,
+      "room_count": 10,
+      "net_room_sf": 9278.75,
+      "fixtures": {
+        "wc": 10,
+        "urinal": 2,
+        "sink": 8
+      },
+      "number": 13,
+      "title": "Building 1 \u00b7 1st floor \u00b7 2 of 2"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [
+        "b1-f2-S1",
+        "b1-f2-L",
+        "b1-f2-M",
+        "b1-f2-S2",
+        "b1-f2-C17",
+        "b1-f2-C09",
+        "b1-f2-C10",
+        "b1-f2-C11",
+        "b1-f2-C12",
+        "b1-f2-C13",
+        "b1-f2-C14",
+        "b1-f2-C15",
+        "b1-f2-C16",
+        "b1-f2-G",
+        "b1-f2-B"
+      ],
+      "section": "room-directory",
+      "building_id": "b1",
+      "floor": 2,
+      "part": 1,
+      "parts": 1,
+      "room_count": 15,
+      "net_room_sf": 12707.5,
+      "fixtures": {
+        "wc": 10,
+        "urinal": 2,
+        "sink": 8
+      },
+      "number": 14,
+      "title": "Building 1 \u00b7 2nd floor"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [
+        "b2-f1-stair-west",
+        "b2-f1-stair-east",
+        "b2-f1-elevator",
+        "b2-f1-teacher-lounge",
+        "b2-f1-staff-wc",
+        "b2-f1-staff-wc-2",
+        "b2-f1-girls-bathroom",
+        "b2-f1-boys-bathroom",
+        "b2-f1-music",
+        "b2-f1-music-store",
+        "b2-f1-art",
+        "b2-f1-art-store",
+        "b2-f1-enhanced-learning",
+        "b2-f1-enhanced-store"
+      ],
+      "section": "room-directory",
+      "building_id": "b2",
+      "floor": 1,
+      "part": 1,
+      "parts": 1,
+      "room_count": 14,
+      "net_room_sf": 8009.5,
+      "fixtures": {
+        "wc": 8,
+        "urinal": 0,
+        "sink": 6
+      },
+      "number": 15,
+      "title": "Building 2 \u00b7 1st floor"
+    },
+    {
+      "type": "building-specifications",
+      "room_ids": [
+        "b2-f2-stair-west",
+        "b2-f2-stair-east",
+        "b2-f2-elevator",
+        "b2-f2-library",
+        "b2-f2-girls-bathroom",
+        "b2-f2-boys-bathroom",
+        "b2-f2-science",
+        "b2-f2-science-store",
+        "b2-f2-spare-1",
+        "b2-f2-spare-1-store",
+        "b2-f2-spare-2",
+        "b2-f2-spare-2-store"
+      ],
+      "section": "room-directory",
+      "building_id": "b2",
+      "floor": 2,
+      "part": 1,
+      "parts": 1,
+      "room_count": 12,
+      "net_room_sf": 8054.055555,
+      "fixtures": {
+        "wc": 6,
+        "urinal": 0,
+        "sink": 4
+      },
+      "number": 16,
+      "title": "Building 2 \u00b7 2nd floor"
+    }
+  ]
+}

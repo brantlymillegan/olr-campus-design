@@ -27,7 +27,7 @@ function walkThroughHit(hit) {
 // Material groups contain disconnected buildings. Index their actual triangles,
 // rather than treating a consolidated mesh's bounding box as one solid building.
 function makeSurfaceIndex(model) {
-  const ground = new Map(), terrain = new Map(), solids = new Map();
+  const ground = new Map(), terrain = new Map(), solids = new Map(), supports = new Map();
   const rayMeshes = [], groundMeshes = new Set();
   const terrainBounds = new THREE.Box3();
   let triangleCount = 0, solidCount = 0, groundCount = 0, walkThroughMeshes = 0, walkThroughTriangles = 0;
@@ -85,7 +85,10 @@ function makeSurfaceIndex(model) {
       triangleCount++;
       if (isTerrain) { add(terrain, record); vertices.forEach(v => terrainBounds.expandByPoint(v)); }
       if (isGround && normal.y >= SLOPE_COS) { add(ground, record); groundCount++; }
-      else if (!isGround) { add(solids, record); solidCount++; }
+      else if (!isGround) {
+        add(solids, record); solidCount++;
+        if (record.canSupport && normal.y >= SLOPE_COS) add(supports, record);
+      }
     }
   });
   const point = new THREE.Vector3(), supportPoint = new THREE.Vector3();
@@ -123,23 +126,42 @@ function makeSurfaceIndex(model) {
     if (clearance) for (const [dx, dz] of [[inset, 0], [-inset, 0], [0, inset], [0, -inset]]) if (!height(terrain, x + dx, z + dz)) return null;
     return height(ground, x, z);
   }
-  function nearSolids(x, z) {
-    const found = new Set();
-    for (let ix = Math.floor((x - RADIUS) / CELL); ix <= Math.floor((x + RADIUS) / CELL); ix++) {
-      for (let iz = Math.floor((z - RADIUS) / CELL); iz <= Math.floor((z + RADIUS) / CELL); iz++) {
-        for (const record of solids.get(`${ix},${iz}`) || []) found.add(record);
+  // The geometry is static. Most capsule queries fit in one cell, whose
+  // triangle list is already unique. Cache the few overlapping-cell lists so
+  // each physics substep does not allocate and populate another large Set.
+  function neighbors(index) {
+    const cache = new Map(), empty = [];
+    return (x, z) => {
+      const minX = Math.floor((x - RADIUS) / CELL), maxX = Math.floor((x + RADIUS) / CELL);
+      const minZ = Math.floor((z - RADIUS) / CELL), maxZ = Math.floor((z + RADIUS) / CELL);
+      if (minX === maxX && minZ === maxZ) return index.get(`${minX},${minZ}`) || empty;
+      const key = `${minX},${maxX},${minZ},${maxZ}`;
+      let records = cache.get(key);
+      if (records) return records;
+      const found = new Set();
+      for (let ix = minX; ix <= maxX; ix++) {
+        for (let iz = minZ; iz <= maxZ; iz++) {
+          for (const record of index.get(`${ix},${iz}`) || empty) found.add(record);
+        }
       }
-    }
-    return found;
+      records = [...found];
+      if (cache.size >= 128) cache.delete(cache.keys().next().value);
+      cache.set(key, records);
+      return records;
+    };
   }
+  const nearSolids = neighbors(solids), nearSupports = neighbors(supports);
   function solidSupportAt(x, z, lowest, highest, strict = false) {
     let support = null;
-    for (const record of nearSolids(x, z)) {
-      if (!record.canSupport || record.normal.y < SLOPE_COS) continue;
+    const reach = strict ? .001 : RADIUS - EPS;
+    for (const record of nearSupports(x, z)) {
+      // Reject other floors and distant furniture before the closest-point
+      // calculation. Keep a rounding margin around the exact triangle bounds.
+      if (record.maxY < lowest - 1e-6 || record.minY > highest + 1e-6 || x < record.minX - reach - 1e-6 || x > record.maxX + reach + 1e-6 || z < record.minZ - reach - 1e-6 || z > record.maxZ + reach + 1e-6) continue;
       const planeY = record.triangle.a.y - (record.normal.x * (x - record.triangle.a.x) + record.normal.z * (z - record.triangle.a.z)) / record.normal.y;
       point.set(x, planeY, z);
       record.triangle.closestPointToPoint(point, supportPoint);
-      if (Math.hypot(supportPoint.x - x, supportPoint.z - z) > (strict ? .001 : RADIUS - EPS)) continue;
+      if (Math.hypot(supportPoint.x - x, supportPoint.z - z) > reach) continue;
       const y = supportPoint.y;
       // The caller limits support to the feet while airborne, and permits a
       // small step up while grounded so pitched roofs can be walked on.
@@ -155,23 +177,26 @@ function makeSurfaceIndex(model) {
 
 // Closest points between two finite line segments (including degenerate ends).
 function closestSegments(p, q, a, b, resultP, resultQ) {
-  const d1 = new THREE.Vector3().subVectors(q, p), d2 = new THREE.Vector3().subVectors(b, a), r = new THREE.Vector3().subVectors(p, a);
-  const aa = d1.lengthSq(), ee = d2.lengthSq(), f = d2.dot(r);
+  const dx = q.x - p.x, dy = q.y - p.y, dz = q.z - p.z;
+  const ex = b.x - a.x, ey = b.y - a.y, ez = b.z - a.z;
+  const rx = p.x - a.x, ry = p.y - a.y, rz = p.z - a.z;
+  const aa = dx * dx + dy * dy + dz * dz, ee = ex * ex + ey * ey + ez * ez, f = ex * rx + ey * ry + ez * rz;
   let s = 0, t = 0;
   if (aa <= 1e-12 && ee <= 1e-12) { resultP.copy(p); resultQ.copy(a); return; }
   if (aa <= 1e-12) t = THREE.MathUtils.clamp(f / ee, 0, 1);
   else {
-    const c = d1.dot(r);
+    const c = dx * rx + dy * ry + dz * rz;
     if (ee <= 1e-12) s = THREE.MathUtils.clamp(-c / aa, 0, 1);
     else {
-      const bb = d1.dot(d2), denominator = aa * ee - bb * bb;
+      const bb = dx * ex + dy * ey + dz * ez, denominator = aa * ee - bb * bb;
       s = denominator !== 0 ? THREE.MathUtils.clamp((bb * f - c * ee) / denominator, 0, 1) : 0;
       t = (bb * s + f) / ee;
       if (t < 0) { t = 0; s = THREE.MathUtils.clamp(-c / aa, 0, 1); }
       else if (t > 1) { t = 1; s = THREE.MathUtils.clamp((bb - c) / aa, 0, 1); }
     }
   }
-  resultP.copy(d1).multiplyScalar(s).add(p); resultQ.copy(d2).multiplyScalar(t).add(a);
+  resultP.set(dx * s + p.x, dy * s + p.y, dz * s + p.z);
+  resultQ.set(ex * t + a.x, ey * t + a.y, ez * t + a.z);
 }
 
 export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, requestDraw, onChange = () => {}, onPose = () => {}, canFocus = () => true }) {
@@ -311,10 +336,12 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       const consider = (a, b) => { const d = a.distanceToSquared(b); if (d < best) { best = d; closestA.copy(a); closestB.copy(b); } };
       tri.closestPointToPoint(capsuleA, testPoint); consider(capsuleA, testPoint);
       tri.closestPointToPoint(capsuleB, testPoint); consider(capsuleB, testPoint);
-      for (const [a, b] of [[tri.a, tri.b], [tri.b, tri.c], [tri.c, tri.a]]) { closestSegments(capsuleA, capsuleB, a, b, edgeA, edgeB); consider(edgeA, edgeB); }
+      closestSegments(capsuleA, capsuleB, tri.a, tri.b, edgeA, edgeB); consider(edgeA, edgeB);
+      closestSegments(capsuleA, capsuleB, tri.b, tri.c, edgeA, edgeB); consider(edgeA, edgeB);
+      closestSegments(capsuleA, capsuleB, tri.c, tri.a, edgeA, edgeB); consider(edgeA, edgeB);
       const denom = record.normal.y * (capsuleB.y - capsuleA.y);
       if (Math.abs(denom) > 1e-10) {
-        const t = record.normal.dot(new THREE.Vector3().subVectors(tri.a, capsuleA)) / denom;
+        const t = (record.normal.x * (tri.a.x - capsuleA.x) + record.normal.y * (tri.a.y - capsuleA.y) + record.normal.z * (tri.a.z - capsuleA.z)) / denom;
         if (t >= 0 && t <= 1) { testPoint.lerpVectors(capsuleA, capsuleB, t); if (tri.containsPoint(testPoint)) { best = 0; closestA.copy(testPoint); closestB.copy(testPoint); } }
       }
       if (best < (RADIUS - EPS) ** 2 && (!deepest || best < deepest.distanceSq)) {

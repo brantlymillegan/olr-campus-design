@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=da93d7eb0c729975';
+import { createCampusWalk } from './campus-walk.js?v=456ee855afa7f73c';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=4f7e7868ed5d650d';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -433,7 +433,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
   get walkPresentation() { return walkPresentation; },
   get plan() { return planGround?.state ?? { ready: false, flat: true, ...planOptions }; },
-  get renderState() { return { presentation: walkPresentation, firstPerson: Boolean(walk?.camera), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: walk?.camera ? { position: walk.camera.position.toArray(), quaternion: walk.camera.quaternion.toArray(), fov: walk.camera.fov } : null }; },
+  get renderState() { return { presentation: walkPresentation, firstPerson: Boolean(walk?.camera), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', depthBuffer: renderer?.capabilities.reversedDepthBuffer ? 'reversed' : 'standard', logarithmicDepthBuffer: renderer?.capabilities.logarithmicDepthBuffer ?? false, drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: walk?.camera ? { position: walk.camera.position.toArray(), quaternion: walk.camera.quaternion.toArray(), fov: walk.camera.fov } : null }; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
     const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(walk?.camera || camera);
@@ -520,7 +520,10 @@ async function warmModel() {
 }
 
 async function init() {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
+  // Native depth testing rejects hidden room fragments before shading them.
+  // Logarithmic depth writes gl_FragDepth and disables that optimization on
+  // affected GPUs. The campus camera range does not need logarithmic depth.
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
   renderer.setClearColor(resolvedTheme === 'dark' ? 0x181818 : 0xffffff);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
