@@ -2,8 +2,9 @@ import * as THREE from 'three';
 
 const FT = 0.3048;
 const EYE = 6 * FT, HEIGHT = 6.25 * FT, RADIUS = .85 * FT;
-const WALK_SPEED = 4.5 * FT, RUN_SPEED = 11 * FT;
-const STEP = 1.05 * FT, GRAVITY = 9.81, JUMP_SPEED = 3.65;
+const WALK_SPEED = 11 * FT, RUN_SPEED = 22 * FT;
+const STEP = 1.05 * FT, GRAVITY = 9.81, JUMP_HEIGHT = 8 * FT;
+const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const CELL = 3, SLOPE_COS = Math.cos(50 * Math.PI / 180);
 const CAMPUS_BEARING = 9.067253590763931;
 const EPS = .008;
@@ -155,6 +156,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   let yaw = Math.PI / 2, pitch = 0, velocityY = 0, groundY = 0, groundSurface = '';
   let feedback = '', collisionCount = 0, movedSpeed = 0, lastAnnouncement = '';
   let pendingPlacement = null, placementDown = null, lookPointer = null;
+  let wantsMouseLook = false, mouseLookPending = false, hadMouseLock = false;
   let lastPose = null;
   const feet = new THREE.Vector3(), velocity = new THREE.Vector3();
   const keys = new Set(), padDirections = new Set();
@@ -168,14 +170,14 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const hud = document.createElement('div');
   hud.id = 'campus-walk-hud'; hud.className = 'campus-walk-hud'; hud.hidden = true;
   hud.innerHTML = `<div class="campus-walk-reticle" aria-hidden="true"></div>
-    <div class="campus-walk-banner"><strong id="campus-walk-title">Walk the campus</strong><p id="campus-walk-status" role="status" aria-live="polite"></p><p class="campus-walk-help"><span class="campus-walk-keyboard-help">WASD or arrows to move · drag to look · Space to jump · Shift to run · Esc to exit</span><span class="campus-walk-touch-help">Hold the arrows to move · drag the scene to look · tap Jump or Run · Aerial view exits</span></p></div>
+    <div class="campus-walk-banner"><strong id="campus-walk-title">Walk the campus</strong><p id="campus-walk-status" role="status" aria-live="polite"></p><p class="campus-walk-help"><span class="campus-walk-keyboard-help">WASD or arrows move · click the scene, then move the mouse to look · Space jumps · Shift runs · Esc releases the mouse</span><span class="campus-walk-touch-help">Hold the arrows to move · drag the scene to look · tap Jump or Run · End finishes the walk</span></p></div>
     <div class="campus-walk-pad" role="group" aria-label="Walking directions">
       <button type="button" data-walk-move="forward" aria-label="Walk forward">↑</button>
       <button type="button" data-walk-move="left" aria-label="Walk left">←</button>
       <button type="button" data-walk-move="backward" aria-label="Walk backward">↓</button>
       <button type="button" data-walk-move="right" aria-label="Walk right">→</button>
     </div>
-    <div class="campus-walk-actions"><button type="button" id="campus-walk-jump">Jump</button><button type="button" id="campus-walk-run" aria-pressed="false">Run</button><button type="button" id="campus-walk-exit">Aerial view</button></div>`;
+    <div class="campus-walk-actions"><button type="button" id="campus-walk-jump">Jump</button><button type="button" id="campus-walk-run" aria-pressed="false">Run</button><button type="button" id="campus-walk-exit">End</button></div>`;
   host.appendChild(hud);
   const title = hud.querySelector('#campus-walk-title'), status = hud.querySelector('#campus-walk-status');
   const runButton = hud.querySelector('#campus-walk-run');
@@ -183,6 +185,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   marker.name = 'Walk placement marker'; marker.rotation.x = -Math.PI / 2; marker.visible = false;
   (model.parent || model).add(marker);
   const isRunning = () => runningToggle || keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const pointerLocked = () => document.pointerLockElement === canvas;
   function snapshot() {
     const vector = v => Object.freeze({ x: v.x, y: v.y, z: v.z });
     return Object.freeze({
@@ -190,16 +193,19 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       siteFeet: Object.freeze({ x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }),
       groundY, groundElevationFeet: groundY / FT, groundSurface, grounded, jumping: !grounded,
       running: isRunning(), speedFeetPerSecond: movedSpeed / FT, velocity: vector(velocity),
+      pointerLocked: pointerLocked(), normalSpeedFeetPerSecond: WALK_SPEED / FT,
+      runSpeedFeetPerSecond: RUN_SPEED / FT, jumpHeightFeet: JUMP_HEIGHT / FT,
       yawRadians: yaw, pitchRadians: pitch, collisionCount, feedback, message: feedback,
       boundsFeet: Object.freeze({ minX: surfaces.terrainBounds.min.x / FT, maxX: surfaces.terrainBounds.max.x / FT, minY: -surfaces.terrainBounds.max.z / FT, maxY: -surfaces.terrainBounds.min.z / FT }),
       collisionGeometry: surfaces.diagnostics
     });
   }
   function announce(force = false) {
-    const signature = `${mode}|${isRunning()}|${feedback}`;
+    const signature = `${mode}|${isRunning()}|${pointerLocked()}|${feedback}`;
     if (!force && signature === lastAnnouncement) return;
     lastAnnouncement = signature;
     hud.hidden = mode === 'aerial'; hud.dataset.mode = mode; canvas.dataset.walkMode = mode;
+    canvas.dataset.pointerLocked = String(pointerLocked());
     title.textContent = mode === 'placing' ? 'Choose a starting point' : 'Walking · 6 ft eye height';
     status.textContent = feedback;
     runButton.setAttribute('aria-pressed', String(isRunning()));
@@ -215,8 +221,29 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     onPose({ siteFeet: { x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }, yawRadians: yaw, pitchRadians: pitch, grounded, jumping: !grounded });
   }
   function focusCanvas() { if (!document.hidden && canFocus()) canvas.focus({ preventScroll: true }); }
+  function releaseMouseLook() {
+    wantsMouseLook = false;
+    if (pointerLocked()) document.exitPointerLock();
+  }
+  function mouseLookError() {
+    mouseLookPending = false;
+    if (!wantsMouseLook) return;
+    wantsMouseLook = false;
+    if (mode === 'walking') message('Mouse capture is unavailable. Drag the scene to look around.');
+  }
+  function requestMouseLook() {
+    if (mode !== 'walking' || !canFocus() || pointerLocked() || mouseLookPending) return;
+    if (typeof canvas.requestPointerLock !== 'function') { message('Drag the scene to look around.'); return; }
+    wantsMouseLook = true; mouseLookPending = true;
+    try {
+      // Called directly from a mouse gesture, including the placement click.
+      const result = canvas.requestPointerLock();
+      result?.catch(mouseLookError);
+    } catch { mouseLookError(); }
+  }
   function wake() { suspended = false; requestDraw(); }
   function pause() {
+    releaseMouseLook();
     keys.clear(); padDirections.clear(); lookPointer = null; placementDown = null; pendingPlacement = null;
     for (const id of captured) { try { canvas.releasePointerCapture(id); } catch {} }
     captured.clear(); movedSpeed = 0; velocity.x = 0; velocity.z = 0; suspended = true;
@@ -265,7 +292,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     pause(); mode = 'walking'; suspended = false; marker.visible = false;
     feet.set(x, placement.surface.y, z); groundY = feet.y; groundSurface = placement.surface.name;
     yaw = facing; pitch = 0; velocityY = 0; velocity.set(0, 0, 0); grounded = true;
-    feedback = 'Explore outside. Buildings stay closed.'; syncCamera(); announce(); focusCanvas(); requestDraw();
+    feedback = ''; syncCamera(); announce(); focusCanvas(); requestDraw();
     return true;
   }
   function placementAt(clientX, clientY) {
@@ -303,6 +330,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   }
   function command(name, value) {
     if (name === 'walk-exit') { exit(); return true; }
+    if (name === 'walk-release-pointer') { pause(); requestDraw(); return true; }
     if (name === 'walk-input') {
       if (value?.kind === 'pause') { pause(); return true; }
       if (mode !== 'walking') return false;
@@ -328,13 +356,13 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     }
     if (name === 'walk-place') {
       pause(); mode = 'placing'; suspended = false; marker.visible = false;
-      feedback = 'Click or tap an open lawn or path. Esc returns to the aerial view.';
+      feedback = 'Click or tap an open lawn or path. End cancels placement.';
       announce(); focusCanvas(); requestDraw(); return true;
     }
     if (name === 'walk-start') {
       // The audited exterior landing is east of Building 1's entrance canopy.
       for (const [x, y] of [[39, 224], [39, 236], [39, 212], [43, 224]]) if (startAt(x * FT, -y * FT, Math.PI / 2)) return true;
-      message('The entrance is blocked. Use Place me to choose an open lawn or path.'); return false;
+      message('The entrance is blocked. Use Start to choose an open lawn or path.'); return false;
     }
     if (name === 'walk-run' && mode === 'walking' && (value === undefined || typeof value === 'boolean')) {
       runningToggle = typeof value === 'boolean' ? value : !runningToggle; announce(); focusCanvas(); wake(); return true;
@@ -408,7 +436,13 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   function stop(event) { event.preventDefault(); event.stopImmediatePropagation(); }
   canvas.addEventListener('pointerdown', event => {
     if (mode === 'aerial' || (event.pointerType === 'mouse' && event.button !== 0)) return;
-    stop(event); focusCanvas(); canvas.setPointerCapture(event.pointerId); captured.add(event.pointerId);
+    stop(event); focusCanvas();
+    if (mode === 'walking' && event.pointerType === 'mouse') {
+      // Retain drag fallback if the browser cannot grant pointer lock.
+      lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY, touch: false };
+      requestMouseLook(); wake(); return;
+    }
+    canvas.setPointerCapture(event.pointerId); captured.add(event.pointerId);
     if (mode === 'placing') { placementDown = { id: event.pointerId, x: event.clientX, y: event.clientY }; pendingPlacement = { x: event.clientX, y: event.clientY }; }
     else if (lookPointer === null) lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY, touch: event.pointerType !== 'mouse' };
     wake();
@@ -417,7 +451,11 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (mode === 'aerial') return;
     stop(event);
     if (mode === 'placing') { pendingPlacement = { x: event.clientX, y: event.clientY }; wake(); return; }
+    if (pointerLocked()) return; // Locked movement is processed once, by mousemove.
     if (lookPointer?.id !== event.pointerId) return;
+    // A denied capture falls back to dragging inside the canvas. Releasing
+    // outside it must not leave free-look active when the mouse returns.
+    if (!lookPointer.touch && !(event.buttons & 1)) { lookPointer = null; return; }
     look(event.clientX - lookPointer.x, event.clientY - lookPointer.y, lookPointer.touch);
     lookPointer.x = event.clientX; lookPointer.y = event.clientY;
   }, { capture: true });
@@ -427,7 +465,11 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (mode === 'placing' && event.type === 'pointerup' && placementDown?.id === event.pointerId) {
       if (Math.hypot(event.clientX - placementDown.x, event.clientY - placementDown.y) < 12) {
         const result = showPlacement({ x: event.clientX, y: event.clientY });
-        if (result.valid) startAt(result.point.x, result.point.z, placementYaw());
+        if (result.valid) {
+          if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+          startAt(result.point.x, result.point.z, placementYaw());
+          if (event.pointerType === 'mouse') requestMouseLook();
+        }
         else message(result.reason);
       }
       placementDown = null;
@@ -436,11 +478,26 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     requestDraw();
   }
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(type, release, { capture: true });
+  document.addEventListener('mousemove', event => {
+    if (mode !== 'walking' || !pointerLocked() || !canFocus()) return;
+    stop(event); look(event.movementX, event.movementY, false);
+  }, { capture: true });
+  document.addEventListener('pointerlockchange', () => {
+    const locked = pointerLocked();
+    mouseLookPending = false;
+    if (locked && (!wantsMouseLook || mode !== 'walking' || !canFocus())) { releaseMouseLook(); return; }
+    const released = hadMouseLock && !locked;
+    hadMouseLock = locked; lookPointer = null;
+    if (released) pause();
+    if (locked) feedback = '';
+    announce(); requestDraw();
+  });
+  document.addEventListener('pointerlockerror', mouseLookError);
   canvas.addEventListener('wheel', event => { if (mode !== 'aerial') stop(event); }, { capture: true, passive: false });
   canvas.addEventListener('contextmenu', event => { if (mode !== 'aerial') event.preventDefault(); });
   canvas.addEventListener('keydown', event => {
     if (mode === 'aerial' || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.code === 'Escape') { stop(event); exit(); return; }
+    if (event.code === 'Escape') { stop(event); if (mode === 'walking') pause(); else exit(); return; }
     if (mode !== 'walking' || !moveCodes.has(event.code)) return;
     stop(event); if (event.code === 'Space' && !keys.has('Space')) jump();
     keys.add(event.code); announce(); wake();
@@ -452,7 +509,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   canvas.addEventListener('blur', pause);
   window.addEventListener('blur', pause);
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-  hud.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); exit(); } });
+  hud.addEventListener('keydown', event => { if (event.key === 'Escape') { stop(event); if (mode === 'walking') pause(); else exit(); } });
   for (const button of hud.querySelectorAll('[data-walk-move]')) {
     const direction = button.dataset.walkMove;
     const down = event => { event.preventDefault(); if (mode !== 'walking') return; padDirections.add(direction); button.dataset.held = ''; if (event.pointerId !== undefined) button.setPointerCapture(event.pointerId); wake(); };

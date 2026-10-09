@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=61f6dd2d83543432';
+import { createCampusWalk } from './campus-walk.js?v=859d1711a0edfd79';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
@@ -357,7 +357,7 @@ window.addEventListener('message', event => {
     requestDraw();
     return;
   }
-  if (['walk-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input'].includes(command)) {
+  if (['walk-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input', 'walk-release-pointer'].includes(command)) {
     if (active) walk?.command(command, value);
     return;
   }

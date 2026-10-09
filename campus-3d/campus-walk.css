@@ -23,6 +23,7 @@
 canvas[data-walk-mode=placing] { cursor: crosshair !important; }
 canvas[data-walk-mode=walking] { cursor: grab !important; }
 canvas[data-walk-mode=walking]:active { cursor: grabbing !important; }
+canvas[data-pointer-locked=true] { cursor: none !important; }
 @media (pointer: coarse), (max-width: 760px) {
   .campus-walk-pad { display: grid; }
   .campus-walk-actions { width: 152px; bottom: max(14px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); gap: 4px; }
