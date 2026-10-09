@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const FT = 0.3048;
 const EYE = 6 * FT, HEIGHT = 6.25 * FT, RADIUS = .85 * FT;
-const WALK_SPEED = 11 * FT, RUN_SPEED = 22 * FT;
+const WALK_SPEED = 22 * FT, RUN_SPEED = 44 * FT;
 const STEP = 1.05 * FT, GRAVITY = 9.81, JUMP_HEIGHT = 8 * FT;
 const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const SUPER_JUMP_HEIGHT = 60 * FT;
