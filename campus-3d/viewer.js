@@ -14,7 +14,8 @@ const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 let themePreference = 'system', resolvedTheme = 'light', active = false;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
-let savedEmbeddedCamera = null, dragMode = 'rotate';
+let savedEmbeddedCamera = null;
+const dragMode = 'rotate';
 let campusLighting = null, timeOfDay = 840, lightingDirty = true;
 const ASSET_REVISION = '7c74ca3158f3123c';
 const wrap = document.getElementById('canvas-wrap');
@@ -58,14 +59,13 @@ function draw(timestamp) {
   if (walk?.needsAnimation) requestDraw();
 }
 function requestDraw() { if (active && !document.hidden && renderer && camera && frame === null) frame = requestAnimationFrame(draw); }
-function setDragMode(mode, announce = true) {
-  if (!['rotate', 'pan'].includes(mode)) return;
-  dragMode = mode;
+// Older parent frames may still send a mode command; dragging stays Rotate.
+function setDragMode(_mode, announce = true) {
   if (!renderer) return;
-  renderer.domElement.dataset.dragMode = mode;
-  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${mode === 'pan' ? 'pan' : 'rotate and tilt'}. Use the main campus toolbar to switch modes. Right-drag, Shift-drag, or drag with two fingers to pan. Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.`);
+  renderer.domElement.dataset.dragMode = dragMode;
+  renderer.domElement.setAttribute('aria-label', 'Interactive new campus exterior model. Drag with a mouse or one finger to rotate and tilt. Right-drag, Shift-drag, or drag with two fingers to pan. Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.');
   if (announce) {
-    status.textContent = mode === 'pan' ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to turn and tilt the campus.';
+    status.textContent = 'Drag to turn and tilt the campus.';
     publishCamera();
   }
 }
@@ -233,7 +233,7 @@ function installEmbeddedNavigation() {
     const next = snapshot();
     if (gesture) {
       const dx = next.x - gesture.x, dy = next.y - gesture.y;
-      if (pointers.size > 1 || pointer.pan || event.shiftKey || dragMode === 'pan') panEmbedded(dx, dy, false);
+      if (pointers.size > 1 || pointer.pan || event.shiftKey) panEmbedded(dx, dy, false);
       else orbitEmbedded(-dx * 0.3, -dy * 0.3, false);
       if (next.distance && gesture.distance) {
         zoomEmbedded(next.distance / gesture.distance, next, false);
@@ -298,7 +298,7 @@ window.addEventListener('message', event => {
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
     const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
-    embeddedCamera = { ...embeddedCamera, ...value, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? THREE.MathUtils.clamp(value.tilt, MIN_TILT, MAX_TILT) : DEFAULT_TILT, zoom };
+    embeddedCamera = { ...embeddedCamera, ...value, dragMode, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? THREE.MathUtils.clamp(value.tilt, MIN_TILT, MAX_TILT) : DEFAULT_TILT, zoom };
     savedEmbeddedCamera = structuredClone(embeddedCamera);
     if (typeof value.oldBuildings === 'boolean') setOldOutlines(value.oldBuildings);
     applyEmbeddedCamera();

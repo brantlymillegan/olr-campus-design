@@ -24,8 +24,6 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 #viewer { position: relative; width: 100%; height: 100%; overflow: hidden; }
 #canvas-wrap { position: absolute; inset: 0; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-canvas[data-drag-mode=pan] { cursor: grab; }
-canvas[data-drag-mode=pan]:active { cursor: grabbing; }
 :focus-visible { outline: 3px solid #9e733a; outline-offset: 3px; }
 canvas:focus-visible { outline-offset: -4px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); }
