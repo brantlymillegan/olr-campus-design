@@ -5,6 +5,8 @@ const EYE = 6 * FT, HEIGHT = 6.25 * FT, RADIUS = .85 * FT;
 const WALK_SPEED = 11 * FT, RUN_SPEED = 22 * FT;
 const STEP = 1.05 * FT, GRAVITY = 9.81, JUMP_HEIGHT = 8 * FT;
 const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
+const SUPER_JUMP_HEIGHT = 60 * FT;
+const SUPER_JUMP_SPEED = Math.sqrt(2 * GRAVITY * SUPER_JUMP_HEIGHT);
 const CELL = 3, SLOPE_COS = Math.cos(50 * Math.PI / 180);
 const CAMPUS_BEARING = 9.067253590763931;
 const EPS = .008;
@@ -155,6 +157,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   camera.rotation.order = 'YXZ';
   let mode = 'aerial', navigationMode = 'walking', runningToggle = false, grounded = true, suspended = false;
   let yaw = Math.PI / 2, pitch = 0, velocityY = 0, groundY = 0, groundSurface = '';
+  let jumpCount = 0;
   let feedback = '', collisionCount = 0, movedSpeed = 0, lastAnnouncement = '';
   let pendingPlacement = null, placementDown = null, lookPointer = null;
   let wantsMouseLook = false, mouseLookPending = false, hadMouseLock = false;
@@ -171,7 +174,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const hud = document.createElement('div');
   hud.id = 'campus-walk-hud'; hud.className = 'campus-walk-hud'; hud.hidden = true;
   hud.innerHTML = `<div class="campus-walk-reticle" aria-hidden="true"></div>
-    <div class="campus-walk-banner"><strong id="campus-walk-title">Walk the campus</strong><p id="campus-walk-status" role="status" aria-live="polite"></p><p class="campus-walk-help"><span class="campus-walk-keyboard-help">WASD or arrows move · click the scene, then move the mouse to look · Space jumps · Shift runs · Esc releases the mouse</span><span class="campus-walk-touch-help">Hold the arrows to move · drag the scene to look · tap Jump or Run · End finishes the walk</span></p></div>
+    <div class="campus-walk-banner"><strong id="campus-walk-title">Walk the campus</strong><p id="campus-walk-status" role="status" aria-live="polite"></p><p class="campus-walk-help"><span class="campus-walk-keyboard-help">WASD or arrows move · click the scene, then move the mouse to look · Space jumps · press again in midair for a rooftop jump · Shift runs · Esc releases the mouse</span><span class="campus-walk-touch-help">Hold the arrows to move · drag the scene to look · tap Jump twice for a rooftop jump · Run speeds up · End finishes the walk</span></p></div>
     <div class="campus-walk-pad" role="group" aria-label="Walking directions">
       <button type="button" data-walk-move="forward" aria-label="Walk forward">↑</button>
       <button type="button" data-walk-move="left" aria-label="Walk left">←</button>
@@ -199,6 +202,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       running: isRunning(), speedFeetPerSecond: movedSpeed / FT, velocity: vector(velocity),
       pointerLocked: pointerLocked(), normalSpeedFeetPerSecond: WALK_SPEED / FT,
       runSpeedFeetPerSecond: RUN_SPEED / FT, jumpHeightFeet: JUMP_HEIGHT / FT,
+      superJumpHeightFeet: SUPER_JUMP_HEIGHT / FT, jumpCount,
       yawRadians: yaw, pitchRadians: pitch, collisionCount, feedback, message: feedback,
       boundsFeet: Object.freeze({ minX: surfaces.terrainBounds.min.x / FT, maxX: surfaces.terrainBounds.max.x / FT, minY: -surfaces.terrainBounds.max.z / FT, maxY: -surfaces.terrainBounds.min.z / FT }),
       collisionGeometry: surfaces.diagnostics
@@ -213,10 +217,10 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     title.textContent = mode === 'placing' ? `Choose a ${navigationMode === 'flying' ? 'launch' : 'starting'} point` : mode === 'flying' ? 'Flying around campus' : 'Walking · 6 ft eye height';
     hud.querySelector('.campus-walk-keyboard-help').textContent = mode === 'flying'
       ? 'WASD or arrows move · mouse looks · Space / E rises · Q descends · Shift flies faster · Esc releases the mouse'
-      : 'WASD or arrows move · click the scene, then move the mouse to look · Space jumps · Shift runs · Esc releases the mouse';
+      : 'WASD or arrows move · click the scene, then move the mouse to look · Space jumps · press again in midair for a rooftop jump · Shift runs · Esc releases the mouse';
     hud.querySelector('.campus-walk-touch-help').textContent = mode === 'flying'
       ? 'Hold arrows to move · drag to look · hold Up / Down to change height · Fast speeds up · End finishes'
-      : 'Hold the arrows to move · drag the scene to look · tap Jump or Run · End finishes the walk';
+      : 'Hold the arrows to move · drag the scene to look · tap Jump twice for a rooftop jump · Run speeds up · End finishes the walk';
     runButton.textContent = mode === 'flying' ? 'Fast' : 'Run';
     hud.querySelector('.campus-walk-pad').setAttribute('aria-label', mode === 'flying' ? 'Flying directions' : 'Walking directions');
     for (const button of hud.querySelectorAll('.campus-walk-pad button')) button.setAttribute('aria-label', `${mode === 'flying' ? 'Fly' : 'Walk'} ${button.dataset.walkMove}`);
@@ -264,7 +268,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     announce();
   }
   function exit() {
-    pause(); mode = 'aerial'; marker.visible = false; feedback = ''; velocityY = 0;
+    pause(); mode = 'aerial'; marker.visible = false; feedback = ''; velocityY = 0; jumpCount = 0;
     grounded = true; runningToggle = false; announce(); requestDraw();
   }
   function collisionAt(x, z, footY) {
@@ -317,7 +321,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (!placement.valid) { message(placement.reason); return false; }
     pause(); mode = navigationMode; suspended = false; marker.visible = false;
     feet.set(x, placement.surface.y, z); resumeModelOnMove = false; groundY = feet.y; groundSurface = placement.surface.name;
-    yaw = facing; pitch = 0; velocityY = 0; velocity.set(0, 0, 0); grounded = mode === 'walking';
+    yaw = facing; pitch = 0; velocityY = 0; jumpCount = 0; velocity.set(0, 0, 0); grounded = mode === 'walking';
     feedback = ''; syncCamera(); announce(); focusCanvas(); requestDraw();
     return true;
   }
@@ -341,8 +345,15 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     return Math.hypot(direction.x, direction.z) > 1e-5 ? Math.atan2(-direction.x, -direction.z) : THREE.MathUtils.degToRad((getAerialPose?.()?.bearing ?? CAMPUS_BEARING) - CAMPUS_BEARING);
   }
   function jump() {
-    if (mode !== 'walking' || !grounded) return;
-    velocityY = JUMP_SPEED; grounded = false; wake();
+    if (mode !== 'walking') return;
+    if (grounded) {
+      velocityY = JUMP_SPEED; jumpCount = 1;
+    } else if (jumpCount === 1) {
+      // A second deliberate press clears every campus roof. Replace the
+      // impulse so repeated presses cannot accumulate unlimited height.
+      velocityY = SUPER_JUMP_SPEED; jumpCount = 2;
+    } else return;
+    grounded = false; wake();
   }
   const moveCodes = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
   const moveDirections = new Set(['forward', 'backward', 'left', 'right', 'up', 'down']);
@@ -473,7 +484,8 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       movedSpeed = velocity.length(); grounded = false; velocityY = 0;
       syncCamera(); return;
     }
-    const steps = Math.max(1, Math.ceil(Math.max(elapsed / .016, speed * elapsed / .08))), step = elapsed / steps;
+    // Resolve fast rooftop jumps at the same spatial precision as movement.
+    const steps = Math.max(1, Math.ceil(Math.max(elapsed / .016, speed * elapsed / .08, (Math.abs(velocityY) + GRAVITY * elapsed) * elapsed / .08))), step = elapsed / steps;
     const old = feet.clone();
     for (let i = 0; i < steps; i++) {
       if (input.x || input.z) horizontalStep(input.x * speed * step, input.z * speed * step);
@@ -486,8 +498,8 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
         const nextY = feet.y + velocityY * step;
         if (velocityY > 0 && collisionAt(feet.x, feet.z, nextY)) velocityY = 0;
         else feet.y = nextY;
-        if (velocityY <= 0 && feet.y <= groundY) { feet.y = groundY; velocityY = 0; grounded = true; }
-      } else { feet.y = groundY; velocityY = 0; }
+        if (velocityY <= 0 && feet.y <= groundY) { feet.y = groundY; velocityY = 0; grounded = true; jumpCount = 0; }
+      } else { feet.y = groundY; velocityY = 0; jumpCount = 0; }
     }
     movedSpeed = elapsed > 0 ? Math.hypot(feet.x - old.x, feet.z - old.z) / elapsed : 0;
     velocity.set(elapsed > 0 ? (feet.x - old.x) / elapsed : 0, velocityY, elapsed > 0 ? (feet.z - old.z) / elapsed : 0);
@@ -560,7 +572,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (mode === 'aerial' || event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.code === 'Escape') { stop(event); if (navigating()) pause(); else exit(); return; }
     if (!navigating() || !moveCodes.has(event.code)) return;
-    stop(event); if (event.code === 'Space' && !keys.has('Space')) jump();
+    stop(event); if (event.code === 'Space' && !event.repeat && !keys.has('Space')) jump();
     keys.add(event.code); announce(); wake();
   }, { capture: true });
   canvas.addEventListener('keyup', event => {
