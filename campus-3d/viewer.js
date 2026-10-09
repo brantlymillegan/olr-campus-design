@@ -25,6 +25,7 @@ const status = document.getElementById('status');
 const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
 let renderer, camera, scene, extent = 200;
+let modelBounds = null;
 let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
 const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -139,8 +140,19 @@ function applyEmbeddedCamera(announce = false) {
   // be parallel to the viewing direction and lookAt cannot resolve yaw.
   camera.up.set(-Math.sin(theta), 0, -Math.cos(theta));
   camera.lookAt(focus);
-  camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
+  // A distant overview does not need a ten-centimeter near plane: reserving
+  // depth precision for empty space makes paving and grass fight for pixels.
+  // Stay well in front of the nearest model bound, including after panning.
+  // First-person cameras retain their close near plane for doors and furniture.
+  if (modelBounds) {
+    const direction = camera.getWorldDirection(new THREE.Vector3());
+    const half = modelBounds.getSize(new THREE.Vector3()).multiplyScalar(.5);
+    const centerOffset = modelBounds.getCenter(new THREE.Vector3()).sub(camera.position);
+    const closest = direction.dot(centerOffset) - Math.abs(direction.x) * half.x - Math.abs(direction.y) * half.y - Math.abs(direction.z) * half.z;
+    camera.near = Math.max(.1, Math.min(aerialDistance / 25, closest / 4));
+  }
+  camera.updateProjectionMatrix();
   requestDraw();
   if (announce || constrained) publishCamera();
 }
@@ -602,6 +614,7 @@ async function init() {
   }).then(data => { campusInteriorLighting = createInteriorLighting(data); }).catch(error => console.warn(error));
   await loadCampusBoundary(scene, model, `./boundary-lines.json?v=${ASSET_REVISION}`).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
+  modelBounds = bounds;
   const size = bounds.getSize(new THREE.Vector3());
   target = bounds.getCenter(new THREE.Vector3());
   target.y = Math.max(0, bounds.min.y) + size.y * 0.12;
