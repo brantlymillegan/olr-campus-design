@@ -7,12 +7,13 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const EMBEDDED = new URLSearchParams(location.search).get('embedded') === '1';
 const FEET = 0.3048;
 const CAMPUS_BEARING = 9.067253590763931;
-const TILT = THREE.MathUtils.degToRad(25);
+const DEFAULT_TILT = 25;
+const MIN_TILT = 5, MAX_TILT = 85;
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 let themePreference = 'system', resolvedTheme = 'light', active = !EMBEDDED;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
-let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, zoom: 1, width: innerWidth, height: innerHeight };
-let savedEmbeddedCamera = null;
+let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
+let savedEmbeddedCamera = null, dragMode = 'rotate';
 const materialColors = new Map();
 const ASSET_REVISION = 'e1453f94c11ae6e6';
 const wrap = document.getElementById('canvas-wrap');
@@ -113,14 +114,22 @@ function zoom(factor) {
   requestDraw();
 }
 function setDragMode(mode, announce = true) {
-  if (!controls) return;
+  if (!['rotate', 'pan'].includes(mode)) return;
+  dragMode = mode;
   const pan = mode === 'pan';
-  controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-  controls.touches.ONE = pan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  if (controls) {
+    controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = pan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  }
+  if (!renderer) return;
   renderer.domElement.dataset.dragMode = mode;
   dragModeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.dragMode === mode)));
-  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${pan ? 'pan' : 'rotate'}. Use the Rotate and Pan buttons to switch. Right-drag or drag with two fingers to pan; scroll or pinch to zoom. Keyboard: arrow keys to pan, plus and minus to zoom, zero to reset.`);
-  if (announce) status.textContent = pan ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to look around the campus.';
+  const scrolling = EMBEDDED ? 'Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate.' : 'Scroll or pinch to zoom.';
+  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${pan ? 'pan' : 'rotate and tilt'}. Use the Rotate and Pan buttons to switch. Right-drag, Shift-drag, or drag with two fingers to pan. ${scrolling} Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.`);
+  if (announce) {
+    status.textContent = pan ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to turn and tilt the campus.';
+    publishCamera();
+  }
 }
 function beginNavigation() {
   transition = null;
@@ -128,11 +137,11 @@ function beginNavigation() {
   viewButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
 }
 
-// Embedded navigation keeps the same ground-plane scale and compass bearing as
-// the map. The fixed tilt reveals height without changing the campus layout.
+// Enter with the same ground-plane scale and compass bearing as the map, then
+// allow a full orbit while retaining the center and scale for the return to 2D.
 function publishCamera() {
   if (!EMBEDDED || !model) return;
-  post({ type: 'olr-3d-state', camera: structuredClone(embeddedCamera) });
+  post({ type: 'olr-3d-state', camera: structuredClone(embeddedCamera), dragMode });
 }
 function applyEmbeddedCamera(announce = false) {
   if (!EMBEDDED || !camera) return;
@@ -143,7 +152,8 @@ function applyEmbeddedCamera(announce = false) {
   Object.assign(camera, { left: -width * unitsPerPixel / 2, right: width * unitsPerPixel / 2, top: height * unitsPerPixel / 2, bottom: -height * unitsPerPixel / 2, zoom: 1 });
   const theta = THREE.MathUtils.degToRad(embeddedCamera.bearing - CAMPUS_BEARING);
   const focus = new THREE.Vector3(embeddedCamera.center.x * FEET, 0, -embeddedCamera.center.y * FEET);
-  const direction = new THREE.Vector3(Math.sin(theta) * Math.sin(TILT), Math.cos(TILT), Math.cos(theta) * Math.sin(TILT));
+  const tilt = THREE.MathUtils.degToRad(embeddedCamera.tilt);
+  const direction = new THREE.Vector3(Math.sin(theta) * Math.sin(tilt), Math.cos(tilt), Math.cos(theta) * Math.sin(tilt));
   camera.position.copy(focus).addScaledVector(direction, 1200);
   camera.up.set(0, 1, 0);
   camera.lookAt(focus);
@@ -155,7 +165,8 @@ function applyEmbeddedCamera(announce = false) {
 function groundOffset(dx, dy) {
   const theta = THREE.MathUtils.degToRad(embeddedCamera.bearing - CAMPUS_BEARING);
   const c = Math.cos(theta), s = Math.sin(theta), scale = embeddedCamera.scale;
-  return { x: (c * dx + s * dy / Math.cos(TILT)) / scale, y: (s * dx - c * dy / Math.cos(TILT)) / scale };
+  const foreshortening = Math.cos(THREE.MathUtils.degToRad(embeddedCamera.tilt));
+  return { x: (c * dx + s * dy / foreshortening) / scale, y: (s * dx - c * dy / foreshortening) / scale };
 }
 function panEmbedded(dx, dy, announce = true) {
   const delta = groundOffset(dx, dy);
@@ -173,10 +184,12 @@ function zoomEmbedded(factor, point, announce = true) {
   embeddedCamera.zoom = nextZoom;
   applyEmbeddedCamera(announce);
 }
-function rotateEmbedded(delta, announce = true) {
-  embeddedCamera.bearing = ((embeddedCamera.bearing + delta) % 360 + 540) % 360 - 180;
+function orbitEmbedded(yaw, tilt = 0, announce = true) {
+  embeddedCamera.bearing = ((embeddedCamera.bearing + yaw) % 360 + 540) % 360 - 180;
+  embeddedCamera.tilt = THREE.MathUtils.clamp(embeddedCamera.tilt + tilt, MIN_TILT, MAX_TILT);
   applyEmbeddedCamera(announce);
 }
+function rotateEmbedded(delta, announce = true) { orbitEmbedded(delta, 0, announce); }
 function setupTheme() {
   try { themePreference = localStorage.getItem('olr-campus-theme') || 'system'; } catch {}
   if (!['system', 'light', 'dark'].includes(themePreference)) themePreference = 'system';
@@ -266,21 +279,25 @@ function installEmbeddedNavigation() {
     const [a, b] = points;
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(b.x - a.x, b.y - a.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
   }
+  canvas.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('pointerdown', event => {
-    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    if (!active || (event.pointerType === 'mouse' && ![0, 2].includes(event.button))) return;
     event.preventDefault(); canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId);
     const rect = canvas.getBoundingClientRect();
-    pointers.set(event.pointerId, { x: event.clientX - rect.left, y: event.clientY - rect.top });
+    pointers.set(event.pointerId, { x: event.clientX - rect.left, y: event.clientY - rect.top, pan: event.button === 2 });
     gesture = snapshot();
   });
   canvas.addEventListener('pointermove', event => {
     if (!pointers.has(event.pointerId) || !active || safariGesture) return;
     const rect = canvas.getBoundingClientRect();
-    pointers.set(event.pointerId, { x: event.clientX - rect.left, y: event.clientY - rect.top });
+    const pointer = pointers.get(event.pointerId);
+    pointers.set(event.pointerId, { ...pointer, x: event.clientX - rect.left, y: event.clientY - rect.top });
     const next = snapshot();
     if (gesture) {
-      panEmbedded(next.x - gesture.x, next.y - gesture.y, false);
+      const dx = next.x - gesture.x, dy = next.y - gesture.y;
+      if (pointers.size > 1 || pointer.pan || event.shiftKey || dragMode === 'pan') panEmbedded(dx, dy, false);
+      else orbitEmbedded(-dx * 0.3, -dy * 0.3, false);
       if (next.distance && gesture.distance) {
         zoomEmbedded(next.distance / gesture.distance, next, false);
         let delta = next.angle - gesture.angle;
@@ -319,7 +336,13 @@ function installEmbeddedNavigation() {
   canvas.addEventListener('keydown', event => {
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, textarea, select, [contenteditable=true]')) return;
     const deltas = { ArrowLeft: [48, 0], ArrowRight: [-48, 0], ArrowUp: [0, 48], ArrowDown: [0, -48] };
-    if (deltas[event.key]) { event.preventDefault(); panEmbedded(...deltas[event.key]); }
+    if (deltas[event.key]) {
+      event.preventDefault();
+      if (event.shiftKey) {
+        const orbit = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, -5], ArrowDown: [0, 5] };
+        orbitEmbedded(...orbit[event.key]);
+      } else panEmbedded(...deltas[event.key]);
+    }
     else if (['+', '=', '-', '_'].includes(event.key)) { event.preventDefault(); zoomEmbedded(['+', '='].includes(event.key) ? 1.25 : 0.8); }
     else if (['o', '0', 't', 'f', 'b', 'n'].includes(event.key.toLowerCase())) { event.preventDefault(); post({ type: 'olr-3d-key', key: event.key.toLowerCase() }); }
   });
@@ -330,7 +353,7 @@ window.addEventListener('message', event => {
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
     const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
-    embeddedCamera = { ...embeddedCamera, ...value, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, zoom };
+    embeddedCamera = { ...embeddedCamera, ...value, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? THREE.MathUtils.clamp(value.tilt, MIN_TILT, MAX_TILT) : DEFAULT_TILT, zoom };
     savedEmbeddedCamera = structuredClone(embeddedCamera);
     if (typeof value.oldBuildings === 'boolean') setOldOutlines(value.oldBuildings);
     applyEmbeddedCamera();
@@ -343,6 +366,7 @@ window.addEventListener('message', event => {
     applyTheme(['light', 'dark'].includes(value?.resolved) ? value.resolved : undefined);
   } else if (command === 'oldBuildings') setOldOutlines(value);
   else if (command === 'outlines') setOldOutlines({ visible: value?.visible, polygons: value?.rings });
+  else if (command === 'drag-mode') setDragMode(value);
   else if (command === 'zoom') zoomEmbedded(value === 'in' ? 1.25 : 0.8);
   else if (command === 'rotate' && Number.isFinite(value)) rotateEmbedded(value);
   else if (command === 'north') { embeddedCamera.bearing = 0; applyEmbeddedCamera(true); }
@@ -354,7 +378,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return Boolean(model); }, get embedded() { return EMBEDDED; }, get active() { return active; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
-  get camera() { return structuredClone(embeddedCamera); }, get frames() { return renderedFrames; },
+  get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
     const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(camera);
@@ -418,8 +442,7 @@ async function init() {
     }
   }, { capture: true });
   } else {
-    renderer.domElement.dataset.dragMode = 'pan';
-    renderer.domElement.setAttribute('aria-label', 'Interactive 3D campus. Drag to pan, pinch to zoom, and twist with two fingers to rotate. Arrow keys pan; plus and minus zoom.');
+    setDragMode(dragMode, false);
     installEmbeddedNavigation();
   }
   function resize() {
