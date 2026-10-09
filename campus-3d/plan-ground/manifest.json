@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "2100128e07f9feb6",
+  "revision": "013e4bc783f315e2",
   "boundsFeet": [
     -500,
     -275,
@@ -27,7 +27,7 @@
   },
   "files": {
     "plan-0-light-0.svg": {
-      "sha256": "29e08ee2d4442a8e77b5833e814b1378bd5f37572b15bf35c88996a5f7a6afc4",
+      "sha256": "1157ed163fa7fc6568d65a0603bc8effded4fe48f83fde7a5e726e9bd32c370c",
       "bytes": 384829,
       "floor": 0,
       "theme": "light",
@@ -37,7 +37,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-0-dark-0.svg": {
-      "sha256": "2d9c6b36147258ebd8ed40396a1e8a6f12507b550f195aa3bf76bc7e3f91ecbe",
+      "sha256": "5533b893f19f44034428b776ecfe3fb8900e674f96b994f95749222f25666c72",
       "bytes": 386274,
       "floor": 0,
       "theme": "dark",
@@ -47,7 +47,7 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-0-light-1.svg": {
-      "sha256": "cc19dfcbea479b3bba7cefec4acf36adb574a384ca23845c89bf16008158ec61",
+      "sha256": "931b0d7f592a984872ac99e11725a97c4512898f08602dc96cb137f1295bd595",
       "bytes": 386183,
       "floor": 0,
       "theme": "light",
@@ -57,7 +57,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-0-dark-1.svg": {
-      "sha256": "5ae95d663819d4f6107c10138b5420c62a47aff5726be3ecee74a5ec0da46716",
+      "sha256": "7ae3378675aea285f174d9d00a5672f4247fa72e54d0169477703077e3f7a725",
       "bytes": 387628,
       "floor": 0,
       "theme": "dark",
@@ -67,7 +67,7 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-1-light-0.svg": {
-      "sha256": "923f8e09325bf3f0333389ca47a8f0d71d685a90da598eea19590320918dc2d1",
+      "sha256": "25f70e7fce0c86161fcd04f71c7ca06db12bb98ab61628e147b8497fcf93e8b3",
       "bytes": 483364,
       "floor": 1,
       "theme": "light",
@@ -77,7 +77,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-1-dark-0.svg": {
-      "sha256": "c6b85c9c4308d3015318a24c6b060a2c13edc44a9ace05ae88c73c6db978979e",
+      "sha256": "dfe202dec3ca2839c334fa5d08bc0e7a50845b5bdc9f675df17b8db697670725",
       "bytes": 485459,
       "floor": 1,
       "theme": "dark",
@@ -87,7 +87,7 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-1-light-1.svg": {
-      "sha256": "aa741737a7cd65c1c0a59d2a3008099afd45567d44778a53ac6e9367137bf61f",
+      "sha256": "7aad7850d286b2a0943cb2496f9c9a3b0a485ae855f6593e59e108ff7d652057",
       "bytes": 484718,
       "floor": 1,
       "theme": "light",
@@ -97,7 +97,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-1-dark-1.svg": {
-      "sha256": "e828e5924736fe4ce47cb0e23ad51eb7cb79691dd19332b823fe2bf057485b78",
+      "sha256": "74786f32e1d0d459e2f2c9688a47ee77a528d05f2835477c39f0c6f7e88bdf96",
       "bytes": 486813,
       "floor": 1,
       "theme": "dark",
@@ -107,7 +107,7 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-2-light-0.svg": {
-      "sha256": "b95df6cf546a9ce7d822e7466f5ff63a4e9eccf88bd0487287b29f1efefd7d27",
+      "sha256": "844cf8fd4366c87e66134540868eb3be0135063824f6cc1f21437a8f66b34d0e",
       "bytes": 451373,
       "floor": 2,
       "theme": "light",
@@ -117,7 +117,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-2-dark-0.svg": {
-      "sha256": "8f912a68db6f78dc84e3bd9bab60c18bd8072df35bf18e73daee89eed5e99e09",
+      "sha256": "1d298000a962610eb30d5c04ca96f7cbdbaaafa2750d04a1b5453311102786bf",
       "bytes": 453450,
       "floor": 2,
       "theme": "dark",
@@ -127,7 +127,7 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-2-light-1.svg": {
-      "sha256": "8fa722f8a4963139a313da933d20681ae993945e25b12bd15b89bb0bf6ebc85c",
+      "sha256": "25459356ac0527e93115f6188ddf54d0a038bbd6ad4a26461e0589bf17fd07a9",
       "bytes": 452727,
       "floor": 2,
       "theme": "light",
@@ -137,7 +137,7 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-2-dark-1.svg": {
-      "sha256": "f6b9cd1d08eccc30b1af8203bb456bae8bc05ce297e2dc06c08e4412b2e5c4b8",
+      "sha256": "bb806bebd3cdde1474dd0dbf5f75b8e59c3df875a520d52a46bbf39cc069a0f8",
       "bytes": 454804,
       "floor": 2,
       "theme": "dark",
