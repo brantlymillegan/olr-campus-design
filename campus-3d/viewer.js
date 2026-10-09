@@ -470,7 +470,8 @@ async function init() {
   model.traverse(object => {
     if (object.isMesh) {
       object.castShadow = true;
-      object.receiveShadow = true;
+      // This thin sloped apron self-shadows at the campus-wide shadow-map scale.
+      object.receiveShadow = object.name !== 'Gaga_Ball_graded_lawn_apron';
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         if (material.map) material.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
