@@ -158,7 +158,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   let feedback = '', collisionCount = 0, movedSpeed = 0, lastAnnouncement = '';
   let pendingPlacement = null, placementDown = null, lookPointer = null;
   let wantsMouseLook = false, mouseLookPending = false, hadMouseLock = false;
-  let lastPose = null;
+  let lastPose = null, presentation = '3d', flatGroundY = 0, flatBounds = null, resumeModelOnMove = false;
   const feet = new THREE.Vector3(), velocity = new THREE.Vector3();
   const keys = new Set(), padDirections = new Set();
   const captured = new Set();
@@ -191,7 +191,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   function snapshot() {
     const vector = v => Object.freeze({ x: v.x, y: v.y, z: v.z });
     return Object.freeze({
-      mode, navigationMode, eyeHeightFeet: 6, bodyRadiusFeet: RADIUS / FT, feet: vector(feet), position: vector(camera.position),
+      mode, navigationMode, presentation, flatGround: presentation === '2d', flatGroundY, eyeHeightFeet: 6, bodyRadiusFeet: RADIUS / FT, feet: vector(feet), position: vector(camera.position),
       siteFeet: Object.freeze({ x: feet.x / FT, y: -feet.z / FT, elevation: feet.y / FT }),
       groundY, groundElevationFeet: groundY / FT, groundSurface, grounded, jumping: mode === 'walking' && !grounded,
       altitudeFeet: (camera.position.y - groundY) / FT,
@@ -268,6 +268,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     grounded = true; runningToggle = false; announce(); requestDraw();
   }
   function collisionAt(x, z, footY) {
+    if (presentation === '2d') return null;
     capsuleA.set(x, footY + RADIUS, z); capsuleB.set(x, footY + HEIGHT - RADIUS, z);
     let deepest = null;
     for (const record of surfaces.nearSolids(x, z)) {
@@ -299,6 +300,10 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     return deepest;
   }
   function validStanding(x, z, elevation) {
+    if (presentation === '2d') {
+      const surface = flatSurface(x, z);
+      return surface ? { valid: true, surface } : { valid: false, reason: 'Choose a point inside the campus plan.' };
+    }
     const terrain = surfaces.groundAt(x, z);
     if (!terrain) return { valid: false, reason: 'Choose a lawn, path, or roof inside the modeled campus.' };
     const surface = surfaces.solidSupportAt(x, z, terrain.y + .001, Number.isFinite(elevation) ? elevation + .025 : Infinity, true) || terrain;
@@ -311,7 +316,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     const placement = validStanding(x, z, elevation);
     if (!placement.valid) { message(placement.reason); return false; }
     pause(); mode = navigationMode; suspended = false; marker.visible = false;
-    feet.set(x, placement.surface.y, z); groundY = feet.y; groundSurface = placement.surface.name;
+    feet.set(x, placement.surface.y, z); resumeModelOnMove = false; groundY = feet.y; groundSurface = placement.surface.name;
     yaw = facing; pitch = 0; velocityY = 0; velocity.set(0, 0, 0); grounded = mode === 'walking';
     feedback = ''; syncCamera(); announce(); focusCanvas(); requestDraw();
     return true;
@@ -348,6 +353,16 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     syncCamera(); wake();
   }
   function command(name, value) {
+    if (name === 'walk-presentation' && ['2d', '3d'].includes(value)) {
+      if (presentation !== value) {
+        // Change the rendered/physical world, never the viewer's pose. Retain
+        // jump height and flight altitude above the support plane as well.
+        if (value === '2d') flatGroundY = groundY;
+        else if (navigating()) resumeModelOnMove = true;
+        presentation = value; announce(true); requestDraw();
+      }
+      return true;
+    }
     if (name === 'walk-exit') { exit(); return true; }
     if (name === 'walk-release-pointer') { pause(); requestDraw(); return true; }
     if (name === 'walk-input') {
@@ -375,11 +390,13 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     }
     if (name === 'walk-place' || name === 'fly-place') {
       pause(); mode = 'placing'; suspended = false; marker.visible = false;
+      if (presentation === '2d') flatGroundY = 0;
       navigationMode = name === 'fly-place' ? 'flying' : 'walking';
-      feedback = 'Click or tap a lawn, path, or roof. End cancels placement.';
+      feedback = presentation === '2d' ? 'Click or tap a starting point on the plan. End cancels placement.' : 'Click or tap a lawn, path, or roof. End cancels placement.';
       announce(); focusCanvas(); requestDraw(); return true;
     }
     if (name === 'walk-start') {
+      if (presentation === '2d') flatGroundY = 0;
       navigationMode = 'walking';
       // The audited exterior landing is east of Building 1's entrance canopy.
       for (const [x, y] of [[39, 224], [39, 236], [39, 212], [43, 224]]) if (startAt(x * FT, -y * FT, Math.PI / 2)) return true;
@@ -411,7 +428,13 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     }
     return false;
   }
+  function flatSurface(x, z) {
+    const bounds = flatBounds || [surfaces.terrainBounds.min.x / FT, -surfaces.terrainBounds.max.z / FT, surfaces.terrainBounds.max.x / FT, -surfaces.terrainBounds.min.z / FT];
+    if (x / FT < bounds[0] || x / FT > bounds[2] || -z / FT < bounds[1] || -z / FT > bounds[3]) return null;
+    return { y: flatGroundY, normal: new THREE.Vector3(0, 1, 0), name: 'Flat campus plan' };
+  }
   function walkingSurface(x, z) {
+    if (presentation === '2d') return flatSurface(x, z);
     const terrain = surfaces.groundAt(x, z);
     if (!terrain) return null;
     return surfaces.solidSupportAt(x, z, terrain.y + .001, feet.y + (grounded ? STEP : .002)) || terrain;
@@ -432,11 +455,19 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     // until time advances rather than treating the unchanged feet as a landing.
     if (elapsed === 0) { movedSpeed = 0; velocity.set(0, velocityY, 0); syncCamera(); return; }
     const input = movement(), speed = isRunning() ? RUN_SPEED : WALK_SPEED;
+    if (resumeModelOnMove) {
+      // A presentation toggle is not a navigation command. Delay terrain
+      // reconciliation until the user moves so switching never teleports.
+      if (!(input.x || input.y || input.z) && (grounded || mode === 'flying')) { movedSpeed = 0; velocity.set(0, 0, 0); syncCamera(); return; }
+      resumeModelOnMove = false;
+      const support = walkingSurface(feet.x, feet.z);
+      if (support && feet.y < support.y) feet.y = support.y;
+    }
     if (mode === 'flying') {
       const old = feet.clone();
       feet.addScaledVector(new THREE.Vector3(input.x, input.y, input.z), speed * elapsed);
-      const terrain = surfaces.groundAt(feet.x, feet.z, false);
-      groundY = terrain?.y ?? 0; groundSurface = terrain?.name ?? 'Surrounding meadow';
+      const terrain = presentation === '2d' ? flatSurface(feet.x, feet.z) : surfaces.groundAt(feet.x, feet.z, false);
+      groundY = presentation === '2d' ? flatGroundY : (terrain?.y ?? 0); groundSurface = presentation === '2d' ? 'Flat campus plan' : (terrain?.name ?? 'Surrounding meadow');
       feet.y = THREE.MathUtils.clamp(feet.y, groundY, MAX_FLIGHT_ELEVATION);
       velocity.copy(feet).sub(old).divideScalar(elapsed);
       movedSpeed = velocity.length(); grounded = false; velocityY = 0;
@@ -570,6 +601,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     get mode() { return mode; }, get camera() { return navigating() ? camera : null; }, get state() { return snapshot(); },
     get needsAnimation() { const input = movement(); return navigating() && !suspended && (Boolean(input.x || input.y || input.z) || (mode === 'walking' && !grounded)); },
     clearanceHeight: surfaces.clearanceHeight,
+    setFlatBounds(bounds) { if (Array.isArray(bounds) && bounds.length === 4 && bounds.every(Number.isFinite)) flatBounds = [...bounds]; },
     command, update, resize, pause, exit
   });
 }

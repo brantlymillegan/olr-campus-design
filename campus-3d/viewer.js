@@ -1,6 +1,7 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=2ff605a07b2fb3bf';
+import { createCampusWalk } from './campus-walk.js?v=184187ecf15417b9';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=4f7e7868ed5d650d';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
@@ -28,7 +29,9 @@ let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
 const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let model, frame = null, frameHost = null;
-let walk = null, lastDrawTime = null, walkPresentation = '3d';
+let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d';
+let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
+let flatBounds = null;
 let resetAerialInput = () => {};
 let target = new THREE.Vector3();
 
@@ -59,8 +62,15 @@ function draw(timestamp) {
     lightingDirty = false;
     updateOutlineColor();
   }
-  // The plan shares the physics loop, but its hidden 3D canvas does no GPU work.
-  if (showingModel) {
+  const showingPlan = !showingModel && Boolean(walk?.camera);
+  planGround?.setEnabled(showingPlan);
+  // First person uses the exact same camera in both presentations. The flat
+  // plan has its own unlit scene, so no model geometry or shadow can appear.
+  if (showingPlan) {
+    planGround.update(walk.camera, walk.state.flatGroundY);
+    renderer.render(planGround.scene, walk.camera);
+    renderedFrames++;
+  } else if (showingModel) {
     const activeCamera = walk?.camera || camera;
     campusAtmosphere?.updateCamera(activeCamera);
     renderer.render(scene, activeCamera);
@@ -72,9 +82,7 @@ function draw(timestamp) {
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
 function requestDraw() {
   if (active && !document.hidden && renderer && camera && frame === null) {
-    // Hidden iframe RAFs can be throttled. In plan mode the visible parent owns
-    // the physics clock; the hidden model does not render a second scene.
-    frameHost = walkPresentation === '2d' && EMBEDDED ? window.parent : window;
+    frameHost = window;
     frame = frameHost.requestAnimationFrame(draw);
   }
 }
@@ -198,6 +206,8 @@ function applyTheme(explicitResolved) {
   resolvedTheme = explicitResolved || (themePreference === 'system' ? (themeMedia.matches ? 'dark' : 'light') : themePreference);
   document.documentElement.dataset.theme = resolvedTheme;
   document.querySelector('meta[name="theme-color"]').content = resolvedTheme === 'dark' ? '#181818' : '#ffffff';
+  planOptions.theme = resolvedTheme;
+  planGround?.setOptions(planOptions);
   updateOutlineColor();
   requestDraw();
 }
@@ -333,8 +343,17 @@ function installEmbeddedNavigation() {
   }, { passive: false });
   canvas.addEventListener('gestureend', event => { event.preventDefault(); safariGesture = null; }, { passive: false });
   canvas.addEventListener('keydown', event => {
-    if (!active || (walk && walk.mode !== 'aerial')) return;
+    if (!active) return;
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, textarea, select, [contenteditable=true]')) return;
+    if (walk && walk.mode !== 'aerial') {
+      // Movement is owned by the walker; plan/layer shortcuts still belong to
+      // the common toolbar when the first-person canvas has keyboard focus.
+      const key = event.key.toLowerCase();
+      if (!event.repeat && ['o','f','b','t'].includes(key)) {
+        event.preventDefault(); post({type:'olr-3d-key',key});
+      }
+      return;
+    }
     const deltas = { ArrowLeft: [48, 0], ArrowRight: [-48, 0], ArrowUp: [0, 48], ArrowDown: [0, -48] };
     if (deltas[event.key]) {
       event.preventDefault();
@@ -351,11 +370,20 @@ window.addEventListener('message', event => {
   if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
-    if (walkPresentation !== value) { walk?.pause(); cancelDraw(); }
+    if (walkPresentation !== value) cancelDraw();
     walkPresentation = value;
-    if (value === '3d' && ['walking', 'flying'].includes(walk?.mode)) renderer?.domElement.focus({preventScroll:true});
+    if (value === '2d') planGround?.preload();
+    walk?.command('walk-presentation', value);
+    if (['walking', 'flying'].includes(walk?.mode)) renderer?.domElement.focus({preventScroll:true});
     requestDraw();
     return;
+  }
+  if (command === 'plan-options' && value && typeof value === 'object') {
+    if ([0, 1, 2].includes(value.floor)) planOptions.floor = value.floor;
+    if (['light', 'dark'].includes(value.theme)) planOptions.theme = value.theme;
+    if (typeof value.oldBuildings === 'boolean') planOptions.oldBuildings = value.oldBuildings;
+    planGround?.setOptions(planOptions);
+    requestDraw(); return;
   }
   if (['walk-place', 'fly-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input', 'walk-release-pointer'].includes(command)) {
     if (active) walk?.command(command, value);
@@ -398,6 +426,8 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
   get walkPresentation() { return walkPresentation; },
+  get plan() { return planGround?.state ?? { ready: false, flat: true, ...planOptions }; },
+  get renderState() { return { presentation: walkPresentation, firstPerson: Boolean(walk?.camera), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: walk?.camera ? { position: walk.camera.position.toArray(), quaternion: walk.camera.quaternion.toArray(), fov: walk.camera.fov } : null }; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
     const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(walk?.camera || camera);
@@ -420,6 +450,9 @@ async function init() {
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); fail(new Error('WebGL context lost')); });
+  planGround = createCampusPlanGround({ renderer, requestDraw, onBounds: bounds => { flatBounds = bounds; walk?.setFlatBounds(bounds); } });
+  planGround.setOptions(planOptions);
+  if (walkPresentation === '2d') planGround.preload();
   scene = new THREE.Scene();
   setOldOutlines({ visible: oldOutlineVisible, polygons: oldOutlinePolygons });
   scene.background = new THREE.Color(resolvedTheme === 'dark' ? 0x181818 : 0xffffff);
@@ -483,15 +516,25 @@ async function init() {
     getAerialCamera: () => camera,
     getAerialPose: () => structuredClone(embeddedCamera),
     requestDraw,
-    canFocus: () => walkPresentation === '3d',
+    canFocus: () => active,
     onPose: pose => { if (walkPresentation === '2d') post({type:'olr-3d-walk-pose', ...pose}); },
     onChange: state => {
       resetAerialInput();
       updateOutlineColor();
+      if (state.mode === 'aerial') setDragMode(dragMode, false);
+      else {
+        const flat = walkPresentation === '2d';
+        const movement = state.mode === 'flying' ? 'WASD or arrows move; Space or E rises; Q descends; Shift speeds up.' : 'WASD or arrows move; Space jumps; Shift runs.';
+        renderer.domElement.setAttribute('aria-label', state.mode === 'placing'
+          ? `Choose a starting point on ${flat ? 'the campus plan' : 'a path, lawn, or roof'}.`
+          : `First-person ${flat ? 'campus floor plan on a flat ground surface' : 'campus model'} at ${state.mode === 'flying' ? 'your flight altitude' : 'six-foot eye height'}. ${movement} Click to capture the mouse or drag to look; Escape releases the mouse; End returns to the aerial view.`);
+      }
       post({ type: 'olr-3d-walk', ...state });
       requestDraw();
     }
   });
+  walk.command('walk-presentation', walkPresentation);
+  if (flatBounds) walk.setFlatBounds(flatBounds);
   walk.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
