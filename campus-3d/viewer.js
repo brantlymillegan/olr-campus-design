@@ -1,3 +1,4 @@
+import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -13,7 +14,7 @@ let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null;
 const materialColors = new Map();
-const ASSET_REVISION = 'd713d836bde10a67';
+const ASSET_REVISION = 'e1453f94c11ae6e6';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -458,6 +459,7 @@ async function init() {
   model.traverse(object => { if (object.isLight) importedLights.push(object); });
   importedLights.forEach(light => light.removeFromParent());
   scene.add(model);
+  await loadCampusBoundary(scene, model, `./boundary-lines.json?v=${ASSET_REVISION}`).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
   sceneBounds = bounds;
   const size = bounds.getSize(new THREE.Vector3());
