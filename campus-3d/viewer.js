@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=a2c0755f9a09dc4b';
+import { createCampusWalk } from './campus-walk.js?v=da93d7eb0c729975';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=4f7e7868ed5d650d';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -18,8 +18,8 @@ let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
-let campusLighting = null, campusAtmosphere = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '86f4e3dd5d581386';
+let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
+const ASSET_REVISION = '62783f6f256930a0';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -63,6 +63,7 @@ function draw(timestamp) {
     updateOutlineColor();
   }
   const showingPlan = !showingModel && Boolean(walk?.camera);
+  campusInteriorLighting?.update(walk?.camera || camera, showingModel && Boolean(walk?.camera));
   planGround?.setEnabled(showingPlan);
   // First person uses the exact same camera in both presentations. The flat
   // plan has its own unlit scene, so no model geometry or shadow can appear.
@@ -422,6 +423,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
+  get interiorLighting() { return campusInteriorLighting?.state ?? { ready: false, active: false, poolSize: 0 }; },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
@@ -435,6 +437,58 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
     return { x: (point.x + 1) * rect.width / 2, y: (1 - point.y) * rect.height / 2 };
   }
 }), writable: false });
+
+function createInteriorLighting(data) {
+  const polygonValid = p => Array.isArray(p) && p.length >= 3 && p.every(v => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite));
+  const buildings = (data.buildings || []).filter(b => typeof b.id === 'string' && Number.isFinite(b.floor) && Number.isFinite(b.floorElevationFeet) && polygonValid(b.polygonWorldFeet));
+  const rooms = (data.rooms || []).filter(r => typeof r.id === 'string' && polygonValid(r.polygonWorldFeet));
+  const panels = (data.lights || []).filter(p => typeof p.building === 'string' && Number.isFinite(p.floor) && Array.isArray(p.positionFeet) && p.positionFeet.length === 3 && p.positionFeet.every(Number.isFinite)).map((p, index) => ({ ...p, index }));
+  const contains = (polygon, x, y) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i], b = polygon[j];
+      if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  };
+  // Keep a fixed light count: entering a room updates only uniforms, never the
+  // material shader variants. Positions come from real ceiling panels, not the
+  // viewer's head. These soft fills stay on in daylight and at night.
+  const pool = Array.from({ length: 8 }, (_, i) => {
+    const light = new THREE.PointLight(0xffefd9, 0, 34 * FEET, 2);
+    light.name = `Interior ceiling fill ${i + 1}`;
+    light.castShadow = false;
+    scene.add(light);
+    return light;
+  });
+  let selected = [], location = null, signature = '';
+  function update(activeCamera, firstPerson) {
+    const x = activeCamera.position.x / FEET, y = -activeCamera.position.z / FEET, elevation = activeCamera.position.y / FEET;
+    const building = firstPerson && buildings.find(b => elevation >= b.floorElevationFeet && elevation < b.floorElevationFeet + (b.floor === 1 ? 14.05 : 13.4) && contains(b.polygonWorldFeet, x, y));
+    if (!building) {
+      if (signature !== 'outside') { pool.forEach(light => { light.intensity = 0; }); selected = []; location = null; signature = 'outside'; }
+      return;
+    }
+    const room = rooms.find(r => r.building === building.id && r.floor === building.floor && contains(r.polygonWorldFeet, x, y));
+    // A room's selection is stable everywhere within it; hallway selections
+    // change only across an eight-foot grid, where distant lights fade gently.
+    const anchor = room ? room.polygonWorldFeet.reduce((a, p) => [a[0] + p[0] / room.polygonWorldFeet.length, a[1] + p[1] / room.polygonWorldFeet.length], [0, 0]) : [Math.round(x / 8) * 8, Math.round(y / 8) * 8];
+    const nextSignature = `${building.id}|${building.floor}|${room?.id || anchor.join(',')}`;
+    if (signature === nextSignature) return;
+    signature = nextSignature;
+    location = { building: building.id, floor: building.floor, roomId: room?.id || null };
+    selected = panels.filter(p => p.building === building.id && (p.floor === building.floor || room && p.servesRoomIds?.includes(room.id))).sort((a, b) => {
+      const ownA = room && (a.roomId === room.id || a.servesRoomIds?.includes(room.id)) ? 0 : 1, ownB = room && (b.roomId === room.id || b.servesRoomIds?.includes(room.id)) ? 0 : 1;
+      return ownA - ownB || Math.hypot(a.positionFeet[0] - anchor[0], a.positionFeet[1] - anchor[1]) - Math.hypot(b.positionFeet[0] - anchor[0], b.positionFeet[1] - anchor[1]);
+    }).slice(0, pool.length);
+    pool.forEach((light, i) => {
+      const panel = selected[i];
+      light.intensity = panel ? 12 : 0;
+      if (panel) light.position.set(panel.positionFeet[0] * FEET, panel.positionFeet[2] * FEET, -panel.positionFeet[1] * FEET);
+    });
+  }
+  return Object.freeze({ update, get state() { return { ready: true, active: Boolean(location), ...location, poolSize: pool.length, shadowCasting: false, lights: selected.map((p, i) => ({ roomId: p.roomId, positionFeet: [...p.positionFeet], intensity: pool[i].intensity })) }; } });
+}
 
 async function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
@@ -484,11 +538,21 @@ async function init() {
   model = gltf.scene;
   model.traverse(object => {
     if (object.isMesh) {
-      object.castShadow = true;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const windowGlass = material => /glazing|School clear glass/i.test(material.name);
+      // Alpha-blended panes show the actual interior and must not cast a solid
+      // opaque window-sized shadow. Door frames and bronze trim remain solid.
+      object.castShadow = materials.some(material => !windowGlass(material));
       // This thin sloped apron self-shadows at the campus-wide shadow-map scale.
       object.receiveShadow = object.name !== 'Gaga_Ball_graded_lawn_apron';
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
+        if (windowGlass(material)) {
+          material.transparent = true;
+          material.opacity = Math.min(material.opacity, /School clear glass/i.test(material.name) ? .25 : .35);
+          material.depthWrite = false;
+          material.side = THREE.DoubleSide;
+          material.forceSinglePass = true;
+        }
         for (const texture of [material.map, material.normalMap, material.roughnessMap, material.metalnessMap]) {
           if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         }
@@ -500,6 +564,10 @@ async function init() {
   model.traverse(object => { if (object.isLight) importedLights.push(object); });
   importedLights.forEach(light => light.removeFromParent());
   scene.add(model);
+  await fetch(`./campus-interiors.json?v=${ASSET_REVISION}`).then(response => {
+    if (!response.ok) throw new Error(`Interior lighting metadata HTTP ${response.status}`);
+    return response.json();
+  }).then(data => { campusInteriorLighting = createInteriorLighting(data); }).catch(error => console.warn(error));
   await loadCampusBoundary(scene, model, `./boundary-lines.json?v=${ASSET_REVISION}`).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
   const size = bounds.getSize(new THREE.Vector3());

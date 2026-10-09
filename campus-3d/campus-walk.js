@@ -12,13 +12,25 @@ const CAMPUS_BEARING = 9.067253590763931;
 const EPS = .008;
 const MAX_FLIGHT_ELEVATION = 500 * FT;
 
+function walkThroughObject(object) {
+  for (let node = object; node; node = node.parent) if (node.userData?.walkThrough === true) return true;
+  return false;
+}
+function walkThroughMaterial(material) {
+  return material?.userData?.walkThrough === true || /Interior[\s_.•-]+door[\s_.•-]+leaf/i.test(material?.name || '');
+}
+function walkThroughHit(hit) {
+  const materials = hit.object.material;
+  return walkThroughObject(hit.object) || walkThroughMaterial(Array.isArray(materials) ? materials[hit.face?.materialIndex ?? 0] : materials);
+}
+
 // Material groups contain disconnected buildings. Index their actual triangles,
 // rather than treating a consolidated mesh's bounding box as one solid building.
 function makeSurfaceIndex(model) {
   const ground = new Map(), terrain = new Map(), solids = new Map();
   const rayMeshes = [], groundMeshes = new Set();
   const terrainBounds = new THREE.Box3();
-  let triangleCount = 0, solidCount = 0, groundCount = 0;
+  let triangleCount = 0, solidCount = 0, groundCount = 0, walkThroughMeshes = 0, walkThroughTriangles = 0;
   const key = (x, z) => `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
   function add(index, triangle) {
     for (let x = Math.floor(triangle.minX / CELL); x <= Math.floor(triangle.maxX / CELL); x++) {
@@ -33,6 +45,13 @@ function makeSurfaceIndex(model) {
   model.traverse(object => {
     if (!object.isMesh || !object.visible || !object.geometry?.attributes.position) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
+    // Door leaves remain visible but never add a hidden wall or a false floor.
+    // Exporters may preserve extras on a parent, or consolidate by material.
+    if (walkThroughObject(object) || materials.every(walkThroughMaterial)) {
+      walkThroughMeshes++;
+      walkThroughTriangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3;
+      return;
+    }
     const names = materials.map(m => m?.name || '').join(' ');
     const name = object.name;
     if (/Campus.boundary|Terrain.cut.edge/i.test(names + ' ' + name)) return;
@@ -48,6 +67,10 @@ function makeSurfaceIndex(model) {
     const indices = object.geometry.index;
     const count = indices ? indices.count : positions.count;
     for (let i = 0; i + 2 < count; i += 3) {
+      if (materials.length > 1) {
+        const group = object.geometry.groups.find(group => i >= group.start && i < group.start + group.count);
+        if (walkThroughMaterial(materials[group?.materialIndex ?? 0])) { walkThroughTriangles++; continue; }
+      }
       const vertices = [0, 1, 2].map(k => new THREE.Vector3().fromBufferAttribute(positions, indices ? indices.getX(i + k) : i + k).applyMatrix4(object.matrixWorld));
       const triangle = new THREE.Triangle(...vertices);
       if (triangle.getArea() < 1e-10) continue;
@@ -127,7 +150,7 @@ function makeSurfaceIndex(model) {
     }
     return support;
   }
-  return { groundAt, clearanceHeight, solidSupportAt, nearSolids, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount }) };
+  return { groundAt, clearanceHeight, solidSupportAt, nearSolids, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount, walkThroughMeshes, walkThroughTriangles }) };
 }
 
 // Closest points between two finite line segments (including degenerate ends).
@@ -329,7 +352,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     const rect = canvas.getBoundingClientRect();
     ndc.set((clientX - rect.left) / rect.width * 2 - 1, 1 - (clientY - rect.top) / rect.height * 2);
     raycaster.setFromCamera(ndc, getAerialCamera());
-    const hit = raycaster.intersectObjects(surfaces.rayMeshes, false).find(h => h.object.visible);
+    const hit = raycaster.intersectObjects(surfaces.rayMeshes, false).find(h => h.object.visible && !walkThroughHit(h));
     if (!hit) return { valid: false, reason: 'Choose a lawn, path, or roof inside the modeled campus.' };
     const standing = validStanding(hit.point.x, hit.point.z, hit.point.y);
     return { ...standing, point: standing.valid ? new THREE.Vector3(hit.point.x, standing.surface.y, hit.point.z) : hit.point };
