@@ -1,35 +1,35 @@
 {
   "version": 1,
   "filename": "OLR-Master-Plan-Millegan-10-09-2026.pdf",
-  "sha256": "8122516dae7eb605a0078f647f4789c66a1189ae9dce2d83c0d5fda8400352b6",
-  "bytes": 5009187,
+  "sha256": "a574ebe0878d8b814e822b2b570ab9d2173241bba7ff6fdaf61ab8bacfd9e73e",
+  "bytes": 4993647,
   "page_count": 16,
-  "created_at": "2026-10-09T16:15:09.010Z",
+  "created_at": "2026-10-09T16:35:45.850Z",
   "download_date": {
     "version": 1,
     "field": "olr.download-date"
   },
   "specifications_pages": 7,
   "specifications_room_count": 62,
-  "model_sha256": "fd2583a19723e61f8cae68c3d963e1a58f8ce88bb65bed3069be334b8ada0a3c",
+  "model_sha256": "b4583f5deef824fcb4b06300aa359d06dc5694e150506c330a8494d5958854b2",
   "camera_config_sha256": "a47daae222a0b82c9e6e971db9169f1b80ca487b68a65ccdded2635f6c0fa4c7",
   "cover_view_id": "playground-gardens",
   "views": [
     {
       "id": "frontage-road",
-      "sha256": "0a4c6c24bb266f83540901ccaf89f9f1613ec45cd0a84349757253903c262b2b"
+      "sha256": "005e83d09d16022171a46e64918e93a357487aa905e704320d8f49fc0aeb918c"
     },
     {
       "id": "james-drive",
-      "sha256": "4135e5f71e5e2e7ad2953bd124406aa6acac987964163ed81c47cb90ba54f669"
+      "sha256": "42c1fa1f4dcd50839ce806636fd552fbdefc9b8c7615be94a46cfa4c7cc661e1"
     },
     {
       "id": "campus-overview",
-      "sha256": "c216ab8bc447ed52725364fd2b6b45d910bbe9b2b939f3e0b2d434ffefbf29eb"
+      "sha256": "689d99bc8bfed404326609638ee57e261086bb2d2dcf220fba8ae49e9e1e386c"
     },
     {
       "id": "playground-gardens",
-      "sha256": "ce8b471d2fd9e661e30636e15f8621d9178a5e5ad9746d6c12ff77bd117644f3"
+      "sha256": "cfe2c4ebb1978c4177864aa0d6ec9fb3998c997465bbde8f94c0ee13b55ffce7"
     }
   ]
 }
