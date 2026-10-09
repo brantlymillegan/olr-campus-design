@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "21c7aa281d3933f1",
+  "revision": "994af7fedf361f63",
   "boundsFeet": [
     -500,
     -275,
@@ -67,8 +67,8 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-1-light-0.svg": {
-      "sha256": "0e341ddf18edf275502d939d4acd085cc9fde5838cc68f89122c9b37ceeee118",
-      "bytes": 480290,
+      "sha256": "2ccff04a1a4a7f8c89d0ad0e366eafba2caab3fc6efe97d3ccf7d7657fe14ff8",
+      "bytes": 482982,
       "floor": 1,
       "theme": "light",
       "oldBuildings": false,
@@ -77,8 +77,8 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-1-dark-0.svg": {
-      "sha256": "221779c10328e980ebbee49bd5265238fde35d756c904372ae113e0d1c8185b5",
-      "bytes": 482376,
+      "sha256": "46512e20eb9e567afe973f4d7497b05ce92bd28922eec6bbc08d84bff0e8b4e1",
+      "bytes": 485071,
       "floor": 1,
       "theme": "dark",
       "oldBuildings": false,
@@ -87,8 +87,8 @@
       "background": "rgba(24,24,24,1)"
     },
     "plan-1-light-1.svg": {
-      "sha256": "1651100aa233caa76f956fe6f689524a02a06fab6ac3dd9878786b1417001548",
-      "bytes": 481644,
+      "sha256": "1a66949b5c2e5a45bdf3b4aed0c88edfe64ff6babbe3e4faab62b7e6e122b647",
+      "bytes": 484336,
       "floor": 1,
       "theme": "light",
       "oldBuildings": true,
@@ -97,8 +97,8 @@
       "background": "rgba(255,255,255,1)"
     },
     "plan-1-dark-1.svg": {
-      "sha256": "5cc13813b769f7f8d993d293b02d9228fc099561670d3e324ec36a440858b7bd",
-      "bytes": 483730,
+      "sha256": "9ade053bd2702ea2012bdd26d3ec6ce561b1f9f767b1ce6eb3e50a2ebd22ec61",
+      "bytes": 486425,
       "floor": 1,
       "theme": "dark",
       "oldBuildings": true,
