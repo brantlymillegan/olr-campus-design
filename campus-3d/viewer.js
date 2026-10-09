@@ -9,7 +9,7 @@ const EMBEDDED = new URLSearchParams(location.search).get('embedded') === '1';
 const FEET = 0.3048;
 const CAMPUS_BEARING = 9.067253590763931;
 const DEFAULT_TILT = 25;
-const MIN_TILT = 5, MAX_TILT = 85;
+const MIN_TILT = 0, MAX_TILT = 85;
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
 let themePreference = 'system', resolvedTheme = 'light', active = !EMBEDDED;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
@@ -161,7 +161,9 @@ function applyEmbeddedCamera(announce = false) {
   const tilt = THREE.MathUtils.degToRad(embeddedCamera.tilt);
   const direction = new THREE.Vector3(Math.sin(theta) * Math.sin(tilt), Math.cos(tilt), Math.cos(theta) * Math.sin(tilt));
   camera.position.copy(focus).addScaledVector(direction, 1200);
-  camera.up.set(0, 1, 0);
+  // Retain the compass bearing even directly overhead, where world-up would
+  // be parallel to the viewing direction and lookAt cannot resolve yaw.
+  camera.up.set(-Math.sin(theta), 0, -Math.cos(theta));
   camera.lookAt(focus);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();

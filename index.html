@@ -1447,14 +1447,14 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     <button type="button" class="btn" id="campus-view-2d" aria-pressed="true">2D map</button>
     <button type="button" class="btn" id="campus-view-3d" aria-pressed="false">3D campus</button>
   </div>
-  <div class="campus-3d-navigation" id="campus-3d-navigation" hidden>
-    <div role="group" aria-label="3D navigation">
+  <div class="campus-3d-navigation" id="campus-3d-navigation">
+    <div role="group" aria-label="Map navigation">
       <button type="button" class="btn" data-campus-3d-drag="rotate" aria-pressed="true" title="Drag to rotate and tilt the campus">Rotate</button>
       <button type="button" class="btn" data-campus-3d-drag="pan" aria-pressed="false" title="Drag to move around the campus">Pan</button>
     </div>
     <span id="campus-3d-help">Drag to turn and tilt · Pinch to zoom</span>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=ff73f2e5a90a3c3b" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=20660887ffb5ac5b" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -3368,7 +3368,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;out&quot; aria-label=&quot;Zoom out&quot; aria-keyshortcuts=&quot;-&quot;&gt;&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path d=&quot;M4 10h12&quot;/&gt;&lt;/svg&gt;&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;in&quot; aria-label=&quot;Zoom in&quot; aria-keyshortcuts=&quot;+&quot;&gt;&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;&lt;path d=&quot;M4 10h12M10 4v12&quot;/&gt;&lt;/svg&gt;&lt;/button&gt;
   &lt;button type=&quot;button&quot; class=&quot;btn&quot; data-map-zoom=&quot;fit&quot; aria-keyshortcuts=&quot;0&quot; aria-label=&quot;Reset map&quot;&gt;Fit&lt;/button&gt;
-&lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Swipe two fingers to move · Pinch to zoom · Twist to rotate&lt;/p&gt;
+&lt;/div&gt;&lt;p class=&quot;olr-map-gesture-help&quot;&gt;Drag to turn and tilt · Two fingers to move · Pinch to zoom · Twist to rotate&lt;/p&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-old-buildings&quot; aria-pressed=&quot;true&quot; aria-label=&quot;Show old building outlines&quot; aria-keyshortcuts=&quot;O&quot;&gt;Old buildings&lt;/button&gt;
   &lt;/div&gt;
   &lt;div class=&quot;olr-canvas-viewport&quot; id=&quot;fc-existing-panel&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;fc-existing-tab&quot; hidden&gt;
@@ -4520,12 +4520,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       return item;
     }
     const drawing=compile(scene,true);
-    let labelRotation=0;
+    let labelRotation=0,labelTiltScale=1;
     function draw(item){
       ctx.save();if(item.transform)ctx.transform(...item.transform);ctx.globalAlpha*=Number.isFinite(item.opacity)?item.opacity:1;
       if(item.labelAnchor){
         const [x,y]=item.labelAnchor;
-        ctx.translate(x,y);ctx.rotate(-(labelRotation+item.labelAngle)*Math.PI/180);ctx.translate(-x,-y);
+        ctx.translate(x,y);ctx.rotate(-(labelRotation+item.labelAngle)*Math.PI/180);ctx.scale(1,labelTiltScale);ctx.translate(-x,-y);
       }
       if(item.clip)ctx.clip(item.clip.path,item.clip.rule);
       const alpha=ctx.globalAlpha;
@@ -4543,8 +4543,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     // Only the scene is transparent: the fixed scale remains a crisp SVG above
     // the canvas, and transparent SVG room paths still receive pointer events.
     scene.style.opacity=&#x27;0&#x27;;stage.dataset.canvasRenderer=&#x27;true&#x27;;
-    return {paint({matrix,rotation=0,width,height}){
-      labelRotation=rotation;
+    return {paint({matrix,rotation=0,tilt=0,width,height}){
+      labelRotation=rotation;labelTiltScale=1/Math.cos(tilt*Math.PI/180);
       const dpr=Math.min(2,window.devicePixelRatio||1),w=Math.ceil(width*dpr),h=Math.ceil(height*dpr);
       if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
       ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.transform(...matrix);draw(drawing);
@@ -4566,8 +4566,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const radians = n =&gt; n * Math.PI / 180;
   let widthOnly = false, parentSized = false, viewportHeight = null;
   // Start with Building 1 aligned to the screen; the compass still selects true north.
-  let zoom = 1, bearing = wrap(-northAngle), center = null, pending = false, rebuild = false;
-  let detailTimer = null, detailRefresh = false;
+  let zoom = 1, bearing = wrap(-northAngle), tilt = 0, dragMode = &#x27;rotate&#x27;, center = null, pending = false, rebuild = false;
+  let detailTimer = null, detailRefresh = false, cameraBase = null;
   const interacting = new Set();
   const idleDetails = () =&gt; {
     clearTimeout(detailTimer);
@@ -4618,7 +4618,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     for (const button of root.querySelectorAll(&#x27;[data-map-zoom]&#x27;)) {
       button.disabled = button.dataset.mapZoom === &#x27;out&#x27; ? zoom &lt;= 1 : button.dataset.mapZoom === &#x27;in&#x27; ? zoom &gt;= 32 : false;
     }
-    root.dataset.zoomed = zoom &gt; 1 || Math.abs(bearing) &gt; .001 ? &#x27;true&#x27; : &#x27;false&#x27;;
+    root.dataset.zoomed = zoom &gt; 1 || Math.abs(bearing) &gt; .001 || tilt &gt; .001 ? &#x27;true&#x27; : &#x27;false&#x27;;
     if (needle) needle.style.transform = `rotate(${bearing}deg)`;
     if (compass) {
       compass.dataset.bearing = String(bearing);
@@ -4635,7 +4635,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const extentX = c*d.dx+s*d.dy, extentY = s*d.dx+c*d.dy;
     const available = Math.max(1,box.width-24);
     const height = widthOnly ? extentY*available/extentX+d.top+d.bottom : box.height;
-    const base = Math.max(.001, Math.min(available/extentX, (height-d.top-d.bottom)/extentY));
+    const base = cameraBase ?? Math.max(.001, Math.min(available/extentX, (height-d.top-d.bottom)/extentY));
     return {width:box.width,height,scale:base*zoom,base,dx:d.dx,dy:d.dy,top:d.top,bottom:d.bottom};
   }
   function screenPoint(stage, point) {
@@ -4643,8 +4643,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     return point || {x:(m?.width||0)/2,y:(m?.height||0)/2};
   }
   function inverseDelta(x,y,scale) {
-    const t=radians(northAngle+bearing), c=Math.cos(t), s=Math.sin(t);
-    return {x:(c*x+s*y)/scale,y:(-s*x+c*y)/scale};
+    const t=radians(northAngle+bearing), c=Math.cos(t), s=Math.sin(t), f=Math.cos(radians(tilt));
+    return {x:(c*x+s*y/f)/scale,y:(-s*x+c*y/f)/scale};
   }
   function worldAt(stage, point) {
     const m=measure(stage);
@@ -4656,15 +4656,16 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const m=measure(stage);
     if (!m || !center) return null;
     const t=radians(northAngle+bearing),c=Math.cos(t),s=Math.sin(t),x=(point.x-center.x)*m.scale,y=(point.y-center.y)*m.scale;
-    return {x:m.width/2+c*x-s*y,y:m.height/2+s*x+c*y};
+    return {x:m.width/2+c*x-s*y,y:m.height/2+(s*x+c*y)*Math.cos(radians(tilt))};
   }
-  function change(nextZoom, nextBearing, focus = null) {
+  function change(nextZoom, nextBearing, focus = null, nextTilt = tilt) {
     detailRefresh = false;
     const stage=focus?.stage || active();
     const point=stage ? (focus?.anchor?.screen || screenPoint(stage,focus?.point)) : null;
     const anchor=focus?.anchor || (stage ? worldAt(stage,point) : null);
     zoom=Math.min(32,Math.max(1,finite(nextZoom,1)));
     bearing=wrap(finite(nextBearing,bearing));
+    tilt=Math.min(85,Math.max(0,finite(nextTilt,tilt)));
     if (anchor &amp;&amp; stage &amp;&amp; point) {
       const m=measure(stage);
       if (m) {
@@ -4686,28 +4687,44 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function fit() {
     const d=stateFor(active()||stages[0]).dimensions;
     center=d?{x:d.dx/2,y:d.dy/2}:null;
-    zoom=1; bearing=0; redraw(false); idleDetails();
+    zoom=1; bearing=0; tilt=0; cameraBase=null; redraw(false); idleDetails();
   }
   const setZoom=(value,focus=null)=&gt;change(value,bearing,focus);
   const setBearing=(value,focus=null)=&gt;{change(zoom,value,focus);return bearing;};
+  const setTilt=(value,focus=null)=&gt;{change(zoom,bearing,focus,value);return tilt;};
+  const orbit=(yaw,deltaTilt=0)=&gt;change(zoom,bearing+finite(yaw),null,tilt+finite(deltaTilt));
+  function setDragMode(mode) {
+    if(![&#x27;rotate&#x27;,&#x27;pan&#x27;].includes(mode))return;
+    dragMode=mode;root.dataset.dragMode=mode;
+    for(const stage of stages){
+      stage.dataset.dragMode=mode;
+      if(!stage.hasAttribute(&#x27;tabindex&#x27;))stage.setAttribute(&#x27;tabindex&#x27;,&#x27;0&#x27;);
+      stage.setAttribute(&#x27;aria-label&#x27;,`Interactive campus plan. Drag with a mouse or one finger to ${mode===&#x27;pan&#x27;?&#x27;pan&#x27;:&#x27;rotate and tilt&#x27;}. Right-drag, Shift-drag, or use two fingers to pan. Pinch to zoom and twist to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.`);
+    }
+    controls();
+  }
   // Building 1&#x27;s south edge is horizontal in the original plan coordinates.
   const toggleOrientation=()=&gt;setBearing(isNorthUp() ? -northAngle : 0);
-  window.olrMapZoom={get value(){return zoom;},min:1,max:32,set:setZoom,in:()=&gt;setZoom(zoom*1.5),out:()=&gt;setZoom(zoom/1.5),fit,
+  window.olrMapZoom={get value(){return zoom;},min:1,max:32,set:setZoom,in:()=&gt;setZoom(zoom*1.25),out:()=&gt;setZoom(zoom*.8),fit,
     // Both maps use one camera. A hidden SVG cannot overwrite a pending pose.
     remember(){},restore:redraw};
   const snapshot=()=&gt;{
     const stage=active(),m=stage&amp;&amp;measure(stage);
-    return m&amp;&amp;center?{center:{...center},scale:m.scale,zoom,bearing,width:m.width,height:m.height}:null;
+    return m&amp;&amp;center?{center:{...center},scale:m.scale,zoom,bearing,tilt,width:m.width,height:m.height}:null;
   };
   const setPose=pose=&gt;{
     if(!pose?.center||![pose.center.x,pose.center.y,pose.bearing,pose.scale].every(Number.isFinite)||pose.scale&lt;=0)return;
     const stage=active(),m=stage&amp;&amp;measure(stage);
     if(!m)return;
     center={...pose.center};bearing=wrap(pose.bearing);
-    zoom=Math.min(32,Math.max(1,pose.scale/m.base));
+    tilt=Math.min(85,Math.max(0,finite(pose.tilt,tilt)));
+    zoom=Math.min(32,Math.max(1,finite(pose.zoom,pose.scale/m.base)));
+    // Keep the exact pixels-per-foot when returning from a differently sized
+    // 3D viewport; deriving and clamping zoom against a new fit scale would jump.
+    cameraBase=pose.scale/zoom;
     redraw(false);idleDetails();
   };
-  window.olrMapCamera={get bearing(){return bearing;},get rotation(){return northAngle+bearing;},get center(){return center?{...center}:null;},snapshot,setPose,setBearing,north:()=&gt;setBearing(0),toggleOrientation,worldAt,screenAt};
+  window.olrMapCamera={get bearing(){return bearing;},get rotation(){return northAngle+bearing;},get tilt(){return tilt;},get dragMode(){return dragMode;},get center(){return center?{...center}:null;},snapshot,setPose,setBearing,setTilt,setDragMode,orbit,north:()=&gt;setBearing(0),toggleOrientation,worldAt,screenAt};
   window.olrFitCanvas=(svg,dx,dy,top,bottom)=&gt;{
     const stage=svg.parentElement,state=stateFor(stage);
     if (![dx,dy,top,bottom].every(Number.isFinite)||dx&lt;=0||dy&lt;=0) return null;
@@ -4734,32 +4751,34 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (!m || !f || !scene || !center) return;
     // Retain all SVG geometry during gestures. The ratio accounts for a scene
     // last drawn at another zoom level; its focal point stays exact every frame.
-    const a=radians(northAngle+bearing),ratio=m.scale/f.scale,c=Math.cos(a)*ratio,s=Math.sin(a)*ratio;
+    const a=radians(northAngle+bearing),ratio=m.scale/f.scale,c=Math.cos(a)*ratio,s=Math.sin(a)*ratio,foreshortening=Math.cos(radians(tilt));
     const cx=f.left+center.x*f.scale,cy=f.top+center.y*f.scale;
     // Bound nested SVG clipping to the visible region before transforming it.
     // Firefox otherwise rasterizes offscreen clip surfaces at the full zoomed
     // campus size. The inverse viewport bounds include rotation and a 2px guard.
     if(state.viewportClip){
-      const hw=(Math.abs(Math.cos(a))*m.width+Math.abs(Math.sin(a))*m.height)/2/ratio+2/ratio;
-      const hh=(Math.abs(Math.sin(a))*m.width+Math.abs(Math.cos(a))*m.height)/2/ratio+2/ratio;
+      const hw=(Math.abs(Math.cos(a))*m.width+Math.abs(Math.sin(a))*m.height/foreshortening)/2/ratio+2/ratio;
+      const hh=(Math.abs(Math.sin(a))*m.width+Math.abs(Math.cos(a))*m.height/foreshortening)/2/ratio+2/ratio;
       const left=Math.max(0,cx-hw),top=Math.max(0,cy-hh);
       const right=Math.min(f.width,cx+hw),bottom=Math.min(f.height,cy+hh);
       for(const [key,value] of Object.entries({x:left,y:top,width:Math.max(0,right-left),height:Math.max(0,bottom-top)}))state.viewportClip.setAttribute(key,value);
     }
-    scene.setAttribute(&#x27;transform&#x27;,`matrix(${c} ${s} ${-s} ${c} ${m.width/2-c*cx+s*cy} ${m.height/2-s*cx-c*cy})`);
+    const matrix=[c,s*foreshortening,-s,c*foreshortening,m.width/2-c*cx+s*cy,m.height/2-(s*cx+c*cy)*foreshortening];
+    scene.setAttribute(&#x27;transform&#x27;,`matrix(${matrix.join(&#x27; &#x27;)})`);
     const rotation=northAngle+bearing;
-    if(state.labelRotation!==rotation){
-      // Counterrotate whole text blocks, keeping line order and the geographic
-      // anchor intact. Preserve any original transform that positioned a label.
+    if(state.labelRotation!==rotation||state.labelTilt!==tilt){
+      // Cancel the camera rotation and tilt for each text block. Its geographic
+      // anchor follows the plan, while its text remains upright and uncompressed.
       for(const label of state.labels||[]){
-        label.node.setAttribute(&#x27;transform&#x27;,`${label.transform} rotate(${-rotation-label.angle} ${label.x} ${label.y})`);
+        label.node.setAttribute(&#x27;transform&#x27;,`${label.transform} translate(${label.x} ${label.y}) rotate(${-rotation-label.angle}) scale(1 ${1/foreshortening}) translate(${-label.x} ${-label.y})`);
       }
-      state.labelRotation=rotation;
+      state.labelRotation=rotation;state.labelTilt=tilt;
     }
-    state.canvasScene?.paint({matrix:[c,s,-s,c,m.width/2-c*cx+s*cy,m.height/2-s*cx-c*cy],rotation,width:m.width,height:m.height});
+    state.canvasScene?.paint({matrix,rotation,tilt,width:m.width,height:m.height});
     svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${m.width} ${m.height}`);
     svg.setAttribute(&#x27;height&#x27;,m.height);
     svg.setAttribute(&#x27;data-map-bearing&#x27;,bearing);
+    svg.setAttribute(&#x27;data-map-tilt&#x27;,tilt);
     const desired=Math.min(100,Math.max(.1,(m.width-44)/m.scale/3)),power=10**Math.floor(Math.log10(desired));
     const length=([5,2,1].find(n=&gt;n*power&lt;=desired)||1)*power;
     const x=m.width-22-length*m.scale,y=m.height-12;
@@ -4789,7 +4808,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       node.setAttribute(&#x27;data-map-label-base-angle&#x27;,angle);
       return {node,x,y,angle,transform:node.getAttribute(&#x27;transform&#x27;)||&#x27;&#x27;};
     });
-    state.labelRotation=null;
+    state.labelRotation=null;state.labelTilt=null;
     state.canvasScene=window.olrCreateCanvasScene?.(svg,scene);
     const bar=svgNode(&#x27;g&#x27;,{&#x27;data-map-scale&#x27;:&#x27;fixed&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;},svg);
     state.scaleLine=svgNode(&#x27;line&#x27;,{stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.5},bar);
@@ -4798,93 +4817,95 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   };
   function command(name) {
     name=typeof name===&#x27;string&#x27;?name:name?.command;
-    if(name===&#x27;in&#x27;)setZoom(zoom*1.5);
-    else if(name===&#x27;out&#x27;)setZoom(zoom/1.5);
+    if(name===&#x27;in&#x27;)setZoom(zoom*1.25);
+    else if(name===&#x27;out&#x27;)setZoom(zoom*.8);
     else if(name===&#x27;fit&#x27;)fit();
     else if(name===&#x27;north&#x27;)setBearing(0);
   }
   for(const b of root.querySelectorAll(&#x27;[data-map-zoom]&#x27;))b.addEventListener(&#x27;click&#x27;,()=&gt;command(b.dataset.mapZoom));
   window.addEventListener(&#x27;olr-zoom-command&#x27;,e=&gt;command(e.detail));
   window.addEventListener(&#x27;keydown&#x27;,e=&gt;{
-    if(e.defaultPrevented||e.repeat||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName||&#x27;&#x27;)||e.target?.isContentEditable)return;
+    if(e.defaultPrevented||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName||&#x27;&#x27;)||e.target?.isContentEditable)return;
     const name=[&#x27;+&#x27;,&#x27;=&#x27;].includes(e.key)?&#x27;in&#x27;:[&#x27;-&#x27;,&#x27;_&#x27;].includes(e.key)?&#x27;out&#x27;:e.key===&#x27;0&#x27;?&#x27;fit&#x27;:e.key?.toLowerCase()===&#x27;n&#x27;?&#x27;north&#x27;:null;
-    if(name){e.preventDefault();command(name);}
+    if(name){e.preventDefault();command(name);return;}
+    const deltas={ArrowLeft:[48,0],ArrowRight:[-48,0],ArrowUp:[0,48],ArrowDown:[0,-48]};
+    if(deltas[e.key]){
+      const stage=active();if(!stage)return;
+      e.preventDefault();
+      if(e.shiftKey){const rotations={ArrowLeft:[-5,0],ArrowRight:[5,0],ArrowUp:[0,-5],ArrowDown:[0,5]};orbit(...rotations[e.key]);}
+      else pan(stage,...deltas[e.key]);
+    }
   });
   for(const stage of stages){
     for(const type of [&#x27;focusin&#x27;,&#x27;focusout&#x27;])stage.addEventListener(type,()=&gt;{if(stateFor(stage).canvasScene)redraw(false);});
-    let drag=null,pinch=null,native=null,dragged=false;
+    const pointers=new Map();
+    let gesture=null,native=null,dragged=false;
     const local=(x,y)=&gt;{const b=stage.getBoundingClientRect();return{x:x-finite(b.left),y:y-finite(b.top)};};
     const point=e=&gt;Number.isFinite(e.clientX)&amp;&amp;Number.isFinite(e.clientY)?local(e.clientX,e.clientY):screenPoint(stage);
-    const pair=(touches,ids)=&gt;{
-      const all=[...touches],a=ids?all.find(t=&gt;t.identifier===ids[0]):all[0],b=ids?all.find(t=&gt;t.identifier===ids[1]):all[1];
-      if(!a||!b)return null;
-      return{point:local((a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2),distance:Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY),angle:Math.atan2(b.clientY-a.clientY,b.clientX-a.clientX)*180/Math.PI};
+    const gestureSnapshot=()=&gt;{
+      const all=[...pointers.values()];if(!all.length)return null;
+      if(all.length===1)return{x:all[0].x,y:all[0].y,distance:0,angle:0};
+      const [a,b]=all;
+      return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.hypot(b.x-a.x,b.y-a.y),angle:Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI};
     };
-    const beginPinch=touches=&gt;{
-      const p=pair(touches);
-      pinch={zoom,bearing,distance:Math.max(1,p.distance),lastAngle:p.angle,rotation:0,anchor:worldAt(stage,p.point),ids:touches[0].identifier!==undefined?[touches[0].identifier,touches[1].identifier]:null};
-      native=null;drag=null;startInteraction(stage);
-    };
+    stage.addEventListener(&#x27;contextmenu&#x27;,e=&gt;e.preventDefault());
     stage.addEventListener(&#x27;wheel&#x27;,e=&gt;{
-      if(pinch||native){e.preventDefault();return;}
+      e.preventDefault();if(pointers.size&gt;1||native)return;
       const unit=e.deltaMode===1?16:e.deltaMode===2?measure(stage)?.height||1:1;
       const dx=finite(e.deltaX)*unit,dy=finite(e.deltaY)*unit;
-      // Wheel events report translation (or Ctrl-pinch), never a twist angle.
-      // Rotate only from a native rotation gesture or the angle of a touch pair.
-      if(e.ctrlKey){e.preventDefault();setZoom(zoom*Math.exp(Math.max(-1,Math.min(1,-dy*.01))),{stage,point:point(e)});return;}
-      e.preventDefault();pan(stage,-dx,-dy);
+      // A two-finger trackpad scroll translates; only a real twist rotates.
+      if(e.ctrlKey||e.metaKey)setZoom(zoom*Math.exp(-dy*.008),{stage,point:point(e)});
+      else pan(stage,-dx,-dy);
     },{passive:false});
     stage.addEventListener(&#x27;gesturestart&#x27;,e=&gt;{
-      e.preventDefault();if(pinch)return;startInteraction(stage);
-      native={zoom,bearing,scale:Math.max(.001,finite(e.scale,1)),rotation:finite(e.rotation),anchor:worldAt(stage,point(e))};drag=null;
+      e.preventDefault();if(pointers.size&gt;1)return;startInteraction(stage);
+      native={scale:Math.max(.001,finite(e.scale,1)),rotation:finite(e.rotation)};
     },{passive:false});
     stage.addEventListener(&#x27;gesturechange&#x27;,e=&gt;{
-      e.preventDefault();if(pinch||!native?.anchor)return;
-      const scale=Number(e.scale),ratio=Number.isFinite(scale)&amp;&amp;scale&gt;0?scale/native.scale:1;
-      dragged=true;
-      change(native.zoom*ratio,native.bearing+finite(e.rotation,native.rotation)-native.rotation,{stage,anchor:{...native.anchor,screen:point(e)}});
+      e.preventDefault();if(!native)return;
+      const scale=Math.max(.001,finite(e.scale,1)),rotation=finite(e.rotation);
+      dragged=true;setZoom(zoom*scale/native.scale);orbit(rotation-native.rotation);
+      native={scale,rotation};
     },{passive:false});
-    stage.addEventListener(&#x27;gestureend&#x27;,e=&gt;{e.preventDefault();native=null;if(!pinch)endInteraction(stage);}, {passive:false});
+    stage.addEventListener(&#x27;gestureend&#x27;,e=&gt;{e.preventDefault();native=null;if(!pointers.size)endInteraction(stage);},{passive:false});
     stage.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{
-      if(e.pointerType===&#x27;touch&#x27;||e.button!==0||e.target?.closest?.(&#x27;button,input,select,textarea,a&#x27;))return;
-      drag={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY};dragged=false;startInteraction(stage);
+      if((e.pointerType===&#x27;mouse&#x27;&amp;&amp;![0,2].includes(e.button))||e.target?.closest?.(&#x27;button,input,select,textarea,a&#x27;))return;
+      const p=point(e);
+      pointers.set(e.pointerId,{...p,startX:p.x,startY:p.y,pan:e.button===2});
+      if(pointers.size===1)dragged=false;
+      else{dragged=true;e.preventDefault();}
+      gesture=gestureSnapshot();startInteraction(stage);
+      stage.focus?.({preventScroll:true});
     });
     stage.addEventListener(&#x27;pointermove&#x27;,e=&gt;{
-      if(!drag||e.pointerType===&#x27;touch&#x27;||e.pointerId!==drag.id)return;
-      if(!dragged&amp;&amp;Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)&gt;4){dragged=true;stage.setPointerCapture?.(e.pointerId);}
-      if(!dragged)return;
-      e.preventDefault();pan(stage,e.clientX-drag.x,e.clientY-drag.y);drag.x=e.clientX;drag.y=e.clientY;stage.dataset.panning=&#x27;true&#x27;;
+      const pointer=pointers.get(e.pointerId);if(!pointer||native)return;
+      const p=point(e);
+      if(!dragged&amp;&amp;pointers.size===1&amp;&amp;Math.hypot(p.x-pointer.startX,p.y-pointer.startY)&lt;=4)return;
+      dragged=true;e.preventDefault();stage.setPointerCapture?.(e.pointerId);
+      pointers.set(e.pointerId,{...pointer,...p});
+      const next=gestureSnapshot();
+      if(gesture){
+        const dx=next.x-gesture.x,dy=next.y-gesture.y;
+        if(pointers.size&gt;1||pointer.pan||e.shiftKey||dragMode===&#x27;pan&#x27;)pan(stage,dx,dy);
+        else orbit(-dx*.3,-dy*.3);
+        if(next.distance&amp;&amp;gesture.distance){
+          setZoom(zoom*next.distance/gesture.distance,{stage,point:next});
+          orbit(wrap(next.angle-gesture.angle));
+        }
+      }
+      gesture=next;stage.dataset.panning=&#x27;true&#x27;;
     });
-    const finish=e=&gt;{if(e?.pointerType===&#x27;touch&#x27;)return;if(drag&amp;&amp;!pinch&amp;&amp;!native)endInteraction(stage);drag=null;delete stage.dataset.panning;};
+    const finish=e=&gt;{
+      // Touch may start with implicit capture on an SVG room. Moving capture
+      // to the viewport must not end the gesture when that child&#x27;s event bubbles.
+      if(e.type===&#x27;lostpointercapture&#x27;&amp;&amp;e.target!==stage)return;
+      pointers.delete(e.pointerId);gesture=gestureSnapshot();
+      if(!pointers.size&amp;&amp;!native)endInteraction(stage);
+      if(!pointers.size)delete stage.dataset.panning;
+    };
     for(const name of [&#x27;pointerup&#x27;,&#x27;pointercancel&#x27;,&#x27;lostpointercapture&#x27;])stage.addEventListener(name,finish);
     for(const name of [&#x27;pointerup&#x27;,&#x27;pointercancel&#x27;])window.addEventListener(name,finish);
     stage.addEventListener(&#x27;click&#x27;,e=&gt;{if(dragged){dragged=false;e.preventDefault();e.stopPropagation();}},true);
-    stage.addEventListener(&#x27;touchstart&#x27;,e=&gt;{
-      dragged=false;startInteraction(stage);
-      if(e.touches.length&gt;=2){beginPinch(e.touches);e.preventDefault();}
-      else if(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
-    },{passive:false});
-    stage.addEventListener(&#x27;touchmove&#x27;,e=&gt;{
-      if(e.touches.length&gt;=2){
-        if(!pinch)beginPinch(e.touches);
-        let p=pair(e.touches,pinch.ids);
-        if(!p){beginPinch(e.touches);p=pair(e.touches,pinch.ids);}
-        e.preventDefault();dragged=true;
-        pinch.rotation+=wrap(p.angle-pinch.lastAngle);pinch.lastAngle=p.angle;
-        if(pinch.anchor)change(pinch.zoom*p.distance/pinch.distance,pinch.bearing+pinch.rotation,{stage,anchor:{...pinch.anchor,screen:p.point}});
-      }else if(e.touches.length===1&amp;&amp;drag){
-        const t=e.touches[0];e.preventDefault();
-        if(Math.hypot(t.clientX-drag.startX,t.clientY-drag.startY)&gt;4)dragged=true;
-        pan(stage,t.clientX-drag.x,t.clientY-drag.y);drag.x=t.clientX;drag.y=t.clientY;
-      }
-    },{passive:false});
-    const endTouch=e=&gt;{
-      pinch=null;drag=null;
-      if(!e.touches.length)endInteraction(stage);
-      if(e.touches.length&gt;=2)beginPinch(e.touches);
-      else if(e.touches.length===1&amp;&amp;(!widthOnly||zoom&gt;1||Math.abs(bearing)&gt;.001)){const t=e.touches[0];drag={x:t.clientX,y:t.clientY,startX:t.clientX,startY:t.clientY};}
-    };
-    stage.addEventListener(&#x27;touchend&#x27;,endTouch);stage.addEventListener(&#x27;touchcancel&#x27;,endTouch);
   }
   if(compass){
     let drag=null,moved=false;
@@ -4922,7 +4943,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if((globals?.theme||globals?.visualizationTheme)&amp;&amp;stages.some(stage=&gt;stateFor(stage).canvasScene))redraw();
   });
   window.addEventListener(&#x27;blur&#x27;,()=&gt;{interacting.clear();idleDetails();});
-  layout();window.parent.postMessage({type:&#x27;olr-viewport-ready&#x27;},&#x27;*&#x27;);redraw();
+  layout();setDragMode(dragMode);window.parent.postMessage({type:&#x27;olr-viewport-ready&#x27;},&#x27;*&#x27;);redraw();
 })();
 &lt;/script&gt;
 &lt;script id=&quot;olr-combined-page-controls&quot;&gt;
@@ -5000,7 +5021,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const campusData = JSON.parse(document.getElementById(&#x27;fc-east-shift-data&#x27;).textContent);
   const bbox = campusData.bbox;
   const floors = [...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
-  function publish() {
+  function publish(cameraRequest) {
     if (!connected) return;
     const zoom = window.olrMapZoom;
     const camera = window.olrMapCamera?.snapshot();
@@ -5010,9 +5031,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       floor: Number(floors.find(b=&gt;b.getAttribute(&#x27;aria-pressed&#x27;) === &#x27;true&#x27;)?.dataset.campusFloor ?? 1),
       zoom: zoom?.value ?? 1, minZoom: zoom?.min ?? 1, maxZoom: zoom?.max ?? 32,
       bearing: window.olrMapCamera?.bearing ?? 0,
+      dragMode: window.olrMapCamera?.dragMode ?? &#x27;rotate&#x27;,
       oldBuildings: campus?.oldBuildingsVisible ?? true,
       camera
     };
+    if(typeof cameraRequest===&#x27;number&#x27;)state.cameraRequest=cameraRequest;
     // Camera frames may change only the transform, or reach the same zoom limit.
     // Avoid delivering duplicate states to the parent controls.
     const signature = JSON.stringify(state);
@@ -5033,6 +5056,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     else if (command === &#x27;camera&#x27; &amp;&amp; value?.center) {
       window.olrMapCamera?.setPose({...value,center:{x:value.center.x-bbox[0],y:bbox[3]-value.center.y}});
     }
+    else if (command === &#x27;drag-mode&#x27;) window.olrMapCamera?.setDragMode(value);
+    else if (command === &#x27;snapshot&#x27;) {lastPublished=null;publish(value);return;}
     else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
     else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
       if (document.getElementById(&#x27;fc-shifted-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) !== &#x27;true&#x27;) document.getElementById(&#x27;fc-shifted-tab&#x27;).click();
@@ -5974,16 +5999,21 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const oldBuildings = document.getElementById('campus-old-buildings');
   const mode2d = document.getElementById('campus-view-2d');
   const mode3d = document.getElementById('campus-view-3d');
-  const navigation3d = document.getElementById('campus-3d-navigation');
   const dragButtons = [...panel.querySelectorAll('[data-campus-3d-drag]')];
   const navigationHelp = document.getElementById('campus-3d-help');
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
   let expanded = false, renderedState = null, mapState = null, modelCamera = null;
   let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
+  let cameraRequest = 0, pendingCameraRequest = null;
   let oldBuildingPolygons = [];
   let dragMode = 'rotate';
   const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
+  function requestMapCamera(){
+    modelNeedsMapCamera=true;
+    pendingCameraRequest=++cameraRequest;
+    sendMap('snapshot',pendingCameraRequest);
+  }
   function expand(next) {
     expanded = next;
     panel.dataset.mobileExpanded = String(expanded);
@@ -6004,11 +6034,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   dragButtons.forEach(button=>button.addEventListener('click',()=>{
     renderDragMode(button.getAttribute('data-campus-3d-drag'));
+    sendMap('drag-mode',dragMode);
     sendModel('drag-mode',dragMode);
   }));
   function syncModel() {
     sendModel('theme',window.olrThemeState?.() || {preference:'system',resolved:'light'});
-    if(mapState?.camera)sendModel('camera',{...mapState.camera,tilt:25,oldBuildings:mapState.oldBuildings!==false});
+    if(!modelNeedsMapCamera&&modelCamera)sendModel('camera',{...modelCamera,oldBuildings:mapState?.oldBuildings!==false});
     sendModel('drag-mode',dragMode);
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
     sendModel('active',dimension==='3d');
@@ -6016,25 +6047,31 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function setDimension(next) {
     if(next===dimension)return;
     dimension=next;
-    navigation3d.hidden=next!=='3d';
     mode2d.setAttribute('aria-pressed',String(next==='2d'));
     mode3d.setAttribute('aria-pressed',String(next==='3d'));
     if(next==='3d'){
       if(mapState?.view==='existing')sendMap('map','shifted');
-      modelNeedsMapCamera=true;
       modelCamera=mapState?.camera || null;
+      requestMapCamera();
       if(!modelFrame){
         modelFrame=document.createElement('iframe');
         modelFrame.id='campus-3d-frame';
         modelFrame.title='Interactive 3D campus';
-        modelFrame.src='./campus-3d/?embedded=1&v=a91daf73812009ec';
+        modelFrame.src='./campus-3d/?embedded=1&v=cfb6528b88f102c5';
         modelFrame.addEventListener('load',syncModel);
         document.body.appendChild(modelFrame);
       }
       modelFrame.hidden=false;
       document.body.dataset.campusDimension='3d';
-      if(modelReady){syncModel();modelNeedsMapCamera=false;}
+      if(modelReady)syncModel();
     }else{
+      // The model frame shares our origin. Capture its current pose before
+      // switching, even if its final gesture postMessage is still queued.
+      try {
+        const viewer=modelFrame?.contentWindow?.olr3d;
+        if(viewer?.ready){modelCamera=viewer.camera;renderDragMode(viewer.dragMode);}
+      } catch {}
+      sendMap('drag-mode',dragMode);
       if(modelCamera){
         mapState={...mapState,...modelCamera,camera:modelCamera};
         sendMap('camera',modelCamera);
@@ -6054,13 +6091,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function send(command,value){
     if(dimension==='3d'&&['zoom','rotate','compass','north'].includes(command)){
       if(command==='zoom'&&value==='fit'){
-        modelNeedsMapCamera=true;sendMap('zoom','fit');
+        sendMap('zoom','fit');requestMapCamera();
       }else sendModel(command,value);
       return;
     }
     sendMap(command,value);
   }
-  const connect=()=>sendMap('connect');
+  const connect=()=>{sendMap('connect');sendMap('drag-mode',dragMode);};
   maps.forEach(b=>b.addEventListener('click',()=>{
     if(b.dataset.campusMap==='existing')setDimension('2d');
     sendMap('map',b.dataset.campusMap);
@@ -6100,7 +6137,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   window.addEventListener('message',event=>{
     const s=event.data;
     if(modelFrame&&event.source===modelFrame.contentWindow&&event.origin===location.origin){
-      if(s?.type==='olr-3d-ready'){modelReady=true;if(dimension==='3d'){syncModel();modelNeedsMapCamera=false;}else sendModel('active',false);}
+      if(s?.type==='olr-3d-ready'){modelReady=true;if(dimension==='3d')syncModel();else sendModel('active',false);}
       else if(s?.type==='olr-3d-state'&&dimension==='3d'&&validCamera(s.camera)){
         modelCamera=s.camera;
         if(s.dragMode||s.camera.dragMode)renderDragMode(s.dragMode||s.camera.dragMode);
@@ -6121,10 +6158,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(s?.type!=='olr-tools-state'||!['existing','shifted'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
     const previous=mapState;mapState=s;
     if(dimension==='3d'){
-      if(modelNeedsMapCamera&&s.camera){modelCamera=s.camera;sendModel('camera',{...s.camera,tilt:25,oldBuildings:s.oldBuildings});modelNeedsMapCamera=false;}
+      if(modelNeedsMapCamera&&s.camera&&s.cameraRequest===pendingCameraRequest){modelCamera=s.camera;sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});modelNeedsMapCamera=false;pendingCameraRequest=null;}
       if(!previous||previous.oldBuildings!==s.oldBuildings)sendModel('oldBuildings',{visible:s.oldBuildings!==false,polygons:oldBuildingPolygons});
       render({...s,...(modelCamera||{})});
-    }else render(s);
+    }else {if(s.dragMode)renderDragMode(s.dragMode);render(s);}
   });
   window.olrCampusView={
     get dimension(){return dimension;},get camera(){return dimension==='3d'?modelCamera:mapState?.camera;},setDimension,
