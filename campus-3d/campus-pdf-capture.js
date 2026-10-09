@@ -121,6 +121,10 @@ export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha25
       function copyMaterial(material) {
         if (!materials.has(material)) {
           const copy = material.clone();
+          // Three's material clone omits shader callbacks. Preserve the live
+          // ceiling's neutral indirect-light treatment in on-demand views.
+          copy.onBeforeCompile = material.onBeforeCompile;
+          copy.customProgramCacheKey = material.customProgramCacheKey;
           // The live lighting module may currently have nighttime glazing glow.
           if (/glazing/i.test(copy.name) && copy.emissive) { copy.emissive.set(0); copy.emissiveIntensity = 0; }
           materials.set(material, copy); ownedMaterials.add(copy);

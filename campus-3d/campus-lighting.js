@@ -21,6 +21,24 @@ export function applyCampusPalette(model) {
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material?.color || visited.has(material)) continue;
       visited.add(material);
+      if (/^Interior[\s_.•-]+ceiling[\s_.•-]+acoustic[\s_.•-]+white$/i.test(material.name)) {
+        material.color.setRGB(.86, .86, .86);
+        material.roughness = .95;
+        // Downward-facing ceilings otherwise receive the outdoor lawn's green
+        // bounce. Neutralize that indirect fill and approximate the soft bounce
+        // from the always-on interior fixtures (the realtime lights have no GI).
+        // Direct fixture pools, shadows, AO and day/night variation remain.
+        material.onBeforeCompile = shader => {
+          shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `
+            #include <lights_fragment_end>
+            const vec3 ceilingLuminance = vec3(0.2126, 0.7152, 0.0722);
+            reflectedLight.indirectDiffuse = vec3(0.18 + dot(reflectedLight.indirectDiffuse, ceilingLuminance) * 2.0);
+            reflectedLight.indirectSpecular = vec3(dot(reflectedLight.indirectSpecular, ceilingLuminance));
+          `);
+        };
+        material.customProgramCacheKey = () => 'neutral-acoustic-ceiling-v1';
+        material.needsUpdate = true;
+      }
       let tint;
       if (/^Campus lawn$|Gaga Ball.*level green turf/i.test(material.name)) tint = [.90, 1.12, .90];
       else if (/^Tree canopy|^Planting /i.test(material.name)) tint = [.93, 1.10, .92];
