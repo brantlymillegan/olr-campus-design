@@ -28,7 +28,8 @@ let renderer, camera, scene, extent = 200;
 let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
 const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-let model, frame = null, frameHost = null;
+let model, modelReady = false, frame = null, frameHost = null;
+let preparedTextures = 0, preparationRenders = 0;
 let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d';
 let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
 let flatBounds = null;
@@ -44,6 +45,8 @@ function post(message) {
 }
 
 function fail(error) {
+  modelReady = false;
+  cancelDraw();
   console.error('Campus model:', error);
   loading.hidden = true;
   errorPanel.hidden = false;
@@ -52,7 +55,7 @@ function fail(error) {
 
 function draw(timestamp) {
   frame = null; frameHost = null;
-  if (!active || document.hidden) return;
+  if (!modelReady || !active || document.hidden) return;
   const dt = lastDrawTime === null ? 0 : Math.min(.05, (timestamp - lastDrawTime) / 1000);
   walk?.update(dt);
   const showingModel = walkPresentation === '3d';
@@ -82,7 +85,7 @@ function draw(timestamp) {
 }
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
 function requestDraw() {
-  if (active && !document.hidden && renderer && camera && frame === null) {
+  if (modelReady && active && !document.hidden && renderer && camera && frame === null) {
     frameHost = window;
     frame = frameHost.requestAnimationFrame(draw);
   }
@@ -419,7 +422,8 @@ window.addEventListener('message', event => {
 });
 let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
-  get ready() { return Boolean(model); }, get embedded() { return EMBEDDED; }, get active() { return active; },
+  get ready() { return modelReady; }, get embedded() { return EMBEDDED; }, get active() { return active; },
+  get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders }; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
@@ -488,6 +492,31 @@ function createInteriorLighting(data) {
     });
   }
   return Object.freeze({ update, get state() { return { ready: true, active: Boolean(location), ...location, poolSize: pool.length, shadowCasting: false, lights: selected.map((p, i) => ({ roomId: p.roomId, positionFeet: [...p.positionFeet], intensity: pool[i].intensity })) }; } });
+}
+
+async function warmModel() {
+  // Compile every material and upload the whole scene before declaring ready.
+  // This is a single preparation render, independent of visibility/navigation.
+  const textures = new Set(), culling = [];
+  scene.traverse(object => {
+    if (!object.isMesh && !object.isLine && !object.isPoints) return;
+    culling.push([object, object.frustumCulled]);
+    object.frustumCulled = false;
+    for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
+      if (material) for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+    }
+  });
+  try {
+    await renderer.compileAsync(scene, camera);
+    for (const texture of textures) renderer.initTexture(texture);
+    preparedTextures = textures.size;
+    campusAtmosphere?.updateCamera(camera);
+    renderer.render(scene, camera);
+    preparationRenders++;
+    renderedFrames++;
+  } finally {
+    for (const [object, previous] of culling) object.frustumCulled = previous;
+  }
 }
 
 async function init() {
@@ -606,6 +635,8 @@ async function init() {
   walk.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
+  await warmModel();
+  modelReady = true;
   loading.hidden = true;
   document.body.classList.add('ready');
   post({ type: 'olr-3d-ready' });
