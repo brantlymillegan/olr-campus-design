@@ -30,7 +30,7 @@ export function lightingAtTime(value) {
   const altitude = THREE.MathUtils.radToDeg(Math.asin(up));
   const daylight = smooth(-9, 12, altitude);
   const nightStrength = 1 - smooth(-5, 7, altitude);
-  const sunIntensity = 2.6 * smooth(0, 13, altitude);
+  const sunIntensity = 2.9 * smooth(0, 13, altitude);
   const moonIntensity = altitude <= 0 ? 0.38 * (1 - daylight) : 0;
   const phase = altitude < -9 ? 'Night' : altitude < 7 ? (minutes < 720 ? 'Dawn' : 'Dusk') : minutes < 660 ? 'Morning' : minutes < 840 ? 'Midday' : 'Afternoon';
   return { minutes, phase, altitude, daylight, nightStrength, sunIntensity, moonIntensity, sunDirection: direction.toArray() };
@@ -53,7 +53,7 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
   const twilightColor = new THREE.Color('#716883');
   const dayColor = new THREE.Color('#cbdde8');
   const coolSky = new THREE.Color('#99b9e6');
-  const daySky = new THREE.Color('#d3e3f0');
+  const daySky = new THREE.Color('#c6dff6');
   const warmSun = new THREE.Color('#ffae61');
   const highSun = new THREE.Color('#fff8ef');
   const glassMaterials = new Map();
@@ -108,9 +108,10 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
     renderer.setClearColor(scene.background);
     hemisphere.color.copy(coolSky).lerp(daySky, next.daylight);
     hemisphere.groundColor.set(0x48545b).lerp(new THREE.Color(0x6c735f), next.daylight);
-    hemisphere.intensity = mix(.20, 1.35, next.daylight);
-    scene.environmentIntensity = mix(.025, .28, next.daylight);
-    renderer.toneMappingExposure = mix(.95, 1, next.daylight);
+    // A restrained sky fill keeps shaded recesses and sunlit surfaces distinct.
+    hemisphere.intensity = mix(.16, .68, next.daylight);
+    scene.environmentIntensity = mix(.035, .65, next.daylight);
+    renderer.toneMappingExposure = mix(.95, 1.02, next.daylight);
     for (const [material, original] of glassMaterials) {
       material.emissive.copy(original.color).lerp(new THREE.Color(0xffc680), next.nightStrength);
       material.emissiveIntensity = mix(original.intensity, .72, next.nightStrength);

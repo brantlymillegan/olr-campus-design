@@ -1,9 +1,9 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
-import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
+import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
 import { createCampusWalk } from './campus-walk.js?v=61f6dd2d83543432';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -17,8 +17,8 @@ let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
-let campusLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '640d4bbf2598fdf0';
+let campusLighting = null, campusAtmosphere = null, timeOfDay = 840, lightingDirty = true;
+const ASSET_REVISION = 'eb08290ce4f6eac0';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -55,11 +55,17 @@ function draw(timestamp) {
   const showingModel = walkPresentation === '3d';
   if (showingModel && lightingDirty && campusLighting) {
     campusLighting.setTime(timeOfDay);
+    campusAtmosphere?.setTime(campusLighting.state);
     lightingDirty = false;
     updateOutlineColor();
   }
   // The plan shares the physics loop, but its hidden 3D canvas does no GPU work.
-  if (showingModel) { renderer.render(scene, walk?.camera || camera); renderedFrames++; }
+  if (showingModel) {
+    const activeCamera = walk?.camera || camera;
+    campusAtmosphere?.updateCamera(activeCamera);
+    renderer.render(scene, activeCamera);
+    renderedFrames++;
+  }
   lastDrawTime = walk?.needsAnimation ? timestamp : null;
   if (walk?.needsAnimation) requestDraw();
 }
@@ -200,8 +206,8 @@ function updateOutlineColor() {
   oldOutlines?.traverse(object => {
     if (!object.isLine) return;
     object.material.color.set(darkScene ? 0xffffff : 0x303030);
-    // At eye level the map overlay must sit behind real walls and ground.
-    object.material.depthTest = walk?.mode === 'walking';
+    // Ground annotations remain visible where real buildings do not occlude them.
+    object.material.depthTest = true;
   });
 }
 function publishLighting() {
@@ -247,7 +253,7 @@ function setOldOutlines(value) {
     if (!Array.isArray(polygon) || polygon.length < 3 || !polygon.every(p => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))) continue;
     const points = [...polygon, polygon[0]].map(([x, y]) => new THREE.Vector3(x * FEET, 0.05, -y * FEET));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineDashedMaterial({ color: resolvedTheme === 'dark' ? 0xffffff : 0x303030, dashSize: 1.5 * FEET, gapSize: 1.0 * FEET, depthTest: false, depthWrite: false, transparent: true, opacity: 0.95 });
+    const material = new THREE.LineDashedMaterial({ color: resolvedTheme === 'dark' ? 0xffffff : 0x303030, dashSize: 1.5 * FEET, gapSize: 1.0 * FEET, depthTest: true, depthWrite: false, transparent: true, opacity: 0.95 });
     const line = new THREE.Line(geometry, material);
     line.computeLineDistances(); line.renderOrder = 1000; oldOutlines.add(line);
   }
@@ -386,6 +392,7 @@ let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return Boolean(model); }, get embedded() { return EMBEDDED; }, get active() { return active; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
+  get atmosphere() { return campusAtmosphere?.state ?? null; },
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
@@ -416,19 +423,14 @@ async function init() {
   scene = new THREE.Scene();
   setOldOutlines({ visible: oldOutlineVisible, polygons: oldOutlinePolygons });
   scene.background = new THREE.Color(resolvedTheme === 'dark' ? 0x181818 : 0xffffff);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const room = new RoomEnvironment();
-  scene.environment = pmrem.fromScene(room, 0.05).texture;
-  scene.environmentIntensity = 0.28;
-  room.dispose();
-  pmrem.dispose();
   hemi = new THREE.HemisphereLight(0xd3e3f0, 0x6c735f, 1.6);
   scene.add(hemi);
   sun = new THREE.DirectionalLight(0xfff8ef, 2.5);
   sun.castShadow = true;
   sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.bias = -0.00015;
-  sun.shadow.normalBias = 0.15;
+  // Keep contact shadows close to walls, benches, and planting.
+  sun.shadow.normalBias = 0.035;
   scene.add(sun, sun.target);
   camera = new THREE.PerspectiveCamera(AERIAL_FOV, 1, 0.1, 5000);
   setDragMode(dragMode, false);
@@ -454,7 +456,9 @@ async function init() {
       object.receiveShadow = object.name !== 'Gaga_Ball_graded_lawn_apron';
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
-        if (material.map) material.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        for (const texture of [material.map, material.normalMap, material.roughnessMap, material.metalnessMap]) {
+          if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        }
       }
     }
   });
@@ -469,8 +473,10 @@ async function init() {
   target = bounds.getCenter(new THREE.Vector3());
   target.y = Math.max(0, bounds.min.y) + size.y * 0.12;
   extent = Math.max(size.x, size.z);
+  campusAtmosphere = createCampusAtmosphere({ scene, renderer, model, groundColor: [.102034, .160133, .045757] });
   campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
   campusLighting.setTime(timeOfDay);
+  campusAtmosphere.setTime(campusLighting.state);
   lightingDirty = false;
   walk = createCampusWalk({
     model, canvas: renderer.domElement,
