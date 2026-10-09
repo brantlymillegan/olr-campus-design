@@ -136,3 +136,17 @@ Repository: https://zenodo.org/records/21376678
 License: CC0-1.0 — https://creativecommons.org/publicdomain/zero/1.0/
 Adaptation: Retained the repository optimized 90,232-triangle geometry; normalized to Z-up, front -Y, base 0 and 1 meter height; Retained the existing 2048-pixel baked normal map; Resized diffuse texture from 2048 to 1024 and ambient-occlusion/roughness texture from 2048 to 512; Preserved the complete figure, book, chalice, hands and original small carved base
 
+
+Head office executive furnishings
+
+Artwork: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow
+Creator: Thomas Cole
+Source: https://www.metmuseum.org/art/collection/search/10497
+License: Public domain / The Metropolitan Museum of Art Open Access (CC0) — https://creativecommons.org/publicdomain/zero/1.0/
+Adaptation: Downsampled to 2000 pixels, sampled inside photographic edge, and displayed as a framed print; artwork colors preserved.
+
+Artwork: The Anhalt Medallion Carpet
+Creator: Unknown Iranian workshop
+Source: https://www.metmuseum.org/art/collection/search/450716
+License: Public domain / The Metropolitan Museum of Art Open Access (CC0) — https://creativecommons.org/publicdomain/zero/1.0/
+Adaptation: Downsampled to 2048 pixels and used as a woven-rug texture, rotated in UV space with photographic margins excluded; artwork colors preserved.
