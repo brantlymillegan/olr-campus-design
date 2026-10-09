@@ -84,7 +84,7 @@ export async function loadHashedCampusModel(loader, url, onProgress) {
   return { gltf, sha256 };
 }
 
-export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha256, getAssetRevision, createAtmosphere, daylight }) {
+export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha256, getAssetRevision, createAtmosphere, daylight, daylightStyle }) {
   let job = null, completed = 0;
   function cancel(requestId) {
     if (!job || job.requestId !== requestId) return false;
@@ -110,13 +110,13 @@ export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha25
       renderer.setPixelRatio(1);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.AgXToneMapping;
-      renderer.toneMappingExposure = 1.02;
+      renderer.toneMappingExposure = daylightStyle.exposure;
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.shadowMap.autoUpdate = false;
       const scene = new THREE.Scene();
       scene.background = new THREE.Color('#cbdde8');
-      scene.environmentIntensity = .65;
+      scene.environmentIntensity = daylightStyle.environmentIntensity;
       const materials = new Map();
       function copyMaterial(material) {
         if (!materials.has(material)) {
@@ -143,8 +143,8 @@ export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha25
       const target = bounds.getCenter(new THREE.Vector3());
       target.y = Math.max(0, bounds.min.y) + size.y * .12;
       const extent = Math.max(size.x, size.z);
-      scene.add(new THREE.HemisphereLight(0xc6dff6, 0x6c735f, .68));
-      keyLight = new THREE.DirectionalLight(0xfff8ef, daylight.sunIntensity);
+      scene.add(new THREE.HemisphereLight(daylightStyle.skyColor, daylightStyle.groundColor, daylightStyle.hemisphereIntensity));
+      keyLight = new THREE.DirectionalLight(daylightStyle.sunColor, daylight.sunIntensity);
       keyLight.position.copy(target).addScaledVector(new THREE.Vector3(...daylight.sunDirection), extent * 1.3);
       keyLight.target.position.copy(target);
       keyLight.castShadow = true;
@@ -153,7 +153,7 @@ export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha25
       Object.assign(keyLight.shadow.camera, { left: -extent * .72, right: extent * .72, top: extent * .72, bottom: -extent * .72, near: 1, far: extent * 3 });
       keyLight.shadow.camera.updateProjectionMatrix();
       scene.add(keyLight, keyLight.target);
-      atmosphere = createAtmosphere({ scene, renderer, model, groundColor: [.102034, .160133, .045757] });
+      atmosphere = createAtmosphere({ scene, renderer, model, groundColor: daylightStyle.lawnColor });
       atmosphere.setTime(daylight);
       renderer.shadowMap.needsUpdate = true;
       const maxWidth = Number.isFinite(options.maxWidth) ? THREE.MathUtils.clamp(Math.round(options.maxWidth), 1024, 3072) : 3072;

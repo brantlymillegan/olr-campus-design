@@ -1,11 +1,11 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
-import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
+import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=c5463daed195a5e7';
 import { createCampusWalk } from './campus-walk.js?v=9d2907b51d4376a6';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=57009a4acce3f5d2';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
-import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=caa5ad478495f891';
+import { createCampusAtmosphere } from './campus-atmosphere.js?v=b88dab530ecdd970';
+import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=5e26e862b4a226d4';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -62,7 +62,7 @@ function handlePdfCommand(command, value) {
   campusPdfCapture ||= createCampusPdfCapture({
     getModel: () => model, getSourceScene: () => scene,
     getModelSha256: () => modelSha256, getAssetRevision: () => ASSET_REVISION,
-    createAtmosphere: createCampusAtmosphere, daylight: lightingAtTime(720)
+    createAtmosphere: createCampusAtmosphere, daylight: lightingAtTime(720), daylightStyle: CAMPUS_DAYLIGHT
   });
   campusPdfCapture.capture(requestId, value, progress => post({ type: 'olr-3d-pdf-progress', ...progress }))
     .then(result => post({ type: 'olr-3d-pdf-result', ...result }, result.views.map(view => view.buffer)))
@@ -648,7 +648,8 @@ async function init() {
   target = bounds.getCenter(new THREE.Vector3());
   target.y = Math.max(0, bounds.min.y) + size.y * 0.12;
   extent = Math.max(size.x, size.z);
-  campusAtmosphere = createCampusAtmosphere({ scene, renderer, model, groundColor: [.102034, .160133, .045757] });
+  applyCampusPalette(model);
+  campusAtmosphere = createCampusAtmosphere({ scene, renderer, model, groundColor: CAMPUS_DAYLIGHT.lawnColor });
   campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
   campusLighting.setTime(timeOfDay);
   campusAtmosphere.setTime(campusLighting.state);

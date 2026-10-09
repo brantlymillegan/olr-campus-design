@@ -6,6 +6,32 @@ const GRID_BEARING = THREE.MathUtils.degToRad(9.067253590763931);
 const smooth = (a, b, value) => THREE.MathUtils.smoothstep(value, a, b);
 const mix = THREE.MathUtils.lerp;
 
+// Shared by the live explorer and its on-demand still captures. Keep night
+// exposure/lamps separate so a clearer daytime image does not wash out night.
+export const CAMPUS_DAYLIGHT = Object.freeze({
+  sunIntensity: 3.4, hemisphereIntensity: .82, environmentIntensity: .75,
+  exposure: 1.14, skyColor: '#c6dff6', groundColor: '#6c735f', sunColor: '#fff8ef',
+  lawnColor: Object.freeze([.102034 * .90, .160133 * 1.12, .045757 * .90])
+});
+
+export function applyCampusPalette(model) {
+  const visited = new Set();
+  model.traverse(object => {
+    if (!object.isMesh) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material?.color || visited.has(material)) continue;
+      visited.add(material);
+      let tint;
+      if (/^Campus lawn$|Gaga Ball.*level green turf/i.test(material.name)) tint = [.90, 1.12, .90];
+      else if (/^Tree canopy|^Planting /i.test(material.name)) tint = [.93, 1.10, .92];
+      else if (/Warm red brick/i.test(material.name)) tint = [1.04, .98, .94];
+      else if (/Play equipment.*deep teal/i.test(material.name)) tint = [.88, 1.08, 1.12];
+      else if (/Play equipment.*warm yellow/i.test(material.name)) tint = [1.08, 1.02, .90];
+      if (tint) material.color.multiply(new THREE.Color().setRGB(...tint));
+    }
+  });
+}
+
 export function normalizeMinutes(value) {
   const number = Number(value);
   return Number.isFinite(number) ? THREE.MathUtils.clamp(Math.round(number), 0, 1439) : 840;
@@ -30,7 +56,7 @@ export function lightingAtTime(value) {
   const altitude = THREE.MathUtils.radToDeg(Math.asin(up));
   const daylight = smooth(-9, 12, altitude);
   const nightStrength = 1 - smooth(-5, 7, altitude);
-  const sunIntensity = 2.9 * smooth(0, 13, altitude);
+  const sunIntensity = CAMPUS_DAYLIGHT.sunIntensity * smooth(0, 13, altitude);
   const moonIntensity = altitude <= 0 ? 0.38 * (1 - daylight) : 0;
   const phase = altitude < -9 ? 'Night' : altitude < 7 ? (minutes < 720 ? 'Dawn' : 'Dusk') : minutes < 660 ? 'Morning' : minutes < 840 ? 'Midday' : 'Afternoon';
   return { minutes, phase, altitude, daylight, nightStrength, sunIntensity, moonIntensity, sunDirection: direction.toArray() };
@@ -53,9 +79,9 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
   const twilightColor = new THREE.Color('#716883');
   const dayColor = new THREE.Color('#cbdde8');
   const coolSky = new THREE.Color('#99b9e6');
-  const daySky = new THREE.Color('#c6dff6');
+  const daySky = new THREE.Color(CAMPUS_DAYLIGHT.skyColor);
   const warmSun = new THREE.Color('#ffae61');
-  const highSun = new THREE.Color('#fff8ef');
+  const highSun = new THREE.Color(CAMPUS_DAYLIGHT.sunColor);
   const glassMaterials = new Map();
   model.traverse(object => {
     if (!object.isMesh) return;
@@ -107,11 +133,11 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
     scene.background.copy(nightColor).lerp(dayColor, next.daylight).lerp(twilightColor, twilight * .45);
     renderer.setClearColor(scene.background);
     hemisphere.color.copy(coolSky).lerp(daySky, next.daylight);
-    hemisphere.groundColor.set(0x48545b).lerp(new THREE.Color(0x6c735f), next.daylight);
+    hemisphere.groundColor.set(0x48545b).lerp(new THREE.Color(CAMPUS_DAYLIGHT.groundColor), next.daylight);
     // A restrained sky fill keeps shaded recesses and sunlit surfaces distinct.
-    hemisphere.intensity = mix(.16, .68, next.daylight);
-    scene.environmentIntensity = mix(.035, .65, next.daylight);
-    renderer.toneMappingExposure = mix(.95, 1.02, next.daylight);
+    hemisphere.intensity = mix(.16, CAMPUS_DAYLIGHT.hemisphereIntensity, next.daylight);
+    scene.environmentIntensity = mix(.035, CAMPUS_DAYLIGHT.environmentIntensity, next.daylight);
+    renderer.toneMappingExposure = mix(.95, CAMPUS_DAYLIGHT.exposure, next.daylight);
     for (const [material, original] of glassMaterials) {
       material.emissive.copy(original.color).lerp(new THREE.Color(0xffc680), next.nightStrength);
       material.emissiveIntensity = mix(original.intensity, .72, next.nightStrength);

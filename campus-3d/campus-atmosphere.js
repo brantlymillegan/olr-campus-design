@@ -4,6 +4,19 @@ const FT = 0.3048;
 const clamp = THREE.MathUtils.clamp;
 const smooth = (a, b, x) => THREE.MathUtils.smoothstep(x, a, b);
 
+const COLOR_SATURATION = 1.24;
+function installCampusColorLook() {
+  // A modest saturation lift within the existing AgX shader keeps highlights
+  // gentle without a full-screen postprocessing pass. Neutral surfaces stay
+  // neutral. Install before the first visible draw, once per viewer window.
+  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
+  if (chunk.includes('// Campus color look')) return;
+  const ending = '\treturn color;\n}\nvec3 NeutralToneMapping';
+  if (!chunk.includes(ending)) throw new Error('The campus color look needs the expected AgX shader.');
+  THREE.ShaderChunk.tonemapping_pars_fragment = chunk.replace(ending,
+    `\t// Campus color look\n\tfloat luminance = dot( color, vec3( 0.2126, 0.7152, 0.0722 ) );\n\treturn clamp( mix( vec3( luminance ), color, ${COLOR_SATURATION.toFixed(2)} ), 0.0, 1.0 );\n}\nvec3 NeutralToneMapping`);
+}
+
 // The same continuous field as build-campus.py, with glTF's Y-up/-Z north.
 export function sampleCampusGround(x, z) {
   const east = x / FT, north = -z / FT;
@@ -146,6 +159,10 @@ function agxFogColor(color, exposure, target) {
   value = multiply(value, [
     [1.6605, -.5876, -.0728], [-.1246, 1.1329, -.0083], [-.0182, -.1006, 1.1187]
   ]).map(channel => clamp(channel, 0, 1));
+  // Fog is applied after material tone mapping: use the exact same look as
+  // the AgX shader so distant terrain and the sky still meet seamlessly.
+  const luminance = value[0] * .2126 + value[1] * .7152 + value[2] * .0722;
+  value = value.map(channel => clamp(luminance + (channel - luminance) * COLOR_SATURATION, 0, 1));
   return target.setRGB(...value);
 }
 
@@ -314,6 +331,7 @@ void main() {
  */
 export function createCampusAtmosphere({ scene, renderer, model = null, groundColor = null, fogDensity = .00050, environmentSize = 128 } = {}) {
   if (!scene?.isScene || !renderer?.isWebGLRenderer) throw new TypeError('Atmosphere needs a Three.js scene and WebGL renderer.');
+  installCampusColorLook();
   const originalEnvironment = scene.environment, originalFog = scene.fog;
   const lawn = new THREE.Color().setRGB(.10, .16, .047);
   if (model) model.traverse(object => {
@@ -441,6 +459,6 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
       cameraPosition: uniforms.uCameraPosition.value.toArray(), cloudAnimation: false,
       infiniteGround: true, groundUnits: 'world meters; X east, Y elevation, -Z north',
       surroundingTerrain: surrounding?.diagnostics || null,
-      modelGeometryChanged: false, disposed }); }
+      modelGeometryChanged: false, colorSaturation: COLOR_SATURATION, disposed }); }
   });
 }
