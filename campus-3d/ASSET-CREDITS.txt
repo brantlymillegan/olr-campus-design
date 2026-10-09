@@ -1,0 +1,21 @@
+OLR Campus 3D model — asset credits
+
+Room crucifixes
+"Crucifix" by The Hunt Museum.
+Original object: rosewood cross with boxwood corpus, probably by Andrea Fantoni
+of Bergamo, Italy, according to the museum's catalog description.
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Original model:
+https://sketchfab.com/3d-models/crucifix-9e5f9a61cf914e649dec44041affe1d2
+Official download record:
+https://zenodo.org/records/18948596
+
+Modifications: the freestanding pedestal and unused lower stem were removed
+for wall mounting. The intact corpus, feet, decorative finials and INRI plaque
+were retained. Geometry was simplified, the original texture atlas was resized
+from 8K to 4K and JPEG encoded, and the model was rescaled and oriented above doors inside
+27 occupied school rooms. The museum does not endorse this campus design or
+the adaptation.
