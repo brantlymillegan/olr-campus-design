@@ -19,3 +19,79 @@ were retained. Geometry was simplified, the original texture atlas was resized
 from 8K to 4K and JPEG encoded, and the model was rescaled and oriented above doors inside
 27 occupied school rooms. The museum does not endorse this campus design or
 the adaptation.
+
+
+Classroom framed paintings
+
+All 22 works below are paintings listed as public domain by the Art Institute of Chicago.
+Images supplied through the museum’s Open Access / IIIF service.
+https://www.artic.edu/open-access/open-access-images
+https://creativecommons.org/publicdomain/zero/1.0/
+Print proportions are preserved; 3D frames and mats are additions.
+
+Trompe-l'Oeil Still Life with a Flower Garland and a Curtain — Adriaen van der Spelt, 1658
+https://www.artic.edu/artworks/66042
+
+The Bedroom — Vincent van Gogh, 1889
+https://www.artic.edu/artworks/28560
+
+The Poet's Garden — Vincent van Gogh, 1888
+https://www.artic.edu/artworks/14586
+
+Two Sisters (On the Terrace) — Pierre-Auguste Renoir, 1881
+https://www.artic.edu/artworks/14655
+
+Paris Street; Rainy Day — Gustave Caillebotte, 1877
+https://www.artic.edu/artworks/20684
+
+A Turn in the Road — Alfred Sisley, 1873
+https://www.artic.edu/artworks/96559
+
+The Fountain, Villa Torlonia, Frascati, Italy — John Singer Sargent, 1907
+https://www.artic.edu/artworks/69780
+
+Stoke-by-Nayland — John Constable, 1836
+https://www.artic.edu/artworks/4758
+
+Woman in a Garden — Berthe Morisot, 1882–83
+https://www.artic.edu/artworks/153798
+
+Landscape with the Ruins of the Castle of Egmond — Jacob van Ruisdael, 1650–55
+https://www.artic.edu/artworks/60755
+
+An Alpine Scene — Gustave Courbet, 1874
+https://www.artic.edu/artworks/39554
+
+Fishing Boats with Hucksters Bargaining for Fish — Joseph Mallord William Turner, 1837–38
+https://www.artic.edu/artworks/4796
+
+The Herring Net — Winslow Homer, 1885
+https://www.artic.edu/artworks/25865
+
+A Sunday on La Grande Jatte — 1884 — Georges Seurat, 1884–86, border added 1888–89
+https://www.artic.edu/artworks/27992
+
+The Assumption of the Virgin — Domenico Theotokópoulos, called El Greco, 1577–79
+https://www.artic.edu/artworks/87479
+
+Interrupted Reading — Jean Baptiste Camille Corot, c. 1870
+https://www.artic.edu/artworks/81512
+
+Water Lilies — Claude Monet, 1906
+https://www.artic.edu/artworks/16568
+
+The Place du Havre, Paris — Camille Pissarro, 1893
+https://www.artic.edu/artworks/81551
+
+The Nativity — Fra Bartolommeo, 1504–7
+https://www.artic.edu/artworks/184371
+
+Woman at the Piano — Pierre-Auguste Renoir, 1875–76
+https://www.artic.edu/artworks/25825
+
+The Basket of Apples — Paul Cezanne, c. 1893
+https://www.artic.edu/artworks/111436
+
+Virgin and Child with an Angel — Sandro Botticelli, 1475–85
+https://www.artic.edu/artworks/80530
+
