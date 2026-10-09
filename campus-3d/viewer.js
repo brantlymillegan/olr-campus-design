@@ -5,6 +5,7 @@ import { createCampusPlanGround } from './campus-plan-ground.js?v=78d265ee5868c3
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
+import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=caa5ad478495f891';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -30,6 +31,7 @@ let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
 const navigationGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let model, modelReady = false, frame = null, frameHost = null;
+let modelSha256 = null, campusPdfCapture = null;
 let preparedTextures = 0, preparationRenders = 0;
 let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d';
 let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
@@ -39,10 +41,32 @@ let target = new THREE.Vector3();
 
 document.getElementById('retry').addEventListener('click', () => location.reload());
 // Messages belong only to this same-origin parent, never another frame.
-function post(message) {
+function post(message, transfer = []) {
   if (!EMBEDDED) return;
   try { if (window.parent.location.origin !== location.origin) return; } catch { return; }
-  window.parent.postMessage(message, location.origin);
+  window.parent.postMessage(message, location.origin, transfer);
+}
+
+function handlePdfCommand(command, value) {
+  const requestId = value?.requestId;
+  if (typeof requestId !== 'string' || !/^[\w.:-]{1,120}$/.test(requestId)) return;
+  if (command === 'pdf-info') {
+    post({ type: 'olr-3d-pdf-info', requestId, ready: modelReady, modelSha256, assetRevision: ASSET_REVISION, busy: campusPdfCapture?.state.busy ?? false });
+    return;
+  }
+  if (command === 'pdf-cancel') { campusPdfCapture?.cancel(requestId); return; }
+  if (!modelReady) {
+    post({ type: 'olr-3d-pdf-error', requestId, code: 'NOT_READY', message: 'The campus model is still loading.' });
+    return;
+  }
+  campusPdfCapture ||= createCampusPdfCapture({
+    getModel: () => model, getSourceScene: () => scene,
+    getModelSha256: () => modelSha256, getAssetRevision: () => ASSET_REVISION,
+    createAtmosphere: createCampusAtmosphere, daylight: lightingAtTime(720)
+  });
+  campusPdfCapture.capture(requestId, value, progress => post({ type: 'olr-3d-pdf-progress', ...progress }))
+    .then(result => post({ type: 'olr-3d-pdf-result', ...result }, result.views.map(view => view.buffer)))
+    .catch(error => post({ type: 'olr-3d-pdf-error', requestId, code: error.code || 'CAPTURE_FAILED', message: error.message || 'The 3D views could not be captured.' }));
 }
 
 function fail(error) {
@@ -385,6 +409,7 @@ function installEmbeddedNavigation() {
 window.addEventListener('message', event => {
   if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
+  if (['pdf-info', 'pdf-capture', 'pdf-cancel'].includes(command)) { handlePdfCommand(command, value); return; }
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
     if (walkPresentation !== value) cancelDraw();
     walkPresentation = value;
@@ -435,6 +460,8 @@ window.addEventListener('message', event => {
 let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return modelReady; }, get embedded() { return EMBEDDED; }, get active() { return active; },
+  get modelSha256() { return modelSha256; }, get assetRevision() { return ASSET_REVISION; },
+  get pdfCapture() { return campusPdfCapture?.state ?? { busy: false, requestId: null, completed: 0, views: 4 }; },
   get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders }; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },
@@ -576,9 +603,11 @@ async function init() {
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const gltf = await new GLTFLoader().loadAsync(`./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+  const loadedModel = await loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
   });
+  const { gltf } = loadedModel;
+  modelSha256 = loadedModel.sha256;
   model = gltf.scene;
   model.traverse(object => {
     if (object.isMesh) {
@@ -655,7 +684,7 @@ async function init() {
   modelReady = true;
   loading.hidden = true;
   document.body.classList.add('ready');
-  post({ type: 'olr-3d-ready' });
+  post({ type: 'olr-3d-ready', modelSha256, assetRevision: ASSET_REVISION });
   post({ type: 'olr-3d-walk', ...walk.state });
   publishLighting();
   requestDraw();

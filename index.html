@@ -1737,10 +1737,10 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=1f5cbc3a6e63ffa1" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
     <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=1f5cbc3a6e63ffa1" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-09-2026.pdf?v=d9583f8f24e1403a" download="OLR-Master-Plan-Millegan-10-09-2026.pdf" aria-label="Download master plan proposal PDF">
+  <button type="button" class="btn campus-download-pdf" id="campus-download-pdf" aria-label="Generate and download master plan proposal PDF">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
-  </a>
+  </button>
   <span id="campus-fullscreen-status" class="text-small" role="status" aria-live="polite" hidden></span>
 </header>
 
@@ -6738,7 +6738,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=00726de770dfed48';
+      modelFrame.src='./campus-3d/?embedded=1&v=f930710f88711359';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7126,139 +7126,182 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
 })();
 </script>
 <script id="olr-pdf-download">
-/* Fetch and verify the current campus proposal, then date the saved copy at
- * click time. An open tab must use today's local date, not its publication date. */
+/* Build the current proposal only when Download PDF is clicked. */
 (function () {
   'use strict';
   const button = document.getElementById('campus-download-pdf');
   if (!button || location.protocol === 'file:') return;
   const original = button.innerHTML;
+  const controls = document.createElement('span');
+  controls.style.cssText = 'flex-basis:100%;max-width:32em;white-space:normal';
   const status = document.createElement('span');
-  status.id = 'campus-pdf-status';
-  status.className = 'text-small';
-  status.setAttribute('role', 'status');
-  status.setAttribute('aria-live', 'polite');
-  status.style.cssText = 'flex-basis:100%;max-width:32em;white-space:normal';
-  status.hidden = true;
-  button.after(status);
-  let busy = false;
-  let libraryPromise;
-
-  function pdfLibrary(signal) {
-    if (window.PDFLib) return Promise.resolve(window.PDFLib);
-    if (!libraryPromise) {
-      libraryPromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = new URL('./vendor/pdf-lib-1.17.1.min.js', location.href).href;
-        script.integrity = 'sha256-D5pcrQeUHwgmWGyU4InYm5GMRuXBfPLVo8b2ZuO8aU8=';
-        script.crossOrigin = 'anonymous';
-        const fail = () => { cleanup(); script.remove(); reject(new Error('Could not prepare the dated PDF.')); };
-        const cleanup = () => signal.removeEventListener('abort', fail);
-        script.onload = () => { cleanup(); window.PDFLib ? resolve(window.PDFLib) : fail(); };
-        script.onerror = fail;
-        signal.addEventListener('abort', fail, {once: true});
-        if (signal.aborted) fail();
-        else document.head.appendChild(script);
-      }).catch(error => { libraryPromise = null; throw error; });
-    }
-    return libraryPromise;
+  status.id = 'campus-pdf-status'; status.className = 'text-small';
+  status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn'; cancel.textContent = 'Cancel';
+  cancel.style.marginLeft = '.5em'; cancel.hidden = true;
+  const save = document.createElement('a');
+  save.className = 'btn'; save.textContent = 'Save PDF'; save.hidden = true;
+  save.style.marginLeft = '.5em';
+  controls.append(status, cancel, save); controls.hidden = true; button.after(controls);
+  let controller, saveUrl;
+  const scripts = new Map(), modules = new Map();
+  const abortError = () => new DOMException('PDF generation canceled.', 'AbortError');
+  function check(signal) { if (signal.aborted) throw abortError(); }
+  function progress(text) { status.textContent = text; controls.hidden = false; }
+  function assetUrl(value) {
+    if (typeof value !== 'string') throw new Error('Missing PDF input URL.');
+    const url = new URL(value, location.href);
+    if (url.origin !== location.origin || !['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid PDF input origin.');
+    return url.href;
   }
-
-  async function datePdf(result, downloadedAt, signal) {
-    const {PDFDocument, StandardFonts} = await pdfLibrary(signal);
-    if (signal.aborted) throw new Error('Download timed out.');
-    const document = await PDFDocument.load(result.bytes, {updateMetadata: false});
-    if (document.getPageCount() !== result.manifest.page_count) throw new Error('Invalid proposal page count.');
-    const form = document.getForm();
-    const field = form.getTextField('olr.download-date');
-    const label = downloadedAt.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
-    field.setText(label);
-    field.updateAppearances(await document.embedFont(StandardFonts.Helvetica));
-    const dateWidgets = field.acroField.getWidgets()
-      .map(widget => document.context.getObjectRef(widget.dict)).filter(Boolean);
-    // Flatten the replacement into normal page content: no stale date beneath
-    // it and no editable form left in the reader's saved copy.
-    form.flatten({updateFieldAppearances: false});
-    // pdf-lib 1.17.1 removes appearance refs instead of widget refs from Annots.
-    // Remove only our deleted widgets, retaining the cover's website link.
-    for (const widget of dateWidgets) document.getPage(0).node.removeAnnot(widget);
-    document.setCreationDate(downloadedAt);
-    document.setModificationDate(downloadedAt);
-    const bytes = await document.save();
-    if (signal.aborted) throw new Error('Download timed out.');
-    const pad = number => String(number).padStart(2, '0');
-    const filename = `OLR-Master-Plan-Millegan-${pad(downloadedAt.getMonth() + 1)}-${pad(downloadedAt.getDate())}-${downloadedAt.getFullYear()}.pdf`;
-    return {bytes, filename};
+  function descriptor(value) {
+    if (!value || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isSafeInteger(value.bytes) || value.bytes < 1 || value.bytes > 100000000) throw new Error('Invalid PDF input information.');
+    assetUrl(value.url); return value;
   }
-
-  async function latestPdf(signal) {
-    const manifestUrl = new URL('./campus-pdf-latest.json', location.href);
-    manifestUrl.searchParams.set('check', Date.now() + '-' + Math.random().toString(36).slice(2));
-    const response = await fetch(manifestUrl, {cache: 'no-store', signal});
-    if (!response.ok) throw new Error('Could not check the latest proposal.');
-    const manifest = await response.json();
-    if (manifest.version !== 1 || !/^OLR-Master-Plan-Millegan-\d{2}-\d{2}-\d{4}\.pdf$/.test(manifest.filename) ||
-        !/^[a-f0-9]{64}$/.test(manifest.sha256) || !Number.isSafeInteger(manifest.bytes) || manifest.bytes < 10000 ||
-        !Number.isSafeInteger(manifest.page_count) || manifest.page_count < 9 ||
-        manifest.download_date?.version !== 1 || manifest.download_date.field !== 'olr.download-date') {
-      throw new Error('Invalid proposal information.');
-    }
-    const pdfUrl = new URL('./' + manifest.filename, location.href);
-    pdfUrl.searchParams.set('v', manifest.sha256);
-    const pdfResponse = await fetch(pdfUrl, {cache: 'no-store', signal});
-    if (!pdfResponse.ok) throw new Error('Could not fetch the latest proposal.');
-    const bytes = await pdfResponse.arrayBuffer();
-    const signature = String.fromCharCode(...new Uint8Array(bytes, 0, Math.min(5, bytes.byteLength)));
+  async function verifiedBytes(value, signal) {
+    descriptor(value); check(signal);
+    const response = await fetch(assetUrl(value.url), {cache: 'force-cache', signal});
+    if (!response.ok) throw new Error('Could not load a PDF input.');
+    const bytes = await response.arrayBuffer(); check(signal);
     const digest = await crypto.subtle.digest('SHA-256', bytes);
-    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-    if (bytes.byteLength !== manifest.bytes || signature !== '%PDF-' || hash !== manifest.sha256) {
-      throw new Error('The proposal changed while downloading.');
-    }
-    return {bytes, manifest};
+    const actual = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+    if (bytes.byteLength !== value.bytes || actual !== value.sha256) throw new Error('A PDF input changed while loading.');
+    return bytes;
   }
-
-  button.addEventListener('click', async event => {
-    event.preventDefault();
-    if (busy) return;
-    // Capture once per click, even if fetching crosses midnight. Never cache a
-    // formatted date at page load or derive the calendar day through UTC.
-    const downloadedAt = new Date();
-    busy = true;
-    button.setAttribute('aria-busy', 'true');
-    button.setAttribute('aria-disabled', 'true');
-    button.textContent = 'Checking latest PDF…';
-    status.hidden = true;
-    status.textContent = '';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
+  async function latest(signal) {
+    const url = new URL('./campus-pdf-latest.json', location.href);
+    url.searchParams.set('check', Date.now() + '-' + Math.random().toString(36).slice(2));
+    const response = await fetch(url, {cache: 'no-store', signal});
+    if (!response.ok) throw new Error('Could not check the current campus.');
+    const value = await response.json();
+    if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || value.perspective_count !== 4 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
+    for (const item of [value.inputs, value.generator, value.model, value.libraries?.jspdf, value.libraries?.svg2pdf]) descriptor(item);
+    assetUrl(value.viewer?.url); return value;
+  }
+  async function loadScript(value, signal) {
+    if (!scripts.has(value.sha256)) {
+      const pending = (async () => {
+        const bytes = await verifiedBytes(value, signal); check(signal);
+        const url = URL.createObjectURL(new Blob([bytes], {type: 'text/javascript'}));
+        try {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script'); script.src = url;
+            const cleanup = () => { signal.removeEventListener('abort', stopped); script.remove(); };
+            const stopped = () => { cleanup(); reject(abortError()); };
+            script.onload = () => { cleanup(); resolve(); };
+            script.onerror = () => { cleanup(); reject(new Error('Could not load the PDF generator.')); };
+            signal.addEventListener('abort', stopped, {once: true}); document.head.appendChild(script);
+          });
+        } finally { URL.revokeObjectURL(url); }
+      })().catch(error => { scripts.delete(value.sha256); throw error; });
+      scripts.set(value.sha256, pending);
+    }
+    await scripts.get(value.sha256); check(signal);
+  }
+  async function generator(value, signal) {
+    if (!modules.has(value.sha256)) {
+      modules.set(value.sha256, (async () => {
+        const bytes = await verifiedBytes(value, signal); check(signal);
+        const url = URL.createObjectURL(new Blob([bytes], {type: 'text/javascript'}));
+        try { return await import(url); } finally { URL.revokeObjectURL(url); }
+      })().catch(error => { modules.delete(value.sha256); throw error; }));
+    }
+    const module = await modules.get(value.sha256); check(signal); return module;
+  }
+  async function inputs(manifest, signal) {
+    const data = JSON.parse(new TextDecoder().decode(await verifiedBytes(manifest.inputs, signal)));
+    if (data.version !== 2 || data.maps?.length !== 4 || data.perspectives?.length !== 4 || data.specs?.rooms?.length !== manifest.specifications_room_count || data.model?.sha256 !== manifest.model.sha256) throw new Error('Campus PDF inputs do not match.');
+    const results = await Promise.all([verifiedBytes(data.cover.logo, signal), ...data.maps.map(map => verifiedBytes(map, signal))]);
+    return {data, logo: new Uint8Array(results[0]), maps: new Map(data.maps.map((map, i) => [map.id, new TextDecoder().decode(results[i + 1])]))};
+  }
+  function waitReady(frame, signal, timeout = 90000) {
+    const started = performance.now();
+    return new Promise((resolve, reject) => {
+      const poll = () => {
+        if (signal.aborted) return reject(abortError());
+        try { const state = frame.contentWindow?.olr3d; if (state?.ready) return resolve(state); } catch {}
+        if (performance.now() - started > timeout) return reject(new Error('The 3D model took too long to load.'));
+        setTimeout(poll, 100);
+      }; poll();
+    });
+  }
+  async function capture(manifest, views, signal) {
+    let frame = document.getElementById('campus-3d-frame'), owned;
     try {
-      let result;
-      // A deployment can complete between the manifest and PDF requests.
-      // Recheck once; never substitute an older PDF if verification fails.
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try { result = await latestPdf(controller.signal); break; }
-        catch (error) { if (attempt || controller.signal.aborted) throw error; }
+      // Reuse the page's already-preloaded model whenever it is current. An
+      // older open tab gets one isolated current viewer only after the click.
+      if (frame) {
+        const state = await waitReady(frame, signal);
+        if (!state.pdfCapture || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision || new URL(frame.src).searchParams.get('v') !== manifest.viewer.revision) frame = null;
       }
-      button.textContent = 'Preparing PDF…';
-      result = await datePdf(result, downloadedAt, controller.signal);
-      const url = URL.createObjectURL(new Blob([result.bytes], {type: 'application/pdf'}));
-      const download = document.createElement('a');
-      download.href = url;
-      download.download = result.filename;
-      download.hidden = true;
-      document.body.appendChild(download);
-      download.click();
-      download.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if (!frame) {
+        owned = document.createElement('iframe'); frame = owned;
+        owned.title = 'Preparing campus PDF views'; owned.tabIndex = -1; owned.inert = true;
+        owned.setAttribute('aria-hidden', 'true');
+        owned.style.cssText = 'position:fixed;left:-20000px;top:0;width:1600px;height:1056px;border:0;pointer-events:none;opacity:0';
+        const url = new URL(assetUrl(manifest.viewer.url)); url.searchParams.set('pdf-request', manifest.revision);
+        owned.src = url.href; document.body.appendChild(owned);
+      }
+      const state = await waitReady(frame, signal);
+      if (!state.pdfCapture || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision) throw new Error('The 3D model changed during PDF generation.');
+      const requestId = crypto.randomUUID();
+      return await new Promise((resolve, reject) => {
+        const cleanup = () => { window.removeEventListener('message', receive); signal.removeEventListener('abort', stop); };
+        const send = (command, value) => frame.contentWindow.postMessage({type: 'olr-3d-command', command, value}, location.origin);
+        const stop = () => { send('pdf-cancel', {requestId}); cleanup(); reject(abortError()); };
+        const receive = event => {
+          if (event.origin !== location.origin || event.source !== frame.contentWindow || event.data?.requestId !== requestId) return;
+          const value = event.data;
+          if (value.type === 'olr-3d-pdf-progress') { progress(value.message || 'Rendering 3D views…'); return; }
+          if (value.type === 'olr-3d-pdf-error') { cleanup(); reject(new Error(value.message || 'Could not render the current campus.')); return; }
+          if (value.type !== 'olr-3d-pdf-result') return;
+          cleanup();
+          if (value.modelSha256 !== manifest.model.sha256 || value.views?.length !== 4 || !views.every(view => value.views.some(item => item.id === view.id))) return reject(new Error('The captured views do not match the current model.'));
+          resolve(value.views.map(view => ({...view, bytes: new Uint8Array(view.buffer)})));
+        };
+        window.addEventListener('message', receive); signal.addEventListener('abort', stop, {once: true});
+        if (signal.aborted) { stop(); return; } send('pdf-capture', {requestId, expectedModelSha256: manifest.model.sha256, views, maxWidth: matchMedia('(max-width: 700px)').matches ? 1800 : 2560});
+      });
+    } finally { owned?.remove(); }
+  }
+  async function generate(downloadedAt, signal) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        progress(attempt ? 'Campus changed. Preparing the latest version…' : 'Loading current maps and room list…');
+        const manifest = await latest(signal);
+        const [assets, module] = await Promise.all([inputs(manifest, signal), generator(manifest.generator, signal)]);
+        await loadScript(manifest.libraries.jspdf, signal); await loadScript(manifest.libraries.svg2pdf, signal);
+        progress('Rendering current 3D views…');
+        const perspectives = await capture(manifest, assets.data.perspectives, signal);
+        const result = await module.createCampusPdf({manifest, assets, perspectives, downloadedAt, signal, onProgress: progress});
+        check(signal);
+        if ((await latest(signal)).revision !== manifest.revision) throw new Error('Campus changed during generation.');
+        window.olrPdfLastGeneration = {revision: manifest.revision, modelSha256: manifest.model.sha256, pageCount: result.pageCount, roomIds: result.roomIds, filename: result.filename, generatedAt: downloadedAt.toISOString()};
+        return result;
+      } catch (error) { if (signal.aborted || attempt) throw error; }
+    }
+  }
+  cancel.addEventListener('click', () => controller?.abort());
+  button.addEventListener('click', async event => {
+    event.preventDefault(); if (controller) return;
+    const downloadedAt = new Date(); controller = new AbortController(); const active = controller;
+    const timeout = setTimeout(() => active.abort(), 180000);
+    if (saveUrl) { URL.revokeObjectURL(saveUrl); saveUrl = null; }
+    save.hidden = true; cancel.hidden = false;
+    button.setAttribute('aria-busy', 'true'); button.setAttribute('aria-disabled', 'true');
+    button.textContent = 'Preparing PDF…';
+    try {
+      const result = await generate(downloadedAt, active.signal); check(active.signal);
+      saveUrl = URL.createObjectURL(new Blob([result.bytes], {type: 'application/pdf'}));
+      save.href = saveUrl; save.download = result.filename; save.hidden = false;
+      save.click(); progress('PDF ready.');
     } catch (error) {
-      status.textContent = 'Couldn’t download the latest PDF. Check your connection and try again.';
-      status.hidden = false;
+      progress(active.signal.aborted ? 'PDF generation canceled. Click Download PDF to try again.' : 'Couldn’t prepare the current PDF. Check your connection and try again.');
+      console.warn('Campus PDF generation:', error.message);
     } finally {
-      clearTimeout(timer);
-      busy = false;
-      button.innerHTML = original;
-      button.removeAttribute('aria-busy');
-      button.removeAttribute('aria-disabled');
+      clearTimeout(timeout); controller = null; cancel.hidden = true;
+      button.innerHTML = original; button.removeAttribute('aria-busy'); button.removeAttribute('aria-disabled');
     }
   });
 })();

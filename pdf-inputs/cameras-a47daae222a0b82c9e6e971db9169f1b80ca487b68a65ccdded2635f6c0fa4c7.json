@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "coordinate_system": "Campus-aligned Blender axes: x east, y plan north, z up; camera positions and targets in feet.",
+  "resolution": [
+    3072,
+    1860
+  ],
+  "jpeg_quality": 95,
+  "samples": 64,
+  "views": [
+    {
+      "id": "frontage-road",
+      "title": "New campus: 3D view from Frontage Road",
+      "filename": "frontage-road.jpg",
+      "camera": {
+        "position_ft": [
+          80,
+          495,
+          175
+        ],
+        "target_ft": [
+          130,
+          105,
+          10
+        ],
+        "lens_mm": 23,
+        "shift_y": -0.1
+      },
+      "description": "Elevated perspective looking south from the Frontage Road side, across the north parking and new school buildings."
+    },
+    {
+      "id": "james-drive",
+      "title": "New campus: 3D view from James Drive",
+      "filename": "james-drive.jpg",
+      "camera": {
+        "position_ft": [
+          -80,
+          -290,
+          180
+        ],
+        "target_ft": [
+          100,
+          95,
+          10
+        ],
+        "lens_mm": 28,
+        "shift_y": -0.07
+      },
+      "description": "Elevated perspective looking north from James Drive, showing the south campus access, school and church."
+    },
+    {
+      "id": "campus-overview",
+      "title": "New campus: 3D campus overview",
+      "filename": "campus-overview.jpg",
+      "camera": {
+        "position_ft": [
+          -800,
+          -720,
+          750
+        ],
+        "target_ft": [
+          10,
+          80,
+          4
+        ],
+        "lens_mm": 40
+      },
+      "description": "A broad southwest perspective showing how the complete campus, circulation and outdoor spaces fit together."
+    },
+    {
+      "id": "playground-gardens",
+      "title": "New campus: 3D playground and Guardian Angel garden",
+      "filename": "playground-gardens.jpg",
+      "camera": {
+        "position_ft": [
+          -239.35553444751628,
+          -92.18081199482522,
+          129.37224389533966
+        ],
+        "target_ft": [
+          114.9943334568776,
+          100.32696279248414,
+          0.0
+        ],
+        "lens_mm": 29.313100363978613,
+        "shift_x": -0.09913678799598277,
+        "shift_y": -0.054870317650571494
+      },
+      "description": "Wide southwest perspective matched to the October 9 reference: Building 1 in the foreground, Building 2 behind, playground to the right, church in the distance.",
+      "resolution": [
+        3072,
+        2049
+      ]
+    }
+  ]
+}
