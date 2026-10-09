@@ -1521,7 +1521,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=7c74ca3158f3123c" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
     <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=7c74ca3158f3123c" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=9a795845c7999306" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=287befa8c6cf40f1" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -3872,16 +3872,15 @@ html&gt;body{padding:0}&lt;/style&gt;
       const selection=proposed?proposal.retainedCourtyard:null,source=data.currentWalkways;
       const walks=selection?{
         polygons:source.polygons.filter(item=&gt;selection.polygon_ids.includes(item.id)),
-        paths:[...source.paths.filter(item=&gt;selection.path_ids.includes(item.id)),...(selection.extension_paths||[])],
         features:source.features.filter(item=&gt;selection.feature_ids.includes(item.id))
       }:source;
+      // In 2D, retain only the church courtyard paving. Keep the traced
+      // walkway data available to the separate 3D model.
       const pathColor=&#x27;color-mix(in srgb,var(--viz-series-2) 18%,var(--background))&#x27;;
-      const group=proposed?cutoutGroup(&#x27;retained-courtyard-cutout&#x27;,[[proposal.shared_polygon]],{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,&#x27;aria-label&#x27;:selection.description}):
-        el(&#x27;g&#x27;,{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing walking paths and courtyard · approximate aerial tracing&#x27;},map);
-      for(const item of walks.polygons.filter(p=&gt;p.kind!==&#x27;lawn&#x27;))poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-walk-area&#x27;:item.id},group);
+      const group=proposed?cutoutGroup(&#x27;retained-courtyard-cutout&#x27;,[[proposal.shared_polygon]],{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,&#x27;aria-label&#x27;:&#x27;Retained church courtyard&#x27;}):
+        el(&#x27;g&#x27;,{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing church courtyard · approximate aerial tracing&#x27;},map);
+      for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;courtyard&#x27;))poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-walk-area&#x27;:item.id},group);
       for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;lawn&#x27;))poly(item.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-courtyard-lawn&#x27;:item.id},group);
-      for(const path of walks.paths)line(path.points,{stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:path.width_ft*scale+1,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;},group);
-      for(const path of walks.paths)line(path.points,{stroke:pathColor,&#x27;stroke-width&#x27;:path.width_ft*scale,&#x27;stroke-linejoin&#x27;:&#x27;round&#x27;,&#x27;stroke-linecap&#x27;:&#x27;round&#x27;,&#x27;data-current-walking-path&#x27;:path.id,...(path.description?{&#x27;aria-label&#x27;:path.description}:{})},group);
       for(const f of walks.features){
         el(&#x27;circle&#x27;,{cx:x(f.center[0]),cy:y(f.center[1]),r:f.radius_ft*scale,fill:pathColor,stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:.65,&#x27;data-current-courtyard-feature&#x27;:f.id,&#x27;aria-label&#x27;:&#x27;Central courtyard feature&#x27;},group);
         if(f.inner_radius_ft)el(&#x27;circle&#x27;,{cx:x(f.center[0]),cy:y(f.center[1]),r:f.inner_radius_ft*scale,fill:&#x27;var(--muted-foreground)&#x27;},group);
