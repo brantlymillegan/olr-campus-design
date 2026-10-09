@@ -11,6 +11,9 @@
 .campus-walk-hud button:focus-visible { outline: 3px solid #efb63f; outline-offset: 3px; }
 .campus-walk-hud button[aria-pressed=true], .campus-walk-hud button[data-held] { color: #fff; background: #285239; border-color: #c1dcc5; }
 #campus-walk-exit { width: 100%; }
+.campus-fly-vertical { display: none; }
+.campus-walk-hud[data-mode=flying] .campus-fly-vertical { display: block; }
+.campus-walk-hud[data-mode=flying] #campus-walk-jump { display: none; }
 .campus-walk-reticle { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 1px solid #ffffffa8; border-radius: 50%; box-shadow: 0 0 0 1px #0005; }
 .campus-walk-reticle::after { content: ''; position: absolute; left: 5px; top: 5px; width: 2px; height: 2px; background: white; border-radius: 50%; }
 .campus-walk-pad { display: none; position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; pointer-events: auto; }
@@ -23,6 +26,8 @@
 canvas[data-walk-mode=placing] { cursor: crosshair !important; }
 canvas[data-walk-mode=walking] { cursor: grab !important; }
 canvas[data-walk-mode=walking]:active { cursor: grabbing !important; }
+canvas[data-walk-mode=flying] { cursor: grab !important; }
+canvas[data-walk-mode=flying]:active { cursor: grabbing !important; }
 canvas[data-pointer-locked=true] { cursor: none !important; }
 @media (pointer: coarse), (max-width: 760px) {
   .campus-walk-pad { display: grid; }

@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=67777e272eda0e37';
-import { createCampusWalk } from './campus-walk.js?v=859d1711a0edfd79';
+import { createCampusWalk } from './campus-walk.js?v=2ff605a07b2fb3bf';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=96090d821fc551ef';
@@ -353,11 +353,11 @@ window.addEventListener('message', event => {
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
     if (walkPresentation !== value) { walk?.pause(); cancelDraw(); }
     walkPresentation = value;
-    if (value === '3d' && walk?.mode === 'walking') renderer?.domElement.focus({preventScroll:true});
+    if (value === '3d' && ['walking', 'flying'].includes(walk?.mode)) renderer?.domElement.focus({preventScroll:true});
     requestDraw();
     return;
   }
-  if (['walk-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input', 'walk-release-pointer'].includes(command)) {
+  if (['walk-place', 'fly-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input', 'walk-release-pointer'].includes(command)) {
     if (active) walk?.command(command, value);
     return;
   }

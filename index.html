@@ -1277,6 +1277,9 @@ html>body { padding:0; }
 .campus-walk-panel { grid-area:walk; display:grid; gap:6px; min-width:0; padding:8px; border:1px solid var(--border); border-radius:8px; }
 .campus-walk-panel h2 { display:flex; align-items:center; justify-content:space-between; gap:6px; margin:0; font-size:12px; line-height:1.4; font-weight:600; }
 .campus-walk-panel h2 span { font-size:10px; font-weight:400; color:var(--muted-foreground); white-space:nowrap; }
+.campus-navigation-choice { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; }
+.campus-navigation-choice select { min-width:0; flex:1; padding:4px 8px; border:1px solid var(--border); border-radius:7px; background:var(--background); color:var(--foreground); font:inherit; }
+.campus-navigation-choice select:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .campus-walk-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
 #campus-walk-start-actions { grid-template-columns:1fr; }
 .campus-tool-panel .campus-walk-actions .btn { min-width:0; padding:4px; font-size:11px; }
@@ -1667,7 +1670,10 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <span id="campus-3d-help">Drag to turn and tilt · Pinch to zoom</span>
   </div>
   <section class="campus-walk-panel" id="campus-walk-panel" aria-labelledby="campus-walk-title" hidden>
-    <h2 id="campus-walk-title">Walk campus <span>6 ft eye height</span></h2>
+    <h2 id="campus-walk-title">Explore campus <span id="campus-navigation-caption">6 ft eye height</span></h2>
+    <label class="campus-navigation-choice" for="campus-navigation-mode">Mode
+      <select id="campus-navigation-mode"><option value="walking">Walking</option><option value="flying">Flying</option></select>
+    </label>
     <div class="campus-walk-actions" id="campus-walk-start-actions">
       <button type="button" class="btn" id="campus-walk-place" aria-label="Start a walkthrough by choosing a spot" disabled>Start</button>
     </div>
@@ -1700,7 +1706,7 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=7a64491a7b35ee4e" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
     <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=7a64491a7b35ee4e" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=307aa2709b713578" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=30d1a88bb8187f73" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -5269,7 +5275,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const {bbox} = JSON.parse(dataNode.textContent);
   const stages = [...root.querySelectorAll(&#x27;.olr-canvas-viewport&#x27;)];
   const northBearing = -Number(root.dataset.mapNorthAngle || 0);
-  const moveCodes = new Set([&#x27;KeyW&#x27;, &#x27;KeyA&#x27;, &#x27;KeyS&#x27;, &#x27;KeyD&#x27;, &#x27;ArrowUp&#x27;, &#x27;ArrowLeft&#x27;, &#x27;ArrowDown&#x27;, &#x27;ArrowRight&#x27;, &#x27;ShiftLeft&#x27;, &#x27;ShiftRight&#x27;, &#x27;Space&#x27;]);
+  const moveCodes = new Set([&#x27;KeyW&#x27;, &#x27;KeyA&#x27;, &#x27;KeyS&#x27;, &#x27;KeyD&#x27;, &#x27;KeyE&#x27;, &#x27;KeyQ&#x27;, &#x27;ArrowUp&#x27;, &#x27;ArrowLeft&#x27;, &#x27;ArrowDown&#x27;, &#x27;ArrowRight&#x27;, &#x27;ShiftLeft&#x27;, &#x27;ShiftRight&#x27;, &#x27;Space&#x27;]);
   const heldKeys = new Set(), pointers = new Map();
   const stageLabels = new Map(stages.map(stage =&gt; [stage, stage.getAttribute(&#x27;aria-label&#x27;)]));
   let state = {mode: &#x27;aerial&#x27;, presentation: &#x27;2d&#x27;};
@@ -5279,6 +5285,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     return box.width &gt; 0 &amp;&amp; box.height &gt; 0;
   });
   const enabled = () =&gt; state.presentation === &#x27;2d&#x27; &amp;&amp; state.mode !== &#x27;aerial&#x27;;
+  const navigating = () =&gt; state.mode === &#x27;walking&#x27; || state.mode === &#x27;flying&#x27;;
   const send = (command, value) =&gt; window.parent.postMessage({type: &#x27;olr-plan-walk-input&#x27;, command, value}, &#x27;*&#x27;);
   const input = value =&gt; send(&#x27;walk-input&#x27;, value);
   const stop = event =&gt; { if (event.cancelable) event.preventDefault(); event.stopImmediatePropagation(); };
@@ -5287,7 +5294,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const style = document.createElement(&#x27;style&#x27;);
   style.textContent = `
     #olr-plan-walk-hud[hidden], #olr-plan-walk-marker[hidden] { display:none!important; }
-    #olr-plan-walk-hud { position:fixed; inset:0; z-index:30; pointer-events:none; color:var(--foreground,#222); font:13px/1.4 system-ui,sans-serif; }
+    #olr-plan-walk-hud { --olr-walk-action-height:146px; position:fixed; inset:0; z-index:30; pointer-events:none; color:var(--foreground,#222); font:13px/1.4 system-ui,sans-serif; }
+    #olr-plan-walk-hud[data-mode=&quot;flying&quot;] { --olr-walk-action-height:196px; }
     #olr-plan-walk-hud button { pointer-events:auto; min-width:44px; min-height:44px; padding:8px 12px; border:1px solid var(--border,#999); border-radius:10px; background:var(--background,#fff); color:var(--foreground,#222); font:inherit; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; box-shadow:0 2px 8px #0002; }
     #olr-plan-walk-hud button:focus-visible { outline:3px solid #3284e3; outline-offset:2px; }
     #olr-plan-walk-hud button[aria-pressed=&quot;true&quot;], #olr-plan-walk-hud button[data-held] { background:var(--foreground,#222); color:var(--background,#fff); }
@@ -5297,6 +5305,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     .olr-plan-walk-help { font-size:11px; color:var(--muted-foreground,#666); }
     .olr-plan-walk-touch-help { display:none; }
     .olr-plan-walk-actions { position:absolute; bottom:24px; right:16px; display:flex; gap:6px; }
+    .olr-plan-fly-vertical { display:none; }
+    #olr-plan-walk-hud[data-mode=&quot;flying&quot;] .olr-plan-fly-vertical { display:block; }
+    #olr-plan-walk-hud[data-mode=&quot;flying&quot;] [data-walk-action=&quot;jump&quot;] { display:none; }
     .olr-plan-walk-pad { display:none; position:absolute; bottom:24px; left:16px; grid-template-columns:repeat(3,44px); grid-template-rows:repeat(2,44px); gap:5px; }
     .olr-plan-walk-pad button { padding:0!important; font-size:24px!important; line-height:1!important; }
     .olr-plan-walk-pad button:first-child { grid-column:2; }
@@ -5308,12 +5319,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     #olr-plan-walk-marker svg { display:block; width:44px; height:44px; }
     #olr-plan-walk-marker[data-jumping=&quot;true&quot;] svg { transform:scale(1.15); }
     .olr-canvas-viewport[data-plan-walk=&quot;placing&quot;] { cursor:crosshair; touch-action:none; outline:none; }
-    .olr-canvas-viewport[data-plan-walk=&quot;walking&quot;] { cursor:grab; touch-action:none; outline:none; }
+    .olr-canvas-viewport[data-plan-walk=&quot;walking&quot;], .olr-canvas-viewport[data-plan-walk=&quot;flying&quot;] { cursor:grab; touch-action:none; outline:none; }
     @media (pointer:coarse), (max-width:700px) {
       .olr-plan-walk-pad { display:grid; }
       .olr-plan-walk-actions { display:grid; bottom:max(24px,env(safe-area-inset-bottom)); }
       .olr-plan-walk-pad { bottom:max(24px,env(safe-area-inset-bottom)); }
-      .olr-plan-walk-banner { bottom:176px; left:12px; right:12px; max-width:none; padding:7px 10px; text-align:center; font-size:12px; }
+      .olr-plan-walk-banner { bottom:calc(var(--olr-walk-action-height) + 30px); left:12px; right:12px; max-width:none; padding:7px 10px; text-align:center; font-size:12px; }
       .olr-plan-walk-keyboard-help { display:none; }
       .olr-plan-walk-touch-help { display:inline; }
       #olr-plan-walk-hud[data-mode=&quot;placing&quot;] .olr-plan-walk-banner { bottom:84px; }
@@ -5327,7 +5338,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   hud.id = &#x27;olr-plan-walk-hud&#x27;; hud.hidden = true;
   hud.innerHTML = `&lt;div class=&quot;olr-plan-walk-banner&quot;&gt;&lt;strong id=&quot;olr-plan-walk-title&quot;&gt;&lt;/strong&gt;&lt;p id=&quot;olr-plan-walk-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;&lt;p class=&quot;olr-plan-walk-help&quot;&gt;&lt;span class=&quot;olr-plan-walk-keyboard-help&quot;&gt;WASD or arrows to move · drag to turn · Space to jump · Shift to run · Esc to exit&lt;/span&gt;&lt;span class=&quot;olr-plan-walk-touch-help&quot;&gt;Hold arrows to move · drag to turn · Jump or Run&lt;/span&gt;&lt;/p&gt;&lt;/div&gt;
     &lt;div class=&quot;olr-plan-walk-pad&quot; role=&quot;group&quot; aria-label=&quot;Walking directions&quot;&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;forward&quot; aria-label=&quot;Walk forward&quot;&gt;↑&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;left&quot; aria-label=&quot;Walk left&quot;&gt;←&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;backward&quot; aria-label=&quot;Walk backward&quot;&gt;↓&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;right&quot; aria-label=&quot;Walk right&quot;&gt;→&lt;/button&gt;&lt;/div&gt;
-    &lt;div class=&quot;olr-plan-walk-actions&quot;&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;jump&quot;&gt;Jump&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;run&quot; aria-pressed=&quot;false&quot;&gt;Run&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;exit&quot; aria-label=&quot;End walkthrough&quot;&gt;End&lt;/button&gt;&lt;/div&gt;`;
+    &lt;div class=&quot;olr-plan-walk-actions&quot;&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;jump&quot;&gt;Jump&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;up&quot; class=&quot;olr-plan-fly-vertical&quot; aria-label=&quot;Fly up&quot;&gt;Up&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-move=&quot;down&quot; class=&quot;olr-plan-fly-vertical&quot; aria-label=&quot;Fly down&quot;&gt;Down&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;run&quot; aria-pressed=&quot;false&quot;&gt;Run&lt;/button&gt;&lt;button type=&quot;button&quot; data-walk-action=&quot;exit&quot; aria-label=&quot;End walkthrough&quot;&gt;End&lt;/button&gt;&lt;/div&gt;`;
   document.body.appendChild(hud);
   const title = hud.querySelector(&#x27;#olr-plan-walk-title&#x27;), status = hud.querySelector(&#x27;#olr-plan-walk-status&#x27;);
   const marker = document.createElement(&#x27;div&#x27;);
@@ -5348,7 +5359,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (!enabled()) return;
     const stage = activeStage(), feet = state.siteFeet;
     if (!stage) return;
-    if (state.mode === &#x27;walking&#x27; &amp;&amp; Number.isFinite(feet?.x) &amp;&amp; Number.isFinite(feet?.y)) {
+    if (navigating() &amp;&amp; Number.isFinite(feet?.x) &amp;&amp; Number.isFinite(feet?.y)) {
       const box = stage.getBoundingClientRect();
       // This is a presentation of the shared walker, never a second simulation.
       // Keep campus north up and retain enough nearby context to navigate.
@@ -5368,7 +5379,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function setState(next) {
     if (!next || typeof next !== &#x27;object&#x27;) return;
     const previousMode = state.mode, wasEnabled = enabled();
-    const nextMode = [&#x27;aerial&#x27;, &#x27;placing&#x27;, &#x27;walking&#x27;].includes(next.mode) ? next.mode : state.mode;
+    const nextMode = [&#x27;aerial&#x27;, &#x27;placing&#x27;, &#x27;walking&#x27;, &#x27;flying&#x27;].includes(next.mode) ? next.mode : state.mode;
     if (previousMode === &#x27;aerial&#x27; &amp;&amp; nextMode !== &#x27;aerial&#x27;) {
       const saved = next.aerialCamera;
       aerialCamera = saved?.center &amp;&amp; [saved.center.x,saved.center.y,saved.scale,saved.bearing].every(Number.isFinite)
@@ -5379,22 +5390,35 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (wasEnabled &amp;&amp; (!enabled() || previousMode !== state.mode)) pause();
     const isEnabled = enabled();
     const feedback = typeof state.feedback === &#x27;string&#x27; ? state.feedback : typeof state.message === &#x27;string&#x27; ? state.message : &#x27;&#x27;;
-    const nextSignature = `${state.mode}|${state.presentation}|${Boolean(state.running)}|${feedback}`;
+    const flying = state.navigationMode === &#x27;flying&#x27; || state.mode === &#x27;flying&#x27;;
+    const nextSignature = `${state.mode}|${state.navigationMode}|${state.presentation}|${Boolean(state.running)}|${feedback}`;
     if (nextSignature !== uiSignature) {
       uiSignature = nextSignature;
       hud.hidden = !isEnabled; hud.dataset.mode = state.mode;
       for (const stage of stages) {
         if (isEnabled) {
           stage.dataset.planWalk = state.mode;
-          stage.setAttribute(&#x27;aria-label&#x27;, state.mode === &#x27;placing&#x27; ? &#x27;Choose a walking starting point. Click or tap an open lawn or path. Escape exits.&#x27; : &#x27;Walking on the campus plan. WASD or arrows move, drag to turn, Space jumps, Shift runs, and Escape exits.&#x27;);
+          stage.setAttribute(&#x27;aria-label&#x27;, state.mode === &#x27;placing&#x27;
+            ? `Choose a ${flying ? &#x27;launch&#x27; : &#x27;starting&#x27;} point. Click or tap a path, lawn, or roof. Escape exits.`
+            : flying ? &#x27;Flying on the campus plan. WASD or arrows move, drag to turn, Space or E rises, Q descends, Shift flies faster, and Escape exits.&#x27;
+              : &#x27;Walking on the campus plan. WASD or arrows move, drag to turn, Space jumps, Shift runs, and Escape exits.&#x27;);
         } else {
           delete stage.dataset.planWalk;
           if (stageLabels.get(stage) !== null) stage.setAttribute(&#x27;aria-label&#x27;, stageLabels.get(stage));
           else stage.removeAttribute(&#x27;aria-label&#x27;);
         }
       }
-      title.textContent = state.mode === &#x27;placing&#x27; ? &#x27;Choose a starting point&#x27; : &#x27;Walking in 2D · campus north ↑&#x27;;
-      hud.querySelector(&#x27;[data-walk-action=&quot;exit&quot;]&#x27;).setAttribute(&#x27;aria-label&#x27;, state.mode === &#x27;placing&#x27; ? &#x27;End placement&#x27; : &#x27;End walkthrough&#x27;);
+      title.textContent = state.mode === &#x27;placing&#x27; ? `Choose a ${flying ? &#x27;launch&#x27; : &#x27;starting&#x27;} point` : `${flying ? &#x27;Flying&#x27; : &#x27;Walking&#x27;} in 2D · campus north ↑`;
+      hud.querySelector(&#x27;[data-walk-action=&quot;exit&quot;]&#x27;).setAttribute(&#x27;aria-label&#x27;, state.mode === &#x27;placing&#x27; ? &#x27;End placement&#x27; : flying ? &#x27;End flight&#x27; : &#x27;End walkthrough&#x27;);
+      hud.querySelector(&#x27;.olr-plan-walk-keyboard-help&#x27;).textContent = flying
+        ? &#x27;WASD or arrows to move · drag to turn · Space or E to rise · Q to descend · Shift for fast flight · Esc to exit&#x27;
+        : &#x27;WASD or arrows to move · drag to turn · Space to jump · Shift to run · Esc to exit&#x27;;
+      hud.querySelector(&#x27;.olr-plan-walk-touch-help&#x27;).textContent = flying
+        ? &#x27;Hold arrows to move · hold Up or Down to change height · drag to turn · Fast for more speed&#x27;
+        : &#x27;Hold arrows to move · drag to turn · Jump or Run&#x27;;
+      hud.querySelector(&#x27;.olr-plan-walk-pad&#x27;).setAttribute(&#x27;aria-label&#x27;, flying ? &#x27;Flying directions&#x27; : &#x27;Walking directions&#x27;);
+      for (const button of hud.querySelectorAll(&#x27;.olr-plan-walk-pad button&#x27;)) button.setAttribute(&#x27;aria-label&#x27;, `${flying ? &#x27;Fly&#x27; : &#x27;Walk&#x27;} ${button.dataset.walkMove}`);
+      hud.querySelector(&#x27;[data-walk-action=&quot;run&quot;]&#x27;).textContent = flying ? &#x27;Fast&#x27; : &#x27;Run&#x27;;
       if (status.textContent !== feedback) status.textContent = feedback;
       hud.querySelector(&#x27;[data-walk-action=&quot;run&quot;]&#x27;).setAttribute(&#x27;aria-pressed&#x27;, String(Boolean(state.running)));
     }
@@ -5414,7 +5438,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (event.code === &#x27;Escape&#x27;) { stop(event); pause(); send(&#x27;walk-exit&#x27;); return; }
     if (moveCodes.has(event.code)) {
       stop(event);
-      if (state.mode === &#x27;walking&#x27; &amp;&amp; !heldKeys.has(event.code)) { heldKeys.add(event.code); input({kind: &#x27;key&#x27;, code: event.code, down: true}); }
+      if (navigating() &amp;&amp; !heldKeys.has(event.code)) { heldKeys.add(event.code); input({kind: &#x27;key&#x27;, code: event.code, down: true}); }
     } else if ([&#x27;+&#x27;, &#x27;=&#x27;, &#x27;-&#x27;, &#x27;_&#x27;, &#x27;0&#x27;, &#x27;n&#x27;, &#x27;N&#x27;].includes(event.key)) stop(event);
   }, {capture: true});
   window.addEventListener(&#x27;keyup&#x27;, event =&gt; {
@@ -5437,7 +5461,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (!pointer &amp;&amp; !withinStage(event)) return;
     stop(event);
     if (!pointer) return;
-    if (state.mode === &#x27;walking&#x27;) input({kind: &#x27;look&#x27;, dx: event.clientX - pointer.x, dy: event.clientY - pointer.y, touch: pointer.touch});
+    if (navigating()) input({kind: &#x27;look&#x27;, dx: event.clientX - pointer.x, dy: event.clientY - pointer.y, touch: pointer.touch});
     pointer.x = event.clientX; pointer.y = event.clientY;
   }, {capture: true});
   function release(event) {
@@ -5462,7 +5486,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   for (const button of hud.querySelectorAll(&#x27;[data-walk-move]&#x27;)) {
     const direction = button.dataset.walkMove;
     const down = event =&gt; {
-      if (!enabled() || state.mode !== &#x27;walking&#x27; || (event.pointerType === &#x27;mouse&#x27; &amp;&amp; event.button !== 0)) return;
+      if (!enabled() || !navigating() || (event.pointerType === &#x27;mouse&#x27; &amp;&amp; event.button !== 0)) return;
+      if ([&#x27;up&#x27;, &#x27;down&#x27;].includes(direction) &amp;&amp; state.mode !== &#x27;flying&#x27;) return;
       event.preventDefault(); button.dataset.held = &#x27;&#x27;;
       if (event.pointerId !== undefined) button.setPointerCapture(event.pointerId);
       input({kind: &#x27;move&#x27;, direction, down: true});
@@ -5480,9 +5505,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function action(name) {
     if (!enabled()) return;
     if (name === &#x27;exit&#x27;) { pause(); send(&#x27;walk-exit&#x27;); return; }
-    if (state.mode !== &#x27;walking&#x27;) return;
+    if (!navigating()) return;
     if (name === &#x27;run&#x27;) send(&#x27;walk-run&#x27;);
-    if (name === &#x27;jump&#x27;) {
+    if (name === &#x27;jump&#x27; &amp;&amp; state.mode === &#x27;walking&#x27;) {
       input({kind: &#x27;key&#x27;, code: &#x27;Space&#x27;, down: true});
       input({kind: &#x27;key&#x27;, code: &#x27;Space&#x27;, down: false});
     }
@@ -6784,12 +6809,15 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const navigation = document.getElementById('campus-3d-navigation');
   const cameraTools = document.getElementById('campus-camera-tools');
   const walkPanel = document.getElementById('campus-walk-panel');
+  const navigationChoice = document.getElementById('campus-navigation-mode');
+  const navigationCaption = document.getElementById('campus-navigation-caption');
   const walkPlace = document.getElementById('campus-walk-place');
   const walkExit = document.getElementById('campus-walk-exit');
   const walkReturn = document.getElementById('campus-walk-return');
   const walkRun = document.getElementById('campus-walk-run');
   const walkStatus = document.getElementById('campus-walk-status');
   const walkKeyboardHelp = panel.querySelector('.campus-walk-keyboard');
+  const walkTouchHelp = panel.querySelector('.campus-walk-touch');
   const walkStartActions = document.getElementById('campus-walk-start-actions');
   const walkActiveActions = document.getElementById('campus-walk-active-actions');
   const lightingPanel = document.getElementById('campus-lighting-panel');
@@ -6807,6 +6835,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let oldBuildingPolygons = [];
   const dragMode = 'rotate';
   let walkState = {mode:'aerial',running:false,eyeHeightFeet:6};
+  let navigationMode = 'walking';
   let walkPending = null, queuedWalk = null, walkAerialCamera = null, focusAfterWalkExit = false;
   let initial3d = new URL(location.href).searchParams.get('view') === '3d';
   const normalizeTime = value => Number.isFinite(Number(value)) ? Math.max(0,Math.min(1439,Math.round(Number(value)))) : 840;
@@ -6815,6 +6844,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
   const walkActive = () => walkState.mode!=='aerial'||walkPending!==null;
+  const navigating = () => ['walking','flying'].includes(walkState.mode);
   const sendPlanWalk = () => sendMap('walk-state',{...walkState,presentation:dimension==='list'?'3d':dimension,aerialCamera:walkAerialCamera});
   function focusWalk() {
     if(dimension==='list')return;
@@ -6843,27 +6873,36 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   function renderWalk() {
     const active=walkActive(), placing=walkState.mode==='placing'||walkPending==='placing';
+    const flying=navigationMode==='flying';
     const ready=modelReady&&!modelNeedsMapCamera;
     panel.dataset.walkActive=String(active&&dimension!=='list');
     document.body.dataset.campusWalk=walkState.mode;
     walkPanel.hidden=dimension==='list';
+    navigationChoice.value=navigationMode;
+    navigationChoice.disabled=active;
+    navigationCaption.textContent=flying?'Free flight':'6 ft eye height';
+    walkPlace.setAttribute('aria-label',flying?'Start flying by choosing a launch point':'Start walking by choosing a starting point');
     walkPlace.disabled=active||!mapState?.camera;
     walkStartActions.hidden=active;
     walkActiveActions.hidden=!active;
-    walkRun.disabled=!ready||walkState.mode!=='walking';
+    walkRun.disabled=!ready||!navigating();
     walkRun.hidden=placing;
+    walkRun.textContent=flying?'Fast':'Run';
     walkRun.setAttribute('aria-pressed',String(walkState.running));
     walkExit.disabled=false;
     walkExit.textContent=walkReturn.textContent='End';
-    for(const button of [walkExit,walkReturn])button.setAttribute('aria-label',placing?'End placement':'End walkthrough');
+    for(const button of [walkExit,walkReturn])button.setAttribute('aria-label',placing?'End placement':flying?'End flight':'End walkthrough');
     walkReturn.hidden=!(active&&mobile?.matches&&!expanded);
     navigation.hidden=cameraTools.hidden=compass.hidden=active;
     compass.disabled=active;
-    const status=queuedWalk&&!modelReady?'Loading walkthrough…':walkPending==='exit'?'Ending walkthrough…':walkPending&&!placing?'Starting walkthrough…':placing?'Click or tap an open spot on the campus.':walkState.mode==='walking'?(walkState.running?'Running · 6 ft eye height.':'Walking · 6 ft eye height.'):'Select Start, then choose an open spot on the campus.';
+    const activity=flying?'flight':'walkthrough';
+    const status=queuedWalk&&!modelReady?`Loading ${activity}…`:walkPending==='exit'?`Ending ${activity}…`:walkPending&&!placing?`Starting ${activity}…`:placing?`Click or tap a path, lawn, or roof to ${flying?'launch':'start walking'}.`:navigating()?(flying?(walkState.running?'Flying fast.':'Flying.'):(walkState.running?'Running · 6 ft eye height.':'Walking · 6 ft eye height.')):'Select Start, then choose a path, lawn, or roof.';
     walkStatus.textContent=walkPending?status:(walkState.feedback||status);
+    const movementHelp=flying?'WASD / arrows move · Space or E rises · Q descends · Shift flies faster.':'WASD / arrows move · Shift runs · Space jumps.';
     if(walkKeyboardHelp)walkKeyboardHelp.textContent=dimension==='3d'
-      ? `WASD / arrows move · Shift runs · Space jumps. ${walkState.pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
-      : 'WASD / arrows move · Shift runs · Space jumps · Drag to turn.';
+      ? `${movementHelp} ${walkState.pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
+      : `${movementHelp} Drag to turn.`;
+    if(walkTouchHelp)walkTouchHelp.textContent=flying?'Hold arrows to move. Hold Up or Down to change height. Drag to look.':'Use the on-screen movement controls. Drag to look.';
     if(focusAfterWalkExit&&!active&&dimension!=='list'){focusAfterWalkExit=false;(mobile?.matches?toggle:walkPlace)?.focus();}
   }
   function requestWalk(command) {
@@ -6872,8 +6911,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       sendPlanWalk();syncModel();renderWalk();return;
     }
     if(command!=='walk-exit'&&walkActive())return;
-    walkPending=command==='walk-place'?'placing':'exit';
+    walkPending=['walk-place','fly-place'].includes(command)?'placing':'exit';
     if(command!=='walk-exit'){
+      navigationMode=command==='fly-place'?'flying':'walking';
+      walkState={...walkState,navigationMode};
       if(mapState?.view==='existing')sendMap('map','shifted');
       try { if(dimension==='3d'&&modelReady)modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
       walkAerialCamera=dimension==='3d'?modelCamera:mapState?.camera;
@@ -6887,12 +6928,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function escapeWalk() {
     // Browsers can announce pointer-lock release before the Escape key reaches
     // this shell, so use walking mode rather than a possibly stale lock flag.
-    if(dimension==='3d'&&walkState.mode==='walking')sendModel('walk-release-pointer');
+    if(dimension==='3d'&&navigating())sendModel('walk-release-pointer');
     else {focusAfterWalkExit=true;requestWalk('walk-exit');}
   }
-  walkPlace.addEventListener('click',()=>requestWalk('walk-place'));
+  navigationChoice.addEventListener('change',()=>{
+    if(walkActive())return;
+    navigationMode=navigationChoice.value==='flying'?'flying':'walking';
+    renderWalk();
+  });
+  walkPlace.addEventListener('click',()=>requestWalk(navigationMode==='flying'?'fly-place':'walk-place'));
   for(const button of [walkExit,walkReturn])button.addEventListener('click',()=>{focusAfterWalkExit=true;requestWalk('walk-exit');});
-  walkRun.addEventListener('click',()=>{if(walkState.mode==='walking'&&modelReady){sendModel('walk-run',!walkState.running);focusWalk();}});
+  walkRun.addEventListener('click',()=>{if(navigating()&&modelReady){sendModel('walk-run',!walkState.running);focusWalk();}});
   function renderTime(phase='') {
     const hour=Math.floor(timeOfDay/60), minute=timeOfDay%60;
     const label=`${hour%12||12}:${String(minute).padStart(2,'0')} ${hour<12?'AM':'PM'}`;
@@ -7093,16 +7139,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         queuedWalk=null;walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6,feedback:'The walkthrough could not load. Switch to 3D to retry.'};
         sendPlanWalk();renderWalk();
       }
-      else if(s?.type==='olr-3d-walk-pose'&&walkState.mode==='walking'&&s.siteFeet&&[s.siteFeet.x,s.siteFeet.y,s.siteFeet.elevation,s.yawRadians,s.pitchRadians].every(Number.isFinite)){
+      else if(s?.type==='olr-3d-walk-pose'&&navigating()&&s.siteFeet&&[s.siteFeet.x,s.siteFeet.y,s.siteFeet.elevation,s.yawRadians,s.pitchRadians].every(Number.isFinite)){
         walkState={...walkState,siteFeet:s.siteFeet,yawRadians:s.yawRadians,pitchRadians:s.pitchRadians,grounded:s.grounded,jumping:s.jumping};
         if(dimension==='2d')sendPlanWalk();
       }
-      else if(s?.type==='olr-3d-walk'&&['aerial','placing','walking'].includes(s.mode)&&typeof s.running==='boolean'&&s.eyeHeightFeet===6){
+      else if(s?.type==='olr-3d-walk'&&['aerial','placing','walking','flying'].includes(s.mode)&&typeof s.running==='boolean'&&s.eyeHeightFeet===6){
         // The viewer announces its initial aerial state immediately after ready,
         // before it processes a queued start from a 2D page.
         if(s.mode==='aerial'&&['placing','walking'].includes(walkPending)&&!s.feedback)return;
         const wasActive=walkActive();
         const feedback=typeof s.feedback==='string'?s.feedback:typeof s.message==='string'?s.message:'';
+        if(s.mode!=='aerial')navigationMode=s.navigationMode==='flying'||s.mode==='flying'?'flying':'walking';
         walkState={...s,feedback:feedback.trim().slice(0,300)};walkPending=null;
         sendPlanWalk();
         if(!wasActive&&s.mode!=='aerial'&&mobile?.matches)expand(false);else renderWalk();
