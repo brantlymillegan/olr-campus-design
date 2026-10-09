@@ -1,17 +1,16 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
-import { createCampusLighting, formatTime, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
+import { createCampusLighting, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const EMBEDDED = new URLSearchParams(location.search).get('embedded') === '1';
+const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
 const CAMPUS_BEARING = 9.067253590763931;
 const DEFAULT_TILT = 25;
 const MIN_TILT = 0, MAX_TILT = 85;
 const themeMedia = matchMedia('(prefers-color-scheme: dark)');
-let themePreference = 'system', resolvedTheme = 'light', active = !EMBEDDED;
+let themePreference = 'system', resolvedTheme = 'light', active = false;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null, dragMode = 'rotate';
@@ -21,24 +20,17 @@ const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
-const viewButtons = [...document.querySelectorAll('[data-view]')];
-const dragModeButtons = [...document.querySelectorAll('[data-drag-mode]')];
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let renderer, camera, controls, scene, extent = 200, fitDistance = 280;
-let model, sceneBounds, presets = {}, activeView = 'overview', transition = null, frame = null;
+let renderer, camera, scene, extent = 200;
+let model, frame = null;
 let target = new THREE.Vector3();
 
 document.getElementById('retry').addEventListener('click', () => location.reload());
-document.addEventListener('click', event => {
-  for (const details of document.querySelectorAll('details[open]')) {
-    if (!details.contains(event.target)) details.open = false;
-  }
-});
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') document.querySelectorAll('details[open]').forEach(d => d.open = false);
-});
-
-function post(message) { if (EMBEDDED) parent.postMessage(message, location.origin); }
+// Messages belong only to this same-origin parent, never another frame.
+function post(message) {
+  if (!EMBEDDED) return;
+  try { if (window.parent.location.origin !== location.origin) return; } catch { return; }
+  window.parent.postMessage(message, location.origin);
+}
 
 function fail(error) {
   console.error('Campus model:', error);
@@ -47,17 +39,9 @@ function fail(error) {
   post({ type: 'olr-3d-error', message: 'The interactive campus model could not load.' });
 }
 
-function draw(now = performance.now()) {
+function draw() {
   frame = null;
   if (!active || document.hidden) return;
-  if (transition) {
-    const t = Math.min(1, (now - transition.started) / 850);
-    const smooth = t * t * (3 - 2 * t);
-    camera.position.lerpVectors(transition.fromPosition, transition.toPosition, smooth);
-    controls.target.lerpVectors(transition.fromTarget, transition.toTarget, smooth);
-    if (t === 1) transition = null;
-  }
-  const changed = controls?.update();
   if (lightingDirty && campusLighting) {
     campusLighting.setTime(timeOfDay);
     lightingDirty = false;
@@ -65,92 +49,28 @@ function draw(now = performance.now()) {
   }
   renderer.render(scene, camera);
   renderedFrames++;
-  if (transition || changed) requestDraw();
 }
 function requestDraw() { if (active && !document.hidden && renderer && camera && frame === null) frame = requestAnimationFrame(draw); }
-function fitOverview(position, focus) {
-  if (!sceneBounds) return position;
-  const direction = position.clone().sub(focus).normalize();
-  const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize();
-  const up = new THREE.Vector3().crossVectors(direction, right).normalize();
-  const vertical = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const horizontal = vertical * camera.aspect;
-  let distance = 0;
-  for (const x of [sceneBounds.min.x, sceneBounds.max.x]) {
-    for (const y of [sceneBounds.min.y, sceneBounds.max.y]) {
-      for (const z of [sceneBounds.min.z, sceneBounds.max.z]) {
-        const corner = new THREE.Vector3(x, y, z).sub(focus);
-        distance = Math.max(distance,
-          Math.abs(corner.dot(right)) / (horizontal * 0.87) + corner.dot(direction),
-          Math.abs(corner.dot(up)) / (vertical * 0.74) + corner.dot(direction));
-      }
-    }
-  }
-  return focus.clone().addScaledVector(direction, distance);
-}
-function selectView(name, animate = true) {
-  if (!model) return;
-  activeView = name;
-  const preset = presets[name] || presets.overview;
-  let position = new THREE.Vector3(...preset.position);
-  const focus = new THREE.Vector3(...preset.target);
-  if (name === 'overview') position = fitOverview(position, focus);
-  else if (camera.aspect < 1) position = focus.clone().add(position.sub(focus).multiplyScalar(1 / camera.aspect));
-  if (animate && !reducedMotion) {
-    transition = { started: performance.now(), fromPosition: camera.position.clone(), fromTarget: controls.target.clone(), toPosition: position, toTarget: focus };
-  } else {
-    transition = null;
-    camera.position.copy(position);
-    controls.target.copy(focus);
-    controls.update();
-  }
-  viewButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
-  const nameLabel = viewButtons.find(button => button.dataset.view === name)?.textContent.replace(/^\s*0\d\s*/, '').trim();
-  status.textContent = `${nameLabel || 'Campus'} view`;
-  requestDraw();
-}
-function zoom(factor) {
-  if (!model) return;
-  if (EMBEDDED) { zoomEmbedded(1 / factor); return; }
-  transition = null;
-  const direction = camera.position.clone().sub(controls.target);
-  const distance = THREE.MathUtils.clamp(direction.length() * factor, controls.minDistance, controls.maxDistance);
-  camera.position.copy(controls.target).add(direction.setLength(distance));
-  controls.update();
-  requestDraw();
-}
 function setDragMode(mode, announce = true) {
   if (!['rotate', 'pan'].includes(mode)) return;
   dragMode = mode;
-  const pan = mode === 'pan';
-  if (controls) {
-    controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-    controls.touches.ONE = pan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
-  }
   if (!renderer) return;
   renderer.domElement.dataset.dragMode = mode;
-  dragModeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.dragMode === mode)));
-  const scrolling = EMBEDDED ? 'Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate.' : 'Scroll or pinch to zoom.';
-  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${pan ? 'pan' : 'rotate and tilt'}. Use the Rotate and Pan buttons to switch. Right-drag, Shift-drag, or drag with two fingers to pan. ${scrolling} Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.`);
+  renderer.domElement.setAttribute('aria-label', `Interactive new campus exterior model. Drag with a mouse or one finger to ${mode === 'pan' ? 'pan' : 'rotate and tilt'}. Use the main campus toolbar to switch modes. Right-drag, Shift-drag, or drag with two fingers to pan. Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.`);
   if (announce) {
-    status.textContent = pan ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to turn and tilt the campus.';
+    status.textContent = mode === 'pan' ? 'Pan mode. Drag to move left, right, up or down.' : 'Rotate mode. Drag to turn and tilt the campus.';
     publishCamera();
   }
-}
-function beginNavigation() {
-  transition = null;
-  activeView = null;
-  viewButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
 }
 
 // Enter with the same ground-plane scale and compass bearing as the map, then
 // allow a full orbit while retaining the center and scale for the return to 2D.
 function publishCamera() {
-  if (!EMBEDDED || !model) return;
+  if (!model) return;
   post({ type: 'olr-3d-state', camera: structuredClone(embeddedCamera), dragMode });
 }
 function applyEmbeddedCamera(announce = false) {
-  if (!EMBEDDED || !camera) return;
+  if (!camera) return;
   const rect = wrap.getBoundingClientRect();
   const width = Math.max(1, rect.width), height = Math.max(1, rect.height);
   embeddedCamera.width = width; embeddedCamera.height = height;
@@ -201,18 +121,10 @@ function rotateEmbedded(delta, announce = true) { orbitEmbedded(delta, 0, announ
 function setupTheme() {
   try { themePreference = localStorage.getItem('olr-campus-theme') || 'system'; } catch {}
   if (!['system', 'light', 'dark'].includes(themePreference)) themePreference = 'system';
-  const select = document.getElementById('viewer-theme');
-  select.value = themePreference;
-  select.addEventListener('change', () => {
-    themePreference = select.value;
-    try { localStorage.setItem('olr-campus-theme', themePreference); } catch {}
-    applyTheme();
-  });
   themeMedia.addEventListener('change', () => { if (themePreference === 'system') applyTheme(); });
   window.addEventListener('storage', event => {
     if (event.key === 'olr-campus-theme') {
       themePreference = ['system', 'light', 'dark'].includes(event.newValue) ? event.newValue : 'system';
-      select.value = themePreference;
       applyTheme();
     }
   });
@@ -220,10 +132,8 @@ function setupTheme() {
 }
 function applyTheme(explicitResolved) {
   resolvedTheme = explicitResolved || (themePreference === 'system' ? (themeMedia.matches ? 'dark' : 'light') : themePreference);
-  const dark = resolvedTheme === 'dark';
   document.documentElement.dataset.theme = resolvedTheme;
-  document.getElementById('viewer-theme').value = themePreference;
-  document.querySelector('meta[name="theme-color"]').content = dark ? '#181818' : '#ffffff';
+  document.querySelector('meta[name="theme-color"]').content = resolvedTheme === 'dark' ? '#181818' : '#ffffff';
   updateOutlineColor();
   requestDraw();
 }
@@ -231,26 +141,23 @@ function updateOutlineColor() {
   const darkScene = (campusLighting?.state?.daylight ?? lightingAtTime(timeOfDay).daylight) < .3;
   oldOutlines?.traverse(object => { if (object.isLine) object.material.color.set(darkScene ? 0xffffff : 0x303030); });
 }
+function publishLighting() {
+  const { minutes, phase } = lightingAtTime(timeOfDay);
+  post({ type: 'olr-3d-lighting', minutes, phase });
+}
 function setTimeOfDay(value, persist = true) {
-  timeOfDay = normalizeMinutes(value);
-  const clock = document.getElementById('time-of-day');
-  const label = formatTime(timeOfDay);
-  clock.value = String(timeOfDay);
-  clock.setAttribute('aria-valuetext', label);
-  document.getElementById('time-of-day-label').textContent = label;
-  document.getElementById('time-of-day-phase').textContent = lightingAtTime(timeOfDay).phase;
-  document.querySelectorAll('[data-time-minutes]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.timeMinutes) === timeOfDay)));
+  const next = normalizeMinutes(value);
+  const changed = next !== timeOfDay;
+  timeOfDay = next;
   if (persist) { try { localStorage.setItem('olr-campus-time-of-day', String(timeOfDay)); } catch {} }
-  lightingDirty = true;
-  requestDraw();
+  if (changed) {
+    lightingDirty = true;
+    requestDraw();
+  }
+  publishLighting();
 }
 function setupTimeOfDay() {
   try { const saved = localStorage.getItem('olr-campus-time-of-day'); if (saved !== null) timeOfDay = normalizeMinutes(saved); } catch {}
-  setTimeOfDay(timeOfDay, false);
-  const slider = document.getElementById('time-of-day');
-  slider.addEventListener('input', () => setTimeOfDay(slider.value, false));
-  slider.addEventListener('change', () => setTimeOfDay(slider.value));
-  document.querySelectorAll('[data-time-minutes]').forEach(button => button.addEventListener('click', () => setTimeOfDay(button.dataset.timeMinutes)));
   window.addEventListener('storage', event => {
     if (event.key === 'olr-campus-time-of-day') setTimeOfDay(event.newValue === null ? 840 : event.newValue, false);
   });
@@ -365,7 +272,7 @@ function installEmbeddedNavigation() {
   });
 }
 window.addEventListener('message', event => {
-  if (!EMBEDDED || event.source !== parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
+  if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
@@ -382,7 +289,7 @@ window.addEventListener('message', event => {
     if (['system', 'light', 'dark'].includes(value?.preference)) themePreference = value.preference;
     applyTheme(['light', 'dark'].includes(value?.resolved) ? value.resolved : undefined);
   } else if (command === 'time-of-day' && typeof value === 'number' && Number.isFinite(value)) {
-    setTimeOfDay(value);
+    setTimeOfDay(value, false);
   } else if (command === 'oldBuildings') setOldOutlines(value);
   else if (command === 'outlines') setOldOutlines({ visible: value?.visible, polygons: value?.rings });
   else if (command === 'drag-mode') setDragMode(value);
@@ -438,54 +345,20 @@ async function init() {
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.15;
   scene.add(sun, sun.target);
-  camera = EMBEDDED ? new THREE.OrthographicCamera(-1, 1, 1, -1, 0.2, 5000) : new THREE.PerspectiveCamera(36, 1, 0.2, 5000);
-  if (!EMBEDDED) {
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.09;
-  controls.maxPolarAngle = Math.PI * 0.487;
-  controls.minPolarAngle = 0.06;
-  controls.screenSpacePanning = true;
-  controls.enablePan = true;
-  controls.zoomSpeed = 0.8;
-  controls.rotateSpeed = 0.6;
-  controls.listenToKeyEvents(renderer.domElement);
-  setDragMode('rotate', false);
-  controls.addEventListener('change', requestDraw);
-  controls.addEventListener('start', beginNavigation);
-  renderer.domElement.addEventListener('keydown', event => {
-    if (event.key.startsWith('Arrow')) beginNavigation();
-    if (['+', '=', '-', '_', '0'].includes(event.key)) {
-      event.preventDefault();
-      if (event.key === '0') selectView('overview');
-      else zoom(event.key === '+' || event.key === '=' ? 0.8 : 1.25);
-    }
-  }, { capture: true });
-  } else {
-    setDragMode(dragMode, false);
-    installEmbeddedNavigation();
-  }
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.2, 5000);
+  setDragMode(dragMode, false);
+  installEmbeddedNavigation();
   function resize() {
     const { width, height } = wrap.getBoundingClientRect();
     renderer.setSize(Math.max(1, width), Math.max(1, height));
-    if (EMBEDDED) {
-      embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
-      applyEmbeddedCamera(Boolean(model && active));
-      return;
-    }
-    camera.aspect = width / Math.max(1, height);
-    camera.updateProjectionMatrix();
-    if (model && activeView === 'overview') selectView('overview', false);
-    requestDraw();
+    embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
+    applyEmbeddedCamera(Boolean(model && active));
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const [gltf, cameraConfig] = await Promise.all([
-    new GLTFLoader().loadAsync(`./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
-      document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
-    }),
-    fetch(`./views.json?v=${ASSET_REVISION}`).then(response => response.ok ? response.json() : {}).catch(() => ({}))
-  ]);
+  const gltf = await new GLTFLoader().loadAsync(`./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+    document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
+  });
   model = gltf.scene;
   model.traverse(object => {
     if (object.isMesh) {
@@ -505,61 +378,29 @@ async function init() {
   scene.add(model);
   await loadCampusBoundary(scene, model, `./boundary-lines.json?v=${ASSET_REVISION}`).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
-  sceneBounds = bounds;
   const size = bounds.getSize(new THREE.Vector3());
   target = bounds.getCenter(new THREE.Vector3());
   target.y = Math.max(0, bounds.min.y) + size.y * 0.12;
   extent = Math.max(size.x, size.z);
-  const viewAngle = THREE.MathUtils.degToRad(36 / 2);
-  fitDistance = extent * 0.64 / (Math.tan(viewAngle) * Math.min(1, camera.aspect || 1));
-  const offset = new THREE.Vector3(0.9, 1.0, 1.1).normalize().multiplyScalar(fitDistance);
-  presets = {
-    overview: {position: target.clone().add(offset).toArray(), target: target.toArray()},
-    church: {position: target.clone().add(new THREE.Vector3(0.38, 0.3, 0.48).multiplyScalar(extent)).toArray(), target: target.toArray()},
-    playgrounds: {position: target.clone().add(new THREE.Vector3(-0.35, 0.3, 0.4).multiplyScalar(extent)).toArray(), target: target.toArray()},
-    ...cameraConfig
-  };
-  if (controls) {
-    controls.minDistance = Math.max(3, extent * 0.025);
-    controls.maxDistance = fitDistance * 3.0;
-  }
   campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
   campusLighting.setTime(timeOfDay);
   lightingDirty = false;
   applyTheme();
-  if (EMBEDDED) applyEmbeddedCamera();
-  else selectView('overview', false);
-  viewButtons.forEach(button => button.disabled = false);
-  dragModeButtons.forEach(button => button.disabled = false);
-  ['fit', 'zoom-in', 'zoom-out'].forEach(id => document.getElementById(id).disabled = false);
+  applyEmbeddedCamera();
   loading.hidden = true;
   document.body.classList.add('ready');
-  document.getElementById('preview').alt = '';
   post({ type: 'olr-3d-ready' });
+  publishLighting();
   requestDraw();
 }
-viewButtons.forEach(button => button.addEventListener('click', () => selectView(button.dataset.view)));
-dragModeButtons.forEach(button => button.addEventListener('click', () => setDragMode(button.dataset.dragMode)));
-document.getElementById('fit').addEventListener('click', () => selectView('overview'));
-document.getElementById('zoom-in').addEventListener('click', () => zoom(0.8));
-document.getElementById('zoom-out').addEventListener('click', () => zoom(1.25));
-const fullscreen = document.getElementById('fullscreen');
-const requestFullscreen = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
-const isFullscreen = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-fullscreen.hidden = !requestFullscreen || !exitFullscreen;
-fullscreen.addEventListener('click', async () => {
-  try {
-    if (isFullscreen()) await exitFullscreen.call(document);
-    else await requestFullscreen.call(document.documentElement);
-  } catch { status.textContent = 'Full screen is unavailable. Use your browser’s full-screen command.'; }
-});
-for (const event of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(event, () => {
-  fullscreen.setAttribute('aria-label', isFullscreen() ? 'Exit full screen' : 'Enter full screen');
-  fullscreen.title = isFullscreen() ? 'Exit full screen' : 'Full screen';
-});
-setupTheme();
-setupTimeOfDay();
-if (EMBEDDED) document.documentElement.classList.add('embedded');
-document.addEventListener('visibilitychange', requestDraw);
-init().catch(fail);
+// The main campus app is the only top-level experience. The document's early
+// redirect also covers old links with ?embedded=1; this guard avoids allocating
+// WebGL while a top-level redirect is in flight.
+if (EMBEDDED) {
+  setupTheme();
+  setupTimeOfDay();
+  document.addEventListener('visibilitychange', requestDraw);
+  init().catch(fail);
+} else {
+  location.replace(new URL('../?view=3d', location.href).href);
+}

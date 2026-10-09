@@ -4,65 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");try{const p=localStorage.getItem("olr-campus-theme")||"system";document.documentElement.dataset.theme=p==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):p;}catch{}</script>
-  <meta name="description" content="Explore the proposed Our Lady of the Rosary campus in 3D, including the church, Guadalupe Hall, new school buildings, gardens and playgrounds.">
-  <title>New campus in 3D · Our Lady of the Rosary</title>
+  <script>
+    if (window.top === window) {
+      location.replace(new URL('../?view=3d', location.href).href);
+    } else {
+      try {
+        const saved = localStorage.getItem('olr-campus-theme');
+        const preference = ['light', 'dark', 'system'].includes(saved) ? saved : 'system';
+        document.documentElement.dataset.theme = preference === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+      } catch {}
+    }
+  </script>
+  <title>3D campus · Our Lady of the Rosary</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./viewer.css?v=f35a6d46f17ee6ba">
+  <link rel="stylesheet" href="./viewer.css?v=94052f6a57059688">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
 </head>
 <body>
   <main id="viewer" aria-label="New campus exterior model">
-    <img class="preview" id="preview" src="./campus-overview.png?v=7c74ca3158f3123c" alt="Aerial exterior view of the proposed Our Lady of the Rosary campus">
     <div id="canvas-wrap"></div>
-    <header class="masthead">
-      <a class="back" href="../" aria-label="Return to campus maps"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m6-6-6 6 6 6"/></svg><span>Campus maps</span></a>
-      <div class="title"><p>OUR LADY OF THE ROSARY</p><span>Exterior concept · Greenville, South Carolina</span></div>
-      <details class="downloads panel" id="downloads">
-        <summary><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg><span>Download model</span></summary>
-        <div class="download-menu">
-          <a href="./OLR-New-Campus.blend?v=7c74ca3158f3123c" download><span>Blender model</span><small>.blend · editable source</small></a>
-          <a href="./OLR-New-Campus.glb?v=7c74ca3158f3123c" download><span>Universal 3D model</span><small>.glb · glTF format</small></a>
-          <a href="./campus-overview.png?v=7c74ca3158f3123c" download><span>Campus overview</span><small>.png · rendered view</small></a>
-          <a href="./church-courtyard.png?v=7c74ca3158f3123c" download><span>Church &amp; courtyard</span><small>.png · rendered view</small></a>
-          <a href="./playground-gardens.png?v=7c74ca3158f3123c" download><span>Playgrounds &amp; gardens</span><small>.png · rendered view</small></a>
-          <a href="./church-east.png?v=7c74ca3158f3123c" download><span>Church from the east</span><small>.png · rendered view</small></a>
-          <a href="./school-entrance.png?v=7c74ca3158f3123c" download><span>School entrance</span><small>.png · rendered view</small></a>
-        </div>
-      </details>
-    </header>
     <div class="loading panel" id="loading" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span id="loading-text">Preparing your campus…</span></div>
-    <div class="error panel" id="error" hidden role="alert"><strong>The interactive model could not load.</strong><p>The rendered overview is still available. Try reloading, or download the model to explore in Blender.</p><button id="retry" type="button">Try again</button></div>
-    <div class="navigation panel" role="group" aria-label="3D camera controls">
-      <button type="button" data-drag-mode="rotate" aria-pressed="true" title="Drag to rotate around the campus" disabled>Rotate</button>
-      <button type="button" data-drag-mode="pan" aria-pressed="false" title="Drag to move left, right, up or down" disabled>Pan</button>
-      <span class="divider"></span>
-      <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (−)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
-      <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (+)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg></button>
-      <button type="button" id="fit" aria-label="Fit campus to screen" title="Fit campus (0)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m6 0h4v-4"/></svg></button>
-      <span class="divider"></span>
-      <label class="theme-control">Theme <select id="viewer-theme" aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-      <button type="button" id="fullscreen" aria-label="Enter full screen" title="Full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 2H2v5m11-5h5v5M2 13v5h5m6 0h5v-5"/></svg></button>
-    </div>
-    <details class="lighting panel" id="lighting-panel">
-      <summary><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.3"/><path d="M10 1v2m0 14v2M1 10h2m14 0h2M3.6 3.6 5 5m10 10 1.4 1.4M3.6 16.4 5 15M15 5l1.4-1.4"/></svg><span class="lighting-name">Time of day</span><output id="time-of-day-label" for="time-of-day" aria-live="off">2:00 PM</output><svg class="lighting-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>
-      <div class="lighting-controls">
-        <div class="lighting-caption"><label for="time-of-day">Time of day</label><span id="time-of-day-phase">Afternoon</span></div>
-        <input id="time-of-day" type="range" min="0" max="1439" step="5" value="840" aria-valuetext="2:00 PM" aria-describedby="time-of-day-phase">
-        <div class="lighting-scale" aria-hidden="true"><span>12 AM</span><span>Noon</span><span>12 AM</span></div>
-        <div class="lighting-presets" role="group" aria-label="Time of day presets">
-          <button type="button" data-time-minutes="360" aria-pressed="false">Sunrise</button>
-          <button type="button" data-time-minutes="720" aria-pressed="false">Noon</button>
-          <button type="button" data-time-minutes="1080" aria-pressed="false">Sunset</button>
-          <button type="button" data-time-minutes="1320" aria-pressed="false">Night</button>
-        </div>
-        <p class="lighting-note">Illustrative spring/autumn sun path</p>
-      </div>
-    </details>
-    <footer><div class="footer-notes"><span class="boundary-key"><i aria-hidden="true"></i>Campus boundary</span><span class="concept">Proposed campus · exterior study</span></div><details class="help"><summary aria-label="How to navigate the model">?</summary><div class="panel"><strong>Explore the campus</strong><p><b>Rotate</b> Select Rotate, then drag with one finger or the left mouse button to look around.</p><p><b>Pan</b> Select Pan, then drag to move sideways, up or down. You can also use two fingers or the right mouse button.</p><p><b>Zoom</b> Pinch or scroll.</p><p><b>Keyboard</b> Focus the model, then use arrow keys to pan, + / − to zoom, and 0 to reset.</p><p class="help-note">The church exterior follows photo references. New buildings and landscaping are conceptual. Guadalupe Hall, Benedict Hall, the office and houses are simplified forms.</p></div></details></footer>
+    <div class="error panel" id="error" hidden role="alert"><strong>The interactive campus model could not load.</strong><p>Try loading the 3D campus again.</p><button id="retry" type="button">Try again</button></div>
     <p id="status" class="sr-only" role="status" aria-live="polite"></p>
-    <noscript><div class="error panel">This interactive model needs JavaScript. You can still view the rendered overview or download the Blender model above.</div></noscript>
+    <noscript><div class="error panel">The 3D campus needs JavaScript. <a href="../?view=3d" target="_top">Open the campus app</a>.</div></noscript>
   </main>
-  <script type="module" src="./viewer.js?v=9155a89c124acf58"></script>
+  <script type="module" src="./viewer.js?v=942912e4db8a79f5"></script>
 </body>
 </html>

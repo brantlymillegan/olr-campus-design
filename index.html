@@ -1257,10 +1257,11 @@ html>body { padding:0; }
 .campus-tool-panel {
   position:fixed; z-index:30; top:12px; right:12px; display:grid; gap:7px;
   box-sizing:border-box; width:264px; max-width:calc(100vw - 24px); padding:10px; margin:0;
+  max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); overflow:auto; overscroll-behavior:contain;
   border:1px solid color-mix(in srgb,var(--foreground) 20%,var(--background)); border-radius:14px;
   background:var(--background); color:var(--foreground); box-shadow:0 3px 18px #0002;
   grid-template-columns:minmax(0,1fr) 36px;
-  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "download download" "status status";
+  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "lighting lighting" "models models" "download download" "status status";
 }
 .campus-tools-title { grid-area:title; }
 .campus-map-switch { grid-area:maps; }
@@ -1274,6 +1275,22 @@ html>body { padding:0; }
 .campus-3d-navigation { grid-area:navigation; display:grid; gap:5px; }
 .campus-3d-navigation [role="group"] { display:flex; gap:6px; }
 #campus-3d-help { font-size:10px; line-height:1.4; color:var(--muted-foreground); }
+.campus-lighting-panel { grid-area:lighting; min-width:0; border:1px solid var(--border); border-radius:8px; }
+.campus-lighting-panel summary { display:flex; align-items:center; gap:6px; min-height:34px; padding:4px 8px; box-sizing:border-box; cursor:pointer; font-size:12px; font-weight:600; list-style:none; }
+.campus-lighting-panel summary::-webkit-details-marker { display:none; }
+.campus-lighting-panel summary::after { content:"⌄"; margin-left:1px; font-size:14px; line-height:1; }
+.campus-lighting-panel[open] summary::after { transform:rotate(180deg); }
+.campus-lighting-panel summary output { margin-left:auto; font-size:11px; font-weight:400; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.campus-lighting-controls { display:grid; gap:5px; padding:0 8px 8px; }
+#campus-time-of-day { display:block; box-sizing:border-box; width:100%; min-width:0; height:30px; margin:0; padding:0; accent-color:var(--foreground); cursor:pointer; }
+#campus-time-of-day-phase { font-size:11px; color:var(--muted-foreground); }
+.campus-lighting-presets { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.campus-tool-panel .campus-lighting-presets .btn { min-width:0; padding:3px 2px; font-size:10px; }
+#campus-lighting-caption { margin:0; font-size:10px; line-height:1.4; color:var(--muted-foreground); }
+.campus-model-downloads { grid-area:models; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+.campus-model-downloads .btn { display:flex; align-items:center; justify-content:center; min-width:0; text-decoration:none; }
+.campus-control-label-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+.campus-lighting-panel summary:focus-visible, #campus-time-of-day:focus-visible, .campus-model-downloads a:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 #campus-3d-frame { position:fixed; inset:0; z-index:1; width:100%; height:100%; border:0; background:var(--background); }
 #campus-3d-frame[hidden] { display:none; }
 body[data-campus-dimension="3d"] #codex-visualization { visibility:hidden; pointer-events:none; }
@@ -1340,11 +1357,13 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-display-tools,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-view-3d,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-3d-navigation,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-lighting-panel,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-model-downloads,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-download-pdf,
   .campus-tool-panel:not([data-mobile-expanded="true"]) #campus-fullscreen-status { display:none; }
   .campus-tool-panel[data-mobile-expanded="true"] {
     width:244px; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;
-    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "download download download" "status status status";
+    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "lighting lighting lighting" "models models models" "download download download" "status status status";
   }
   .campus-tool-panel .campus-new-floors { display:contents; }
   .campus-tool-panel .campus-new-floors .btn { min-width:56px; padding:4px 8px; font-size:12px; }
@@ -1355,6 +1374,8 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-tool-panel .campus-floor-label-short { display:inline; }
   .campus-tool-panel .campus-theme-control select { min-height:40px; font-size:16px; }
   .campus-tool-panel .campus-display-tools { flex-wrap:wrap; }
+  .campus-lighting-panel summary { min-height:40px; }
+  #campus-time-of-day { height:36px; }
 }
 </style>
 <script id="olr-theme-shell">
@@ -1423,7 +1444,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" aria-label="First floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">1st floor</span><span class="campus-floor-label-short" aria-hidden="true">1st fl</span></button>
     <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" aria-label="Second floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">2nd floor</span><span class="campus-floor-label-short" aria-hidden="true">2nd fl</span></button>
   </div>
-  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-download-pdf">
+  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-lighting-panel campus-model-downloads campus-download-pdf">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
   </button>
   <button type="button" class="campus-compass" id="campus-compass" aria-label="North is up. Click to align Building 1 with the screen.">
@@ -1454,7 +1475,29 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     </div>
     <span id="campus-3d-help">Drag to turn and tilt · Pinch to zoom</span>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=20660887ffb5ac5b" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
+  <details class="campus-lighting-panel" id="campus-lighting-panel" hidden>
+    <summary>
+      <span>Time of day</span>
+      <output id="campus-time-of-day-label" for="campus-time-of-day" aria-live="off">2:00 PM</output>
+    </summary>
+    <div class="campus-lighting-controls">
+      <label class="campus-control-label-hidden" for="campus-time-of-day">Time of day</label>
+      <input id="campus-time-of-day" type="range" min="0" max="1439" step="5" value="840" aria-describedby="campus-time-of-day-phase campus-lighting-caption">
+      <output id="campus-time-of-day-phase" for="campus-time-of-day" aria-live="off">Afternoon</output>
+      <div class="campus-lighting-presets" role="group" aria-label="Time of day presets">
+        <button type="button" class="btn" data-campus-time-minutes="360" aria-pressed="false">Sunrise</button>
+        <button type="button" class="btn" data-campus-time-minutes="720" aria-pressed="false">Noon</button>
+        <button type="button" class="btn" data-campus-time-minutes="1080" aria-pressed="false">Sunset</button>
+        <button type="button" class="btn" data-campus-time-minutes="1320" aria-pressed="false">Night</button>
+      </div>
+      <p id="campus-lighting-caption">Illustrative spring/autumn sun path</p>
+    </div>
+  </details>
+  <div class="campus-model-downloads" id="campus-model-downloads" role="group" aria-label="3D model downloads" hidden>
+    <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=7c74ca3158f3123c" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
+    <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=7c74ca3158f3123c" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
+  </div>
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=f4ba6d63056cafca" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -6001,14 +6044,51 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const mode3d = document.getElementById('campus-view-3d');
   const dragButtons = [...panel.querySelectorAll('[data-campus-3d-drag]')];
   const navigationHelp = document.getElementById('campus-3d-help');
+  const lightingPanel = document.getElementById('campus-lighting-panel');
+  const timeSlider = document.getElementById('campus-time-of-day');
+  const timeLabel = document.getElementById('campus-time-of-day-label');
+  const timePhase = document.getElementById('campus-time-of-day-phase');
+  const timePresets = [...panel.querySelectorAll('[data-campus-time-minutes]')];
+  const modelDownloads = document.getElementById('campus-model-downloads');
+  const timeStorageKey = 'olr-campus-time-of-day';
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
   let expanded = false, renderedState = null, mapState = null, modelCamera = null;
   let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
   let cameraRequest = 0, pendingCameraRequest = null;
   let oldBuildingPolygons = [];
   let dragMode = 'rotate';
+  let initial3d = new URL(location.href).searchParams.get('view') === '3d';
+  const normalizeTime = value => Number.isFinite(Number(value)) ? Math.max(0,Math.min(1439,Math.round(Number(value)))) : 840;
+  let timeOfDay = 840;
+  try { const saved=localStorage.getItem(timeStorageKey); if(saved!==null)timeOfDay=normalizeTime(saved); } catch {}
   const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
+  function renderTime(phase='') {
+    const hour=Math.floor(timeOfDay/60), minute=timeOfDay%60;
+    const label=`${hour%12||12}:${String(minute).padStart(2,'0')} ${hour<12?'AM':'PM'}`;
+    timeSlider.value=String(timeOfDay);
+    timeSlider.setAttribute('aria-valuetext',label);
+    timeLabel.textContent=label;
+    timePhase.textContent=phase;
+    timePresets.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.campusTimeMinutes)===timeOfDay)));
+  }
+  function setTime(value,persist=false) {
+    timeOfDay=normalizeTime(value);
+    renderTime();
+    if(persist){try{localStorage.setItem(timeStorageKey,String(timeOfDay));}catch{}}
+    sendModel('time-of-day',timeOfDay);
+  }
+  timeSlider.addEventListener('input',()=>setTime(timeSlider.value));
+  timeSlider.addEventListener('change',()=>setTime(timeSlider.value,true));
+  timePresets.forEach(button=>button.addEventListener('click',()=>setTime(button.dataset.campusTimeMinutes,true)));
+  window.addEventListener('storage',event=>{
+    if(event.key===timeStorageKey||event.key===null){
+      let saved=null;
+      try{saved=localStorage.getItem(timeStorageKey);}catch{}
+      setTime(saved===null?840:saved);
+    }
+  });
+  renderTime();
   function requestMapCamera(){
     modelNeedsMapCamera=true;
     pendingCameraRequest=++cameraRequest;
@@ -6023,7 +6103,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   toggle?.addEventListener('click',()=>expand(!expanded));
   mobile?.addEventListener('change',()=>expand(false));
   document.addEventListener('keydown',event=>{
-    if (event.key === 'Escape' && expanded && mobile?.matches) { expand(false);toggle?.focus?.(); }
+    if(event.key!=='Escape')return;
+    if(lightingPanel.open){lightingPanel.open=false;lightingPanel.querySelector('summary')?.focus();}
+    else if (expanded && mobile?.matches) { expand(false);toggle?.focus?.(); }
   });
   expand(false);
   function renderDragMode(mode){
@@ -6042,13 +6124,21 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(!modelNeedsMapCamera&&modelCamera)sendModel('camera',{...modelCamera,oldBuildings:mapState?.oldBuildings!==false});
     sendModel('drag-mode',dragMode);
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
+    sendModel('time-of-day',timeOfDay);
     sendModel('active',dimension==='3d');
   }
   function setDimension(next) {
-    if(next===dimension)return;
+    if(!['2d','3d'].includes(next)||next===dimension)return;
+    initial3d=false;
     dimension=next;
+    const route=new URL(location.href);
+    if(next==='3d')route.searchParams.set('view','3d');else route.searchParams.delete('view');
+    history.replaceState(history.state,'',route);
     mode2d.setAttribute('aria-pressed',String(next==='2d'));
     mode3d.setAttribute('aria-pressed',String(next==='3d'));
+    lightingPanel.hidden=next!=='3d';
+    modelDownloads.hidden=next!=='3d';
+    if(next!=='3d')lightingPanel.open=false;
     if(next==='3d'){
       if(mapState?.view==='existing')sendMap('map','shifted');
       modelCamera=mapState?.camera || null;
@@ -6057,7 +6147,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         modelFrame=document.createElement('iframe');
         modelFrame.id='campus-3d-frame';
         modelFrame.title='Interactive 3D campus';
-        modelFrame.src='./campus-3d/?embedded=1&v=cfb6528b88f102c5';
+        modelFrame.src='./campus-3d/?embedded=1&v=ff781bc01f21e06c';
         modelFrame.addEventListener('load',syncModel);
         document.body.appendChild(modelFrame);
       }
@@ -6085,7 +6175,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       }));
     }
   }
-  mode2d.addEventListener('click',()=>setDimension('2d'));
+  mode2d.addEventListener('click',()=>{initial3d=false;setDimension('2d');});
   mode3d.addEventListener('click',()=>setDimension('3d'));
   document.body.dataset.campusDimension='2d';
   function send(command,value){
@@ -6097,7 +6187,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     sendMap(command,value);
   }
-  const connect=()=>{sendMap('connect');sendMap('drag-mode',dragMode);};
+  const connect=()=>{sendMap('connect');sendMap('drag-mode',dragMode);if(dimension==='3d'&&modelNeedsMapCamera)requestMapCamera();};
   maps.forEach(b=>b.addEventListener('click',()=>{
     if(b.dataset.campusMap==='existing')setDimension('2d');
     sendMap('map',b.dataset.campusMap);
@@ -6143,6 +6233,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         if(s.dragMode||s.camera.dragMode)renderDragMode(s.dragMode||s.camera.dragMode);
         if(mapState)render({...mapState,...s.camera});
       }else if(s?.type==='olr-3d-key')window.olrCampusView.handleKey(s.key);
+      else if(s?.type==='olr-3d-lighting'&&s.minutes===timeOfDay&&['Night','Dawn','Dusk','Morning','Midday','Afternoon'].includes(s.phase))renderTime(s.phase);
       return;
     }
     if(event.source!==frame.contentWindow)return;
@@ -6157,6 +6248,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     if(s?.type!=='olr-tools-state'||!['existing','shifted'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
     const previous=mapState;mapState=s;
+    // A legacy 3D link must wait for the map to boot before requesting its
+    // initial camera, otherwise the iframe can miss the snapshot command.
+    if(initial3d){setDimension('3d');if(mobile?.matches)expand(true);}
     if(dimension==='3d'){
       if(modelNeedsMapCamera&&s.camera&&s.cameraRequest===pendingCameraRequest){modelCamera=s.camera;sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});modelNeedsMapCamera=false;pendingCameraRequest=null;}
       if(!previous||previous.oldBuildings!==s.oldBuildings)sendModel('oldBuildings',{visible:s.oldBuildings!==false,polygons:oldBuildingPolygons});
