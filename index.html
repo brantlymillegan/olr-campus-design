@@ -1395,6 +1395,181 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-lighting-panel summary { min-height:40px; }
   #campus-time-of-day { height:36px; }
 }
+
+/* The schedule is a document view, with the same mode and display controls. */
+body[data-campus-dimension="list"] .campus-tool-panel {
+  inset:0 0 auto; width:100%; max-width:none; max-height:45vh; max-height:45dvh;
+  padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left));
+  border-width:0 0 1px; border-radius:0; box-shadow:none;
+  grid-template-columns:minmax(85px,1fr) auto auto auto;
+  grid-template-areas:"title three display download"; align-items:center; column-gap:22px;
+}
+body[data-campus-dimension="list"] .campus-tool-panel .campus-tools-title { display:block; font-size:13px; white-space:nowrap; }
+body[data-campus-dimension="list"] .campus-tool-panel .campus-view-3d { display:flex; }
+body[data-campus-dimension="list"] .campus-tool-panel .campus-view-3d .btn { padding:7px 12px; min-height:36px; font-size:13px; }
+body[data-campus-dimension="list"] .campus-tool-panel #campus-fullscreen-status { grid-column:1 / -1; grid-row:auto; }
+body[data-campus-dimension="list"] .campus-tool-panel .campus-map-switch,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-new-floors,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-old-buildings,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-camera-tools,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-compass,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-3d-navigation,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-walk-panel,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-walk-return,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-lighting-panel,
+body[data-campus-dimension="list"] .campus-tool-panel .campus-model-downloads { display:none !important; }
+body[data-campus-dimension="list"] #codex-visualization { visibility:visible; opacity:0; pointer-events:none; }
+body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer-events:none; }
+#campus-list-view {
+  position:fixed; z-index:10; inset:var(--campus-list-toolbar-height,72px) 0 0; margin:0;
+  overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  background:var(--background); color:var(--foreground); font:14px/1.55 var(--font-sans,system-ui,sans-serif);
+  --campus-list-subtle:color-mix(in srgb,var(--foreground) 68%,var(--background));
+  --campus-list-line:color-mix(in srgb,var(--foreground) 15%,var(--background));
+  --campus-list-tint:color-mix(in srgb,var(--foreground) 3%,var(--background));
+}
+#campus-list-view[hidden] { display:none; }
+#campus-list-view * { box-sizing:border-box; }
+.campus-list-page { max-width:1280px; padding:48px 40px max(64px,env(safe-area-inset-bottom)); margin:0 auto; }
+#campus-list-view h1, #campus-list-view h2, #campus-list-view h3, #campus-list-view p { margin:0; }
+#campus-list-view h1 { font-size:clamp(27px,3.5vw,40px); line-height:1.13; font-weight:650; letter-spacing:-.035em; margin:10px 0 14px; }
+#campus-list-heading:focus { outline:none; }
+#campus-list-view h2 { font-size:22px; line-height:1.3; letter-spacing:-.02em; font-weight:600; }
+#campus-list-view h3 { font-size:18px; line-height:1.4; font-weight:600; }
+#campus-list-view .campus-list-eyebrow { color:var(--campus-list-subtle); font-size:11px; font-weight:650; letter-spacing:.11em; }
+#campus-list-view .campus-list-lead { max-width:700px; color:var(--campus-list-subtle); font-size:16px; }
+.campus-list-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:28px 0 18px; }
+.campus-list-summary-card { min-width:0; padding:20px 18px; border:1px solid var(--campus-list-line); border-radius:12px; background:var(--campus-list-tint); }
+#campus-list-view .campus-list-summary-card h2 { font-size:12px; font-weight:550; letter-spacing:0; color:var(--campus-list-subtle); }
+#campus-list-view .campus-list-summary-value { font-size:clamp(24px,2.25vw,31px); font-weight:650; line-height:1.2; letter-spacing:-.03em; font-variant-numeric:tabular-nums; margin:10px 0; }
+#campus-list-view .campus-list-note { color:var(--campus-list-subtle); font-size:13px; line-height:1.55; }
+#campus-list-view .campus-list-summary-card .campus-list-note { font-size:12px; }
+.campus-list-area-note { display:grid; grid-template-columns:175px 1fr; gap:18px; padding:18px 20px; border-left:3px solid var(--campus-list-line); background:var(--campus-list-tint); border-radius:0 8px 8px 0; }
+.campus-list-area-note strong { font-size:13px; font-weight:600; }
+.campus-list-section { margin-top:40px; }
+#campus-list-view .campus-list-section > .campus-list-note { margin-top:8px; max-width:880px; }
+.campus-list-comparison-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:20px; }
+.campus-list-comparison-card { padding:24px; border:1px solid var(--campus-list-line); border-radius:12px; min-width:0; }
+#campus-list-view .campus-list-comparison-kicker { color:var(--campus-list-subtle); font-size:12px; margin-top:3px; }
+.campus-list-comparison-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin:20px 0 16px; }
+.campus-list-comparison-proposed { border-left:1px solid var(--campus-list-line); padding-left:18px; }
+#campus-list-view .campus-list-comparison-label { color:var(--campus-list-subtle); font-size:12px; font-weight:550; }
+#campus-list-view .campus-list-comparison-area { font-size:28px; line-height:1.2; letter-spacing:-.025em; font-weight:650; font-variant-numeric:tabular-nums; margin:7px 0; }
+#campus-list-view .campus-list-comparison-change { display:inline-block; background:var(--campus-list-tint); border-radius:6px; padding:7px 10px; font-size:13px; font-weight:550; margin-bottom:12px; }
+#campus-list-view .campus-list-comparison-card > .campus-list-note + .campus-list-note { margin-top:5px; }
+.campus-list-comparison-reference { margin-top:16px; padding:16px 20px; border-radius:8px; background:var(--campus-list-tint); }
+.campus-list-comparison-reference strong { font-size:13px; font-weight:600; }
+#campus-list-view .campus-list-comparison-reference .campus-list-note { margin-top:4px; }
+.campus-list-office-comparison { margin-top:26px; }
+#campus-list-view .campus-list-office-comparison > .campus-list-note { margin-top:6px; max-width:900px; }
+.campus-list-office-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; align-items:start; }
+.campus-list-office-card { min-width:0; padding:20px; border:1px solid var(--campus-list-line); border-radius:10px; }
+#campus-list-view .campus-list-office-card h4 { margin:0; font-size:14px; font-weight:600; line-height:1.45; }
+.campus-list-office-parts { margin:16px 0 0; font-size:12px; }
+.campus-list-office-parts > div { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 0; border-bottom:1px solid var(--campus-list-line); }
+.campus-list-office-parts dt { min-width:0; }
+.campus-list-office-parts dd { flex:none; margin:0; font-variant-numeric:tabular-nums; }
+#campus-list-view .campus-list-office-total { margin:12px 0; font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; }
+.campus-list-building-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:20px; }
+.campus-list-building-card { padding:24px; border:1px solid var(--campus-list-line); border-radius:12px; min-width:0; }
+#campus-list-view .campus-list-building-card > .campus-list-note { margin-top:5px; }
+#campus-list-view .campus-list-building-card > .campus-list-building-fixtures { font-size:12px; color:var(--campus-list-subtle); padding-top:15px; }
+.campus-list-table { width:100%; border-collapse:collapse; border-spacing:0; font-size:13px; text-align:left; }
+.campus-list-table th, .campus-list-table td { padding:13px 14px; vertical-align:top; border-bottom:1px solid var(--campus-list-line); }
+.campus-list-table thead th { color:var(--campus-list-subtle); font-size:11px; font-weight:550; line-height:1.4; background:var(--campus-list-tint); }
+.campus-list-table tbody th { font-weight:550; }
+.campus-list-table tfoot th, .campus-list-table tfoot td { font-weight:650; border-bottom:0; background:var(--campus-list-tint); }
+.campus-list-table .campus-list-number { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.campus-list-building-card .campus-list-table { margin-top:20px; font-size:12px; }
+.campus-list-building-card .campus-list-table th, .campus-list-building-card .campus-list-table td { padding:11px 8px; }
+.campus-list-category-table { margin-top:20px; }
+.campus-list-category-name { display:block; }
+.campus-list-category-detail { display:block; font-size:12px; font-weight:400; color:var(--campus-list-subtle); margin-top:3px; }
+.campus-list-filters { display:grid; grid-template-columns:1.4fr 1fr .8fr 1.2fr auto; align-items:end; gap:12px; padding:18px; margin:20px 0 14px; border:1px solid var(--campus-list-line); border-radius:10px; background:var(--campus-list-tint); }
+.campus-list-field { display:grid; gap:6px; min-width:0; }
+.campus-list-field label { font-size:12px; font-weight:550; }
+.campus-list-field input, .campus-list-field select { width:100%; min-width:0; min-height:40px; padding:8px 10px; font:inherit; font-size:13px; color:var(--foreground); background:var(--background); border:1px solid var(--campus-list-line); border-radius:6px; }
+.campus-list-field input::placeholder { color:var(--campus-list-subtle); opacity:1; }
+.campus-list-reset { min-height:40px; padding:8px 12px; border:1px solid var(--campus-list-line); border-radius:6px; background:var(--background); color:var(--foreground); font:inherit; font-size:12px; cursor:pointer; }
+.campus-list-reset:disabled { opacity:.4; cursor:default; }
+.campus-list-field input:focus-visible, .campus-list-field select:focus-visible, .campus-list-reset:focus-visible, .campus-list-table-scroll:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.campus-list-results-line { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 12px; }
+#campus-list-view .campus-list-result-count { font-size:13px; font-weight:550; font-variant-numeric:tabular-nums; }
+#campus-list-view .campus-list-scroll-hint { display:none; font-size:11px; color:var(--campus-list-subtle); }
+.campus-list-table-scroll { overflow-x:auto; overscroll-behavior-x:contain; border:1px solid var(--campus-list-line); border-radius:10px; }
+.campus-list-room-table { min-width:870px; }
+.campus-list-room-comparisons { min-width:1200px; }
+.campus-list-room-table th:first-child { width:22%; }
+.campus-list-room-table td:nth-child(2) { width:12%; }
+.campus-list-room-table td:nth-child(4) { width:19%; }
+.campus-list-room-table td:last-child { width:17%; }
+.campus-list-room-comparisons th:first-child { width:18%; }
+.campus-list-room-comparisons td:nth-child(2) { width:10%; }
+.campus-list-room-comparisons td:nth-child(4) { width:16%; }
+.campus-list-room-comparisons td:nth-child(6) { width:15%; }
+.campus-list-room-comparisons td:last-child { width:13%; }
+.campus-list-cell-detail { display:block; color:var(--campus-list-subtle); font-size:11px; margin-top:3px; }
+.campus-list-room-table tbody tr:hover { background:var(--campus-list-tint); }
+.campus-list-empty { text-align:center; padding:40px 20px; border:1px dashed var(--campus-list-line); border-radius:10px; }
+#campus-list-view .campus-list-empty .campus-list-note { margin:8px 0 18px; }
+.campus-list-empty[hidden], .campus-list-table-scroll[hidden] { display:none; }
+.campus-list-notes { padding-left:19px; margin:12px 0 0; color:var(--campus-list-subtle); font-size:13px; }
+.campus-list-notes li + li { margin-top:6px; }
+.campus-list-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+@media (max-width:1100px) {
+  .campus-list-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .campus-list-filters { grid-template-columns:1.3fr 1fr 1fr; }
+  .campus-list-filters .campus-list-field:last-of-type { grid-column:1 / 3; }
+  #campus-list-view .campus-list-scroll-hint { display:block; }
+  .campus-list-page { padding:36px 26px 56px; }
+}
+@media (max-width:767px), (max-width:1024px) and (pointer:coarse) {
+  body[data-campus-dimension="list"] .campus-tool-panel,
+  body[data-campus-dimension="list"] .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) {
+    width:100%; max-width:none; padding:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));
+    grid-template-columns:minmax(0,1fr) 40px; grid-template-areas:"three toggle"; gap:8px; border-radius:0;
+  }
+  body[data-campus-dimension="list"] .campus-tool-panel .campus-tools-title { display:none; }
+  body[data-campus-dimension="list"] .campus-tool-panel .campus-view-3d { display:flex; gap:5px; }
+  body[data-campus-dimension="list"] .campus-tool-panel .campus-view-3d .btn,
+  body[data-campus-dimension="list"] .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) .campus-view-3d .btn { min-height:40px; min-width:0; padding:6px 10px; font-size:12px; }
+  body[data-campus-dimension="list"] .campus-tool-panel[data-mobile-expanded="true"] { grid-template-areas:"three toggle" "display display" "download download" "status status"; }
+  body[data-campus-dimension="list"] .campus-tool-panel[data-mobile-expanded="true"] .campus-display-tools { display:flex; }
+  body[data-campus-dimension="list"] .campus-tool-panel[data-mobile-expanded="true"] .campus-download-pdf { display:flex; }
+  .campus-list-page { padding:28px 18px max(44px,env(safe-area-inset-bottom)); }
+  .campus-list-summary { gap:10px; margin-top:22px; }
+  .campus-list-summary-card { padding:17px 14px; }
+  #campus-list-view .campus-list-summary-value { font-size:26px; }
+  .campus-list-area-note { display:block; padding:16px; }
+  #campus-list-view .campus-list-area-note .campus-list-note { margin-top:7px; }
+  .campus-list-section { margin-top:32px; }
+  .campus-list-comparison-grid, .campus-list-office-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .campus-list-comparison-card { padding:20px 16px; }
+  #campus-list-view .campus-list-comparison-area { font-size:27px; }
+  .campus-list-comparison-pair { gap:12px; }
+  .campus-list-comparison-proposed { padding-left:12px; }
+  .campus-list-office-card { padding:18px 16px; }
+  .campus-list-building-grid { grid-template-columns:minmax(0,1fr); gap:12px; margin-top:16px; }
+  .campus-list-building-card { padding:20px 16px; }
+  .campus-list-filters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 10px; padding:14px; }
+  .campus-list-filters .campus-list-field:first-child, .campus-list-filters .campus-list-field:last-of-type { grid-column:1 / -1; }
+  .campus-list-field input, .campus-list-field select { min-height:44px; font-size:16px; }
+  .campus-list-reset { min-height:44px; grid-column:1 / -1; font-size:13px; }
+  .campus-list-table th, .campus-list-table td { padding:12px 10px; }
+  .campus-list-category-table { font-size:12px; }
+  .campus-list-category-detail { font-size:11px; }
+  .campus-list-results-line { display:block; }
+  #campus-list-view .campus-list-scroll-hint { display:block; margin-top:4px; }
+}
+@media (max-width:359px) {
+  .campus-list-page { padding-left:12px; padding-right:12px; }
+  .campus-list-summary { gap:8px; }
+  .campus-list-summary-card { padding:14px 10px; }
+  #campus-list-view .campus-list-summary-value { font-size:23px; }
+  .campus-list-building-card { padding:16px 10px; }
+  #campus-list-view .campus-list-comparison-area { font-size:24px; }
+  .campus-list-building-card .campus-list-table th, .campus-list-building-card .campus-list-table td { padding:10px 5px; }
+}
 </style>
 <script id="olr-theme-shell">
 (() => {
@@ -1483,9 +1658,10 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     </label>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
-  <div class="campus-view-3d" role="group" aria-label="Map dimension">
-    <button type="button" class="btn" id="campus-view-2d" aria-pressed="true">2D map</button>
+  <div class="campus-view-3d" role="group" aria-label="Campus view">
+    <button type="button" class="btn" id="campus-view-2d" aria-pressed="true" aria-controls="codex-visualization">2D map</button>
     <button type="button" class="btn" id="campus-view-3d" aria-pressed="false">3D campus</button>
+    <button type="button" class="btn" id="campus-view-list" aria-pressed="false" aria-controls="campus-list-view">List</button>
   </div>
   <div class="campus-3d-navigation" id="campus-3d-navigation">
     <span id="campus-3d-help">Drag to turn and tilt · Pinch to zoom</span>
@@ -1524,13 +1700,15 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=7a64491a7b35ee4e" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
     <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=7a64491a7b35ee4e" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
   </div>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=2f3a0b653c0df1f3" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Master-Plan-Millegan-10-08-2026.pdf?v=1eb0f10e4f6c8148" download="OLR-Master-Plan-Millegan-10-08-2026.pdf" aria-label="Download master plan proposal PDF">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
   <span id="campus-fullscreen-status" class="text-small" role="status" aria-live="polite" hidden></span>
 </header>
 
+<main id="campus-list-view" hidden></main>
+<script id="campus-specs-data" type="application/json">{"version":1,"units":{"length":"ft","area":"SF"},"summary":{"roomCount":62,"fixtures":{"wc":37,"urinal":4,"sink":29},"classrooms":{"grade":13,"specialist":4,"spare":3},"restroomRoomCount":13,"netRoomSf":40991.305556,"grossSf":53531,"otherSf":12539.694444},"buildings":[{"id":"b1","name":"Building 1","dimensions":{"width":82,"depth":200,"overall":true},"shapeNote":"82 \u00d7 200 ft main body, plus a 4 \u00d7 14 ft entrance projection on floor 1.","roomCount":36,"fixtures":{"wc":23,"urinal":4,"sink":19},"classrooms":{"grade":13,"specialist":0,"spare":1},"restroomRoomCount":7,"netRoomSf":24927.75,"grossSf":32856,"otherSf":7928.25,"floors":[{"floor":1,"roomCount":21,"fixtures":{"wc":13,"urinal":2,"sink":11},"classrooms":{"grade":6,"specialist":0,"spare":0},"restroomRoomCount":5,"netRoomSf":12220.25,"grossSf":16456,"otherSf":4235.75},{"floor":2,"roomCount":15,"fixtures":{"wc":10,"urinal":2,"sink":8},"classrooms":{"grade":7,"specialist":0,"spare":1},"restroomRoomCount":2,"netRoomSf":12707.5,"grossSf":16400,"otherSf":3692.5}]},{"id":"b2","name":"Building 2","dimensions":{"width":110,"depth":95,"overall":true},"shapeNote":"110 \u00d7 95 ft overall, with a 15 \u00d7 15 ft southeast corner chamfer on each floor.","roomCount":26,"fixtures":{"wc":14,"urinal":0,"sink":10},"classrooms":{"grade":0,"specialist":4,"spare":2},"restroomRoomCount":6,"netRoomSf":16063.555556,"grossSf":20675,"otherSf":4611.444444,"floors":[{"floor":1,"roomCount":14,"fixtures":{"wc":8,"urinal":0,"sink":6},"classrooms":{"grade":0,"specialist":3,"spare":0},"restroomRoomCount":4,"netRoomSf":8009.5,"grossSf":10337.5,"otherSf":2328},{"floor":2,"roomCount":12,"fixtures":{"wc":6,"urinal":0,"sink":4},"classrooms":{"grade":0,"specialist":1,"spare":2},"restroomRoomCount":2,"netRoomSf":8054.055556,"grossSf":10337.5,"otherSf":2283.444444}]}],"categories":[{"id":"lower-school","name":"Lower school \u00b7 K4\u2013Grade 5","description":"Seven grade classrooms, including Grade 5 on Building 1\u2019s second floor.","roomCount":7,"areaSf":7280,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":7,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-C01","b1-f1-C02","b1-f1-C03","b1-f1-C04","b1-f1-C07","b1-f1-C08","b1-f2-C09"]},{"id":"middle-school","name":"Middle school \u00b7 Grades 6\u20138","description":"Six grade classrooms: two each for Grades 6, 7 and 8.","roomCount":6,"areaSf":6240,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":6,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f2-C11","b1-f2-C12","b1-f2-C13","b1-f2-C14","b1-f2-C15","b1-f2-C16"]},{"id":"specialist","name":"Specialist teaching","description":"Art, Music, Science and Enhanced learning, with their dedicated storage rooms.","roomCount":8,"areaSf":6479.693732,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":4,"spare":0},"restroomRoomCount":0,"roomIds":["b2-f1-music","b2-f1-music-store","b2-f1-art","b2-f1-art-store","b2-f1-enhanced-learning","b2-f1-enhanced-store","b2-f2-science","b2-f2-science-store"]},{"id":"spare","name":"Spare classrooms","description":"Three unassigned classrooms, with the two dedicated storage rooms in Building 2.","roomCount":5,"areaSf":3855.861823,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":3},"restroomRoomCount":0,"roomIds":["b1-f2-C10","b2-f2-spare-1","b2-f2-spare-1-store","b2-f2-spare-2","b2-f2-spare-2-store"]},{"id":"office","name":"School office & reception","description":"Head office, school office / staff workroom, and reception / waiting.","roomCount":3,"areaSf":1872.875,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-O1","b1-f1-O3","b1-f1-R"]},{"id":"health","name":"Health","description":"Nurse / sick room; its separate WC is included under restrooms.","roomCount":1,"areaSf":199.75,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-N"]},{"id":"teachers-lounge","name":"Teachers\u2019 lounge","description":"The teachers\u2019 lounge; its two separate WCs are included under restrooms.","roomCount":1,"areaSf":1337,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b2-f1-teacher-lounge"]},{"id":"library","name":"Library / Study hall","description":"Library and study space.","roomCount":1,"areaSf":1579,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b2-f2-library"]},{"id":"conference","name":"Conference / Seminar","description":"The Conference/Seminar room in Building 1.","roomCount":1,"areaSf":1684.75,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f2-C17"]},{"id":"restrooms","name":"Restrooms","description":"All student bathrooms, staff WCs and the nurse WC; toilets and urinals are counted separately.","roomCount":13,"areaSf":4342,"fixtures":{"wc":37,"urinal":4,"sink":29},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":13,"roomIds":["b1-f1-W1","b1-f1-W2","b1-f1-NW","b1-f1-G","b1-f1-B","b1-f2-G","b1-f2-B","b2-f1-staff-wc","b2-f1-staff-wc-2","b2-f1-girls-bathroom","b2-f1-boys-bathroom","b2-f2-girls-bathroom","b2-f2-boys-bathroom"]},{"id":"general-storage","name":"General storage","description":"School storage; dedicated classroom stores are included with their teaching categories.","roomCount":1,"areaSf":836.875,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-ST"]},{"id":"services","name":"Building services","description":"MEP / IT rooms.","roomCount":2,"areaSf":220,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-M","b1-f2-M"]},{"id":"circulation-core","name":"Stairs, lifts & entry","description":"Stair enclosures, lift / shaft footprints and the pickup entry, counted once on each listed floor.","roomCount":13,"areaSf":5063.5,"fixtures":{"wc":0,"urinal":0,"sink":0},"classrooms":{"grade":0,"specialist":0,"spare":0},"restroomRoomCount":0,"roomIds":["b1-f1-S1","b1-f1-L","b1-f1-S2","b1-f1-V","b1-f2-S1","b1-f2-L","b1-f2-S2","b2-f1-stair-west","b2-f1-stair-east","b2-f1-elevator","b2-f2-stair-west","b2-f2-stair-east","b2-f2-elevator"]}],"rooms":[{"id":"b1-f1-S1","name":"North stair","buildingId":"b1","floor":1,"categoryId":"circulation-core","areaSf":720.25,"dimensions":{"width":21.5,"depth":33.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-L","name":"Lift","buildingId":"b1","floor":1,"categoryId":"circulation-core","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-W1","name":"Staff WC 1","buildingId":"b1","floor":1,"categoryId":"restrooms","areaSf":80,"dimensions":{"width":10,"depth":8,"overall":false},"fixtures":{"wc":1,"urinal":0,"sink":1},"classroomType":null,"currentComparison":null},{"id":"b1-f1-W2","name":"Staff WC 2","buildingId":"b1","floor":1,"categoryId":"restrooms","areaSf":80,"dimensions":{"width":10,"depth":8,"overall":false},"fixtures":{"wc":1,"urinal":0,"sink":1},"classroomType":null,"currentComparison":null},{"id":"b1-f1-M","name":"MEP / IT","buildingId":"b1","floor":1,"categoryId":"services","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-S2","name":"South stair","buildingId":"b1","floor":1,"categoryId":"circulation-core","areaSf":397.5,"dimensions":{"width":15,"depth":26.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-V","name":"Pickup entry","buildingId":"b1","floor":1,"categoryId":"circulation-core","areaSf":144,"dimensions":{"width":12,"depth":12,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-O1","name":"Head / school office","buildingId":"b1","floor":1,"categoryId":"office","areaSf":256,"dimensions":{"width":16,"depth":16,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-N","name":"Nurse / sick room","buildingId":"b1","floor":1,"categoryId":"health","areaSf":199.75,"dimensions":{"width":16,"depth":17,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b1-f1-NW","name":"Nurse WC","buildingId":"b1","floor":1,"categoryId":"restrooms","areaSf":64,"dimensions":{"width":8,"depth":8,"overall":false},"fixtures":{"wc":1,"urinal":0,"sink":1},"classroomType":null,"currentComparison":null},{"id":"b1-f1-O3","name":"School office / staff workroom","buildingId":"b1","floor":1,"categoryId":"office","areaSf":780,"dimensions":{"width":25,"depth":33.5,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b1-f1-C01","name":"K4","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-C02","name":"K5","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-C03","name":"Grade 1","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-C04","name":"Grade 2","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32,"depth":32.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-R","name":"Reception / waiting","buildingId":"b1","floor":1,"categoryId":"office","areaSf":836.875,"dimensions":{"width":32.5,"depth":25.75,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-ST","name":"School storage","buildingId":"b1","floor":1,"categoryId":"general-storage","areaSf":836.875,"dimensions":{"width":32.5,"depth":25.75,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f1-C07","name":"Grade 4","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-C08","name":"Grade 3","buildingId":"b1","floor":1,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32,"depth":32.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f1-G","name":"Girls","buildingId":"b1","floor":1,"categoryId":"restrooms","areaSf":682.5,"dimensions":{"width":32.5,"depth":21,"overall":false},"fixtures":{"wc":6,"urinal":0,"sink":4},"classroomType":null,"currentComparison":null},{"id":"b1-f1-B","name":"Boys","buildingId":"b1","floor":1,"categoryId":"restrooms","areaSf":682.5,"dimensions":{"width":32.5,"depth":21,"overall":false},"fixtures":{"wc":4,"urinal":2,"sink":4},"classroomType":null,"currentComparison":null},{"id":"b1-f2-S1","name":"North stair","buildingId":"b1","floor":2,"categoryId":"circulation-core","areaSf":720.25,"dimensions":{"width":21.5,"depth":33.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f2-L","name":"Lift","buildingId":"b1","floor":2,"categoryId":"circulation-core","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f2-M","name":"MEP / IT","buildingId":"b1","floor":2,"categoryId":"services","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f2-S2","name":"South stair","buildingId":"b1","floor":2,"categoryId":"circulation-core","areaSf":397.5,"dimensions":{"width":15,"depth":26.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b1-f2-C17","name":"Conference/Seminar room","buildingId":"b1","floor":2,"categoryId":"conference","areaSf":1684.75,"dimensions":{"width":57.5,"depth":33.5,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b1-f2-C09","name":"Grade 5","buildingId":"b1","floor":2,"categoryId":"lower-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"lower-school","currentAreaSf":900,"dimensions":{"width":30,"depth":30,"overall":false},"differenceSf":140,"differencePercent":15.555556}},{"id":"b1-f2-C10","name":"Spare Room","buildingId":"b1","floor":2,"categoryId":"spare","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"spare","currentComparison":null},{"id":"b1-f2-C11","name":"Grade 6A","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-C12","name":"Grade 6B","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32,"depth":32.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-C13","name":"Grade 7A","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-C14","name":"Grade 7B","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-C15","name":"Grade 8A","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32.5,"depth":32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-C16","name":"Grade 8B","buildingId":"b1","floor":2,"categoryId":"middle-school","areaSf":1040,"dimensions":{"width":32,"depth":32.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"grade","currentComparison":{"baselineId":"middle-school","currentAreaSf":825,"dimensions":{"width":25,"depth":33,"overall":false},"differenceSf":215,"differencePercent":26.060606}},{"id":"b1-f2-G","name":"Girls","buildingId":"b1","floor":2,"categoryId":"restrooms","areaSf":682.5,"dimensions":{"width":32.5,"depth":21,"overall":false},"fixtures":{"wc":6,"urinal":0,"sink":4},"classroomType":null,"currentComparison":null},{"id":"b1-f2-B","name":"Boys","buildingId":"b1","floor":2,"categoryId":"restrooms","areaSf":682.5,"dimensions":{"width":32.5,"depth":21,"overall":false},"fixtures":{"wc":4,"urinal":2,"sink":4},"classroomType":null,"currentComparison":null},{"id":"b2-f1-stair-west","name":"West stair","buildingId":"b2","floor":1,"categoryId":"circulation-core","areaSf":561,"dimensions":{"width":17,"depth":33,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f1-stair-east","name":"East stair","buildingId":"b2","floor":1,"categoryId":"circulation-core","areaSf":561,"dimensions":{"width":17,"depth":33,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f1-elevator","name":"Elevator / shaft","buildingId":"b2","floor":1,"categoryId":"circulation-core","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f1-teacher-lounge","name":"Teachers\u2019 lounge","buildingId":"b2","floor":1,"categoryId":"teachers-lounge","areaSf":1337,"dimensions":{"width":72,"depth":33,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f1-staff-wc","name":"Staff WC 1","buildingId":"b2","floor":1,"categoryId":"restrooms","areaSf":100,"dimensions":{"width":10,"depth":10,"overall":false},"fixtures":{"wc":1,"urinal":0,"sink":1},"classroomType":null,"currentComparison":null},{"id":"b2-f1-staff-wc-2","name":"Staff WC 2","buildingId":"b2","floor":1,"categoryId":"restrooms","areaSf":100,"dimensions":{"width":10,"depth":10,"overall":false},"fixtures":{"wc":1,"urinal":0,"sink":1},"classroomType":null,"currentComparison":null},{"id":"b2-f1-girls-bathroom","name":"Girls\u2019 bathroom","buildingId":"b2","floor":1,"categoryId":"restrooms","areaSf":297,"dimensions":{"width":18,"depth":16.5,"overall":false},"fixtures":{"wc":3,"urinal":0,"sink":2},"classroomType":null,"currentComparison":null},{"id":"b2-f1-boys-bathroom","name":"Boys\u2019 bathroom","buildingId":"b2","floor":1,"categoryId":"restrooms","areaSf":297,"dimensions":{"width":18,"depth":16.5,"overall":false},"fixtures":{"wc":3,"urinal":0,"sink":2},"classroomType":null,"currentComparison":null},{"id":"b2-f1-music","name":"Music classroom","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":1378.5,"dimensions":{"width":37.5,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"specialist","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f1-music-store","name":"Music storage","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":300,"dimensions":{"width":8,"depth":37.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f1-art","name":"Art classroom","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":1378.5,"dimensions":{"width":37.5,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"specialist","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f1-art-store","name":"Art storage","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":300,"dimensions":{"width":8,"depth":37.5,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f1-enhanced-learning","name":"Enhanced learning classroom","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":1157.5,"dimensions":{"width":31,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"specialist","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f1-enhanced-store","name":"Enhanced learning store","buildingId":"b2","floor":1,"categoryId":"specialist","areaSf":132,"dimensions":{"width":12,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-stair-west","name":"West stair","buildingId":"b2","floor":2,"categoryId":"circulation-core","areaSf":561,"dimensions":{"width":17,"depth":33,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-stair-east","name":"East stair","buildingId":"b2","floor":2,"categoryId":"circulation-core","areaSf":561,"dimensions":{"width":17,"depth":33,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-elevator","name":"Elevator / shaft","buildingId":"b2","floor":2,"categoryId":"circulation-core","areaSf":110,"dimensions":{"width":10,"depth":11,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-library","name":"Library / Study hall","buildingId":"b2","floor":2,"categoryId":"library","areaSf":1579,"dimensions":{"width":72,"depth":33,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f2-girls-bathroom","name":"Girls\u2019 bathroom","buildingId":"b2","floor":2,"categoryId":"restrooms","areaSf":297,"dimensions":{"width":18,"depth":16.5,"overall":false},"fixtures":{"wc":3,"urinal":0,"sink":2},"classroomType":null,"currentComparison":null},{"id":"b2-f2-boys-bathroom","name":"Boys\u2019 bathroom","buildingId":"b2","floor":2,"categoryId":"restrooms","areaSf":297,"dimensions":{"width":18,"depth":16.5,"overall":false},"fixtures":{"wc":3,"urinal":0,"sink":2},"classroomType":null,"currentComparison":null},{"id":"b2-f2-science","name":"Science classroom / lab","buildingId":"b2","floor":2,"categoryId":"specialist","areaSf":1506.321937,"dimensions":{"width":40.86,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"specialist","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f2-science-store","name":"Science prep / storage","buildingId":"b2","floor":2,"categoryId":"specialist","areaSf":326.871795,"dimensions":{"width":9,"depth":36.32,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-spare-1","name":"Spare room 1","buildingId":"b2","floor":2,"categoryId":"spare","areaSf":1196.043142,"dimensions":{"width":32.5,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"spare","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f2-spare-1-store","name":"Spare 1 storage","buildingId":"b2","floor":2,"categoryId":"spare","areaSf":259.985348,"dimensions":{"width":9,"depth":28.89,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null},{"id":"b2-f2-spare-2","name":"Spare room 2","buildingId":"b2","floor":2,"categoryId":"spare","areaSf":1186.690476,"dimensions":{"width":32.64,"depth":46,"overall":true},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":"spare","shapeNote":"Irregular outline: dimensions are overall bounds; area follows the room outline.","currentComparison":null},{"id":"b2-f2-spare-2-store","name":"Spare 2 storage","buildingId":"b2","floor":2,"categoryId":"spare","areaSf":173.142857,"dimensions":{"width":9,"depth":19.24,"overall":false},"fixtures":{"wc":0,"urinal":0,"sink":0},"classroomType":null,"currentComparison":null}],"comparison":{"sourceNote":"Current sizes use reported room dimensions; proposed sizes follow the plan geometry. Current measurements and room counts are shown where available.","baselines":[{"id":"lower-school","name":"Current elementary classroom","dimensions":{"width":30,"depth":30,"overall":false},"areaSf":900,"description":"Reported typical elementary classroom size; matched to K4 through Grade 5."},{"id":"middle-school","name":"Current middle-school classroom","dimensions":{"width":25,"depth":33,"overall":false},"areaSf":825,"description":"Reported typical middle-school classroom size; matched to Grades 6\u20138."},{"id":"upper-school","name":"Current upper-school classroom","dimensions":{"width":26,"depth":26,"overall":false},"areaSf":676,"description":"Reported recently added upper-school classroom size on the current campus; no matching proposed upper-school classroom is listed in Buildings 1 or 2."},{"id":"office","name":"Current school office","dimensions":{"width":30,"depth":30,"overall":false},"areaSf":900,"description":"Reported school office size."},{"id":"office-staff-area","name":"Current breakroom & staff bathroom","dimensions":{"width":30,"depth":12,"overall":false},"areaSf":360,"description":"Reported combined breakroom and staff-bathroom area, additional to the current office."}],"groups":[{"id":"lower-school","name":"Lower school \u00b7 K4\u2013Grade 5","baselineId":"lower-school","roomIds":["b1-f1-C01","b1-f1-C02","b1-f1-C03","b1-f1-C04","b1-f1-C07","b1-f1-C08","b1-f2-C09"],"roomCount":7,"currentAreaSf":6300,"proposedAreaSf":7280,"differenceSf":980,"differencePercent":15.555556,"scopeNote":"Group comparison uses the proposed room count at the reported typical current-room size; it is not a measured current-campus total. Existing classroom counts were not supplied."},{"id":"middle-school","name":"Middle school \u00b7 Grades 6\u20138","baselineId":"middle-school","roomIds":["b1-f2-C11","b1-f2-C12","b1-f2-C13","b1-f2-C14","b1-f2-C15","b1-f2-C16"],"roomCount":6,"currentAreaSf":4950,"proposedAreaSf":6240,"differenceSf":1290,"differencePercent":26.060606,"scopeNote":"Group comparison uses the proposed room count at the reported typical current-room size; it is not a measured current-campus total. Existing classroom counts were not supplied."}],"office":{"currentOfficeSf":900,"currentStaffAreaSf":360,"currentCombinedSf":1260,"currentOfficeDimensions":{"width":30,"depth":30,"overall":false},"currentStaffAreaDimensions":{"width":30,"depth":12,"overall":false},"proposedPackages":[{"id":"office","name":"School office & reception","roomIds":["b1-f1-O1","b1-f1-O3","b1-f1-R"],"areaSf":1872.875,"scopeNote":"Three proposed office / reception spaces; the current office measurement does not identify equivalent subrooms."},{"id":"office-staff-wcs","name":"Office staff bathrooms","roomIds":["b1-f1-W1","b1-f1-W2"],"areaSf":160,"scopeNote":"Two separate WCs serving the Building 1 office."},{"id":"teachers-lounge","name":"Teachers\u2019 lounge & its bathrooms","roomIds":["b2-f1-teacher-lounge","b2-f1-staff-wc","b2-f1-staff-wc-2"],"areaSf":1537,"scopeNote":"The Building 2 teachers\u2019 lounge and its two separate staff WCs."}],"broaderProposedSf":3569.875,"broaderRoomIds":["b1-f1-O1","b1-f1-O3","b1-f1-R","b1-f1-W1","b1-f1-W2","b2-f1-teacher-lounge","b2-f1-staff-wc","b2-f1-staff-wc-2"],"scopeNote":"The reported current office plus breakroom / staff bathroom totals 1,260 SF. The proposed components below include separate reception, head-office and lounge spaces across two buildings. Their scope differs, so no like-for-like percentage increase is stated."},"upperSchool":{"baselineId":"upper-school","scopeNote":"Existing upper-school rooms are shown as a size reference. Their count is unspecified, and there is no matching upper-school classroom in this proposal."}},"notes":["This schedule covers the two new school buildings and both floors of each building.","Lower school means K4 through Grade 5; Grade 5 is on Building 1\u2019s second floor. Middle school means Grades 6\u20138.","Room counts are listed floor-spaces: each stair enclosure and lift / shaft footprint is counted on each floor. Corridors are not counted as rooms.","Gross floor area follows each exterior building outline. Listed room area follows each interior room outline; the remainder includes walls, circulation and other unlisted areas.","Dedicated storage is listed separately and counted once. Specialist and spare category totals include their dedicated stores; classroom counts exclude stores.","Dimensions run east\u2013west \u00d7 north\u2013south in campus orientation. Overall dimensions are bounding sizes, so they need not multiply to the area of an irregular room.","Toilets, urinals and sinks are counted from the fixtures drawn in the plan; stall partitions are not additional toilets.","Displayed areas are rounded; totals are calculated from room geometry before rounding."],"bridge":{"areaSf":216,"dimensions":{"width":18,"depth":12,"overall":false},"description":"216 SF footprint: ground-floor covered walk and upper-floor bridge; excluded from building totals."}}</script>
 <iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" aria-label="OLR Campus and Floor Plans" data-srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
 &lt;head&gt;
@@ -6185,6 +6363,294 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   delete frame.dataset.srcdoc;
 })();
 </script>
+<script id="olr-building-list">
+(() => {
+  'use strict';
+  const host = document.getElementById('campus-list-view');
+  const source = document.getElementById('campus-specs-data');
+  if (!host || !source) return;
+  let data;
+  try { data = JSON.parse(source.textContent); } catch { return; }
+  const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+  const dimensionNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+  const fmt = value => number.format(Number(value) || 0);
+  const sf = value => `${fmt(value)} SF`;
+  const floorName = value => Number(value) === 1 ? '1st floor' : `${value}nd floor`;
+  const buildings = new Map(data.buildings.map(item => [item.id, item]));
+  const categories = new Map(data.categories.map(item => [item.id, item]));
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const append = (parent, ...children) => { parent.append(...children); return parent; };
+  const p = (text, className = 'campus-list-note') => el('p', className, text);
+  const dimensions = item => `${dimensionNumber.format(item.width)} × ${dimensionNumber.format(item.depth)} ft${item.overall ? ' overall' : ''}`;
+  const fixtureText = fixtures => [
+    ['wc', 'toilet'], ['urinal', 'urinal'], ['sink', 'sink']
+  ].filter(([key]) => fixtures?.[key]).map(([key, label]) => `${fmt(fixtures[key])} ${label}${fixtures[key] === 1 ? '' : 's'}`).join(' · ') || '—';
+  const table = (caption, headers, className = '') => {
+    const result = el('table', `campus-list-table ${className}`.trim());
+    result.append(el('caption', 'campus-list-sr-only', caption));
+    const head = el('thead'), row = el('tr');
+    headers.forEach(({ label, numeric }) => {
+      const cell = el('th', numeric ? 'campus-list-number' : '', label);
+      cell.scope = 'col'; row.append(cell);
+    });
+    head.append(row); result.append(head);
+    return result;
+  };
+  const cell = (row, text, numeric = false, tag = 'td') => {
+    const result = el(tag, numeric ? 'campus-list-number' : '', text);
+    if (tag === 'th') result.scope = 'row';
+    row.append(result); return result;
+  };
+  const section = (id, title, note) => {
+    const result = el('section', 'campus-list-section');
+    result.id = id; result.setAttribute('aria-labelledby', `${id}-heading`);
+    const heading = el('h2', '', title); heading.id = `${id}-heading`;
+    result.append(heading);
+    if (note) result.append(p(note));
+    return result;
+  };
+  host.setAttribute('aria-labelledby', 'campus-list-heading');
+  const page = el('div', 'campus-list-page');
+  const intro = el('div', 'campus-list-intro');
+  intro.append(p('OUR LADY OF THE ROSARY · NEW CAMPUS', 'campus-list-eyebrow'));
+  const heading = el('h1', '', 'New building specifications');
+  heading.id = 'campus-list-heading'; heading.tabIndex = -1;
+  intro.append(heading, p('Room sizes, teaching spaces, facilities, and totals for both floors of Buildings 1 and 2.', 'campus-list-lead'));
+  page.append(intro);
+
+  const summary = el('div', 'campus-list-summary');
+  const card = (label, value, detail) => {
+    const item = el('div', 'campus-list-summary-card');
+    item.append(el('h2', '', label), el('p', 'campus-list-summary-value', value), p(detail));
+    summary.append(item);
+  };
+  card('Total building area', sf(data.summary.grossSf), 'Gross floor area · both floors combined');
+  card('Listed rooms & floor spaces', fmt(data.summary.roomCount), `${sf(data.summary.netRoomSf)} of net room area`);
+  const classrooms = data.summary.classrooms;
+  card('Classrooms', fmt(classrooms.grade + classrooms.specialist), `${fmt(classrooms.grade)} grade classrooms + ${fmt(classrooms.specialist)} specialist classrooms; ${fmt(classrooms.spare)} spare rooms listed separately`);
+  card('Restroom fixtures', `${fmt(data.summary.fixtures.wc)} toilets`, `${fmt(data.summary.fixtures.urinal)} urinals · ${fmt(data.summary.fixtures.sink)} sinks across ${fmt(data.summary.restroomRoomCount)} restroom spaces`);
+  page.append(summary);
+
+  const areaNote = el('aside', 'campus-list-area-note');
+  areaNote.setAttribute('aria-label', 'How areas are counted');
+  areaNote.append(el('strong', '', 'How the totals add up'), p(`Gross building area includes the whole floor plate. Net room area totals the individually listed spaces; the remaining ${sf(data.summary.otherSf)} includes walls, circulation, and other unlisted floor area. Stairs and lift spaces count once on each floor. All totals use the underlying plan geometry, before display rounding.`));
+  page.append(areaNote);
+
+  if (data.comparison) {
+    const comparison = data.comparison;
+    const baselines = new Map(comparison.baselines.map(item => [item.id, item]));
+    const roomById = new Map(data.rooms.map(room => [room.id, room]));
+    const comparisons = section('campus-list-comparison', 'Current and proposed spaces', comparison.sourceNote);
+    const comparisonGrid = el('div', 'campus-list-comparison-grid');
+    const signed = value => `${value > 0 ? '+' : ''}${fmt(value)}`;
+    comparison.groups.forEach(group => {
+      const baseline = baselines.get(group.baselineId);
+      if (!baseline) return;
+      const proposedRooms = group.roomIds.map(id => roomById.get(id)).filter(Boolean);
+      const proposedAreas = [...new Set(proposedRooms.map(room => room.areaSf))];
+      const proposedDimensions = [...new Set(proposedRooms.map(room => dimensions(room.dimensions)))];
+      const perRoomChange = proposedAreas.length === 1 ? proposedAreas[0] - baseline.areaSf : null;
+      const article = el('article', 'campus-list-comparison-card'); article.dataset.comparisonGroup = group.id;
+      article.append(el('h3', '', group.name), p('Per classroom', 'campus-list-comparison-kicker'));
+      const pair = el('div', 'campus-list-comparison-pair');
+      const current = el('div', 'campus-list-comparison-current');
+      current.append(p('Current', 'campus-list-comparison-label'), p(sf(baseline.areaSf), 'campus-list-comparison-area'), p(dimensions(baseline.dimensions)));
+      const proposed = el('div', 'campus-list-comparison-proposed');
+      proposed.append(p('Proposed', 'campus-list-comparison-label'), p(proposedAreas.map(sf).join(' / '), 'campus-list-comparison-area'), p(proposedDimensions.join(' or ')));
+      pair.append(current, proposed); article.append(pair);
+      if (perRoomChange !== null) article.append(p(`${signed(perRoomChange)} SF per classroom (${signed(perRoomChange / baseline.areaSf * 100)}%)`, 'campus-list-comparison-change'));
+      article.append(p(`Proposed group: ${fmt(group.roomCount)} classrooms · ${sf(group.proposedAreaSf)} total.`));
+      comparisonGrid.append(article);
+    });
+    comparisons.append(comparisonGrid);
+    if (comparison.upperSchool) {
+      const baseline = baselines.get(comparison.upperSchool.baselineId);
+      if (baseline) {
+        const upper = el('aside', 'campus-list-comparison-reference');
+        upper.append(el('strong', '', `${baseline.name}: ${sf(baseline.areaSf)}`), p(`${dimensions(baseline.dimensions)}. ${comparison.upperSchool.scopeNote}`));
+        comparisons.append(upper);
+      }
+    }
+    if (comparison.office) {
+      const office = comparison.office;
+      const officeSection = el('div', 'campus-list-office-comparison');
+      officeSection.append(el('h3', '', 'Office and staff spaces'), p(office.scopeNote));
+      const officeGrid = el('div', 'campus-list-office-grid');
+      const currentOffice = el('article', 'campus-list-office-card');
+      currentOffice.append(el('h4', '', 'Current office package'));
+      const currentParts = el('dl', 'campus-list-office-parts');
+      const addPart = (parent, label, value, detail) => {
+        const row = el('div'); const term = el('dt', '', label);
+        if (detail) term.append(el('span', 'campus-list-cell-detail', detail));
+        row.append(term, el('dd', '', sf(value))); parent.append(row);
+      };
+      const currentOfficeDimensions = office.currentOfficeDimensions || baselines.get('office')?.dimensions;
+      const currentStaffAreaDimensions = office.currentStaffAreaDimensions || baselines.get('office-staff-area')?.dimensions;
+      addPart(currentParts, 'School office', office.currentOfficeSf, currentOfficeDimensions ? dimensions(currentOfficeDimensions) : undefined);
+      addPart(currentParts, 'Break room + bathroom', office.currentStaffAreaSf, currentStaffAreaDimensions ? dimensions(currentStaffAreaDimensions) : undefined);
+      currentOffice.append(currentParts, p(`${sf(office.currentCombinedSf)} combined`, 'campus-list-office-total')); officeGrid.append(currentOffice);
+      office.proposedPackages.forEach(pkg => {
+        const article = el('article', 'campus-list-office-card'); article.dataset.officePackage = pkg.id;
+        article.append(el('h4', '', `Proposed: ${pkg.name}`));
+        const parts = el('dl', 'campus-list-office-parts');
+        pkg.roomIds.forEach(id => { const room = roomById.get(id); if (room) addPart(parts, room.name, room.areaSf, dimensions(room.dimensions)); });
+        article.append(parts, p(`${sf(pkg.areaSf)} combined`, 'campus-list-office-total'));
+        if (pkg.scopeNote) article.append(p(pkg.scopeNote)); officeGrid.append(article);
+      });
+      officeSection.append(officeGrid); comparisons.append(officeSection);
+    }
+    page.append(comparisons);
+  }
+
+  const buildingSection = section('campus-list-buildings', 'By building and floor');
+  const buildingGrid = el('div', 'campus-list-building-grid');
+  data.buildings.forEach(building => {
+    const article = el('article', 'campus-list-building-card');
+    article.append(el('h3', '', building.name), p(building.shapeNote || dimensions(building.dimensions)));
+    const itemTable = table(`${building.name} floor areas`, [
+      { label: 'Floor' }, { label: 'Spaces', numeric: true }, { label: 'Gross SF', numeric: true }, { label: 'Net room SF', numeric: true }
+    ]);
+    const body = el('tbody');
+    building.floors.forEach(floor => {
+      const row = el('tr'); cell(row, floorName(floor.floor), false, 'th');
+      cell(row, fmt(floor.roomCount), true); cell(row, fmt(floor.grossSf), true); cell(row, fmt(floor.netRoomSf), true); body.append(row);
+    });
+    itemTable.append(body);
+    const foot = el('tfoot'), total = el('tr'); cell(total, 'Total', false, 'th');
+    cell(total, fmt(building.roomCount), true); cell(total, fmt(building.grossSf), true); cell(total, fmt(building.netRoomSf), true); foot.append(total); itemTable.append(foot);
+    article.append(itemTable, p(fixtureText(building.fixtures), 'campus-list-building-fixtures'));
+    buildingGrid.append(article);
+  });
+  buildingSection.append(buildingGrid);
+  if (data.bridge) buildingSection.append(p(`${data.bridge.description} Dimensions: ${dimensions(data.bridge.dimensions)}.`));
+  page.append(buildingSection);
+
+  const categorySection = section('campus-list-categories', 'By use', 'Every listed space belongs to one category. These subtotals include both buildings and both floors.');
+  const categoryTable = table('Room count and net area by use', [{ label: 'Category' }, { label: 'Spaces', numeric: true }, { label: 'Net area', numeric: true }], 'campus-list-category-table');
+  const categoryBody = el('tbody');
+  data.categories.forEach(category => {
+    const row = el('tr');
+    const label = cell(row, '', false, 'th'); label.append(el('span', 'campus-list-category-name', category.name));
+    if (category.description) label.append(el('span', 'campus-list-category-detail', category.description));
+    cell(row, fmt(category.roomCount), true); cell(row, sf(category.areaSf), true); categoryBody.append(row);
+  });
+  categoryTable.append(categoryBody);
+  const categoryFoot = el('tfoot'), categoryTotal = el('tr');
+  cell(categoryTotal, 'All listed spaces', false, 'th'); cell(categoryTotal, fmt(data.summary.roomCount), true); cell(categoryTotal, sf(data.summary.netRoomSf), true);
+  categoryFoot.append(categoryTotal); categoryTable.append(categoryFoot); categorySection.append(categoryTable); page.append(categorySection);
+
+  const directory = section('campus-list-directory', 'Room directory', 'Dimensions are in feet. “Overall” gives the bounding dimensions of an irregular or inset room; multiplying them will not necessarily give its net area.');
+  if (data.comparison) directory.append(p('Current room sizes and area changes are shown for grade classrooms using the supplied lower- and middle-school sizes. Other spaces have no individual current-room comparison provided.'));
+  const filterForm = el('form', 'campus-list-filters'); filterForm.setAttribute('aria-label', 'Filter room directory');
+  filterForm.addEventListener('submit', event => event.preventDefault());
+  const control = (label, id, type, options) => {
+    const group = el('div', 'campus-list-field');
+    const title = el('label', '', label); title.htmlFor = id;
+    const input = el(type === 'search' ? 'input' : 'select'); input.id = id; input.name = id;
+    if (type === 'search') { input.type = 'search'; input.placeholder = 'Find a room or use'; input.autocomplete = 'off'; }
+    else options.forEach(([value, text]) => { const option = el('option', '', text); option.value = value; input.append(option); });
+    group.append(title, input); filterForm.append(group); return input;
+  };
+  const query = control('Search rooms', 'campus-list-search', 'search');
+  const buildingFilter = control('Building', 'campus-list-building-filter', 'select', [['', 'All buildings'], ...data.buildings.map(item => [item.id, item.name])]);
+  const floorFilter = control('Floor', 'campus-list-floor-filter', 'select', [['', 'Both floors'], ...[...new Set(data.rooms.map(room => Number(room.floor)))].sort().map(value => [String(value), floorName(value)])]);
+  const categoryFilter = control('Category', 'campus-list-category-filter', 'select', [['', 'All categories'], ...data.categories.map(item => [item.id, item.name])]);
+  const reset = el('button', 'campus-list-reset', 'Reset filters'); reset.type = 'reset'; filterForm.append(reset);
+  directory.append(filterForm);
+  const resultLine = el('div', 'campus-list-results-line');
+  const resultCount = el('p', 'campus-list-result-count'); resultCount.id = 'campus-list-result-count'; resultCount.setAttribute('role', 'status'); resultCount.setAttribute('aria-live', 'polite'); resultCount.setAttribute('aria-atomic', 'true');
+  resultLine.append(resultCount, p('Swipe or scroll the table to see all columns.', 'campus-list-scroll-hint')); directory.append(resultLine);
+  const tableScroll = el('div', 'campus-list-table-scroll'); tableScroll.tabIndex = 0;
+  tableScroll.setAttribute('role', 'region'); tableScroll.setAttribute('aria-label', 'Room directory, horizontally scrollable');
+  const roomTable = table('Every room and floor space in Buildings 1 and 2', [
+    { label: 'Room / space' }, { label: 'Location' }, { label: 'Category' }, { label: 'Proposed dimensions' }, { label: 'Proposed net area', numeric: true },
+    ...(data.comparison ? [{ label: 'Current dimensions / area' }, { label: 'Area change', numeric: true }] : []), { label: 'Fixtures' }
+  ], 'campus-list-room-table');
+  if (data.comparison) roomTable.classList.add('campus-list-room-comparisons');
+  const roomBody = el('tbody'), roomFoot = el('tfoot'); roomTable.append(roomBody, roomFoot); tableScroll.append(roomTable); directory.append(tableScroll);
+  const empty = el('div', 'campus-list-empty'); empty.hidden = true;
+  empty.append(el('h3', '', 'No rooms match these filters'), p('Try a different room name, building, floor, or category.'));
+  const clearEmpty = el('button', 'campus-list-reset', 'Show all rooms'); clearEmpty.type = 'button'; empty.append(clearEmpty); directory.append(empty);
+  page.append(directory);
+  if (data.notes?.length) {
+    const notes = section('campus-list-notes', 'Reading this schedule');
+    const list = el('ul', 'campus-list-notes'); data.notes.forEach(note => list.append(el('li', '', typeof note === 'string' ? note : note.text || note.description || ''))); notes.append(list); page.append(notes);
+  }
+  host.append(page);
+
+  let visible = false, matchingRooms = data.rooms;
+  const searchText = room => [room.name, buildings.get(room.buildingId)?.name, floorName(room.floor), categories.get(room.categoryId)?.name, room.shapeNote].filter(Boolean).join(' ').toLocaleLowerCase();
+  const roomSearch = new Map(data.rooms.map(room => [room.id, searchText(room)]));
+  function renderRooms() {
+    const terms = query.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    matchingRooms = data.rooms.filter(room => (!buildingFilter.value || room.buildingId === buildingFilter.value) && (!floorFilter.value || String(room.floor) === floorFilter.value) && (!categoryFilter.value || room.categoryId === categoryFilter.value) && terms.every(term => roomSearch.get(room.id).includes(term)));
+    const fragment = document.createDocumentFragment();
+    matchingRooms.forEach(room => {
+      const row = el('tr'); row.dataset.roomId = room.id;
+      cell(row, room.name, false, 'th');
+      const location = cell(row, ''); location.append(el('span', '', buildings.get(room.buildingId)?.name || room.buildingId), el('span', 'campus-list-cell-detail', floorName(room.floor)));
+      cell(row, categories.get(room.categoryId)?.name || room.categoryId);
+      const size = cell(row, dimensions(room.dimensions)); if (room.shapeNote) size.append(el('span', 'campus-list-cell-detail', room.shapeNote));
+      cell(row, sf(room.areaSf), true);
+      if (data.comparison) {
+        const baseline = room.currentComparison;
+        if (baseline) {
+          const current = cell(row, dimensions(baseline.dimensions)); current.append(el('span', 'campus-list-cell-detail', sf(baseline.currentAreaSf)));
+          const change = cell(row, `${baseline.differenceSf > 0 ? '+' : ''}${sf(baseline.differenceSf)}`, true);
+          change.append(el('span', 'campus-list-cell-detail', `${baseline.differencePercent > 0 ? '+' : ''}${fmt(baseline.differencePercent)}%`));
+        } else { cell(row, 'Not provided'); cell(row, '—', true); }
+      }
+      cell(row, fixtureText(room.fixtures)); fragment.append(row);
+    });
+    roomBody.replaceChildren(fragment);
+    const totalArea = matchingRooms.reduce((sum, room) => sum + room.areaSf, 0);
+    const fixtures = matchingRooms.reduce((sum, room) => { for (const key of ['wc', 'urinal', 'sink']) sum[key] += room.fixtures?.[key] || 0; return sum; }, { wc: 0, urinal: 0, sink: 0 });
+    const total = el('tr'); const totalLabel = cell(total, `${fmt(matchingRooms.length)} matching spaces`, false, 'th'); totalLabel.colSpan = 4;
+    cell(total, sf(totalArea), true);
+    if (data.comparison) { const explanation = cell(total, 'Current sizes compare individual classrooms; no current total is inferred.'); explanation.colSpan = 2; }
+    cell(total, fixtureText(fixtures)); roomFoot.replaceChildren(total);
+    resultCount.textContent = `${fmt(matchingRooms.length)} of ${fmt(data.rooms.length)} spaces · ${sf(totalArea)} net area`;
+    tableScroll.hidden = !matchingRooms.length; empty.hidden = !!matchingRooms.length;
+    reset.disabled = !(query.value || buildingFilter.value || floorFilter.value || categoryFilter.value);
+  }
+  filterForm.addEventListener('input', renderRooms);
+  filterForm.addEventListener('change', renderRooms);
+  const resetFilters = () => { query.value = ''; buildingFilter.value = ''; floorFilter.value = ''; categoryFilter.value = ''; renderRooms(); };
+  filterForm.addEventListener('reset', event => { event.preventDefault(); resetFilters(); });
+  clearEmpty.addEventListener('click', () => { resetFilters(); query.focus(); });
+  renderRooms();
+
+  let measureFrame = 0;
+  function measureToolbar() {
+    cancelAnimationFrame(measureFrame);
+    measureFrame = requestAnimationFrame(() => {
+      if (!visible) return;
+      const panel = document.querySelector('.campus-tool-panel');
+      const bottom = panel ? Math.ceil(panel.getBoundingClientRect().bottom) : 0;
+      host.style.setProperty('--campus-list-toolbar-height', `${bottom}px`);
+    });
+  }
+  const toolbar = document.querySelector('.campus-tool-panel');
+  if (toolbar && window.ResizeObserver) new ResizeObserver(measureToolbar).observe(toolbar);
+  window.addEventListener('resize', measureToolbar, { passive: true });
+  window.olrCampusList = {
+    data,
+    setVisible(next) {
+      const wasVisible = visible; visible = Boolean(next); host.hidden = !visible;
+      if (visible) {
+        measureToolbar();
+        if (!wasVisible) requestAnimationFrame(() => heading.focus({ preventScroll: true }));
+      }
+    },
+    get state() { return { visible, matchingRoomIds: matchingRooms.map(room => room.id), filters: { query: query.value, building: buildingFilter.value, floor: floorFilter.value, category: categoryFilter.value } }; }
+  };
+})();
+</script>
 <script id="campus-page-controls">
 (() => {
   const button = document.getElementById('campus-fullscreen');
@@ -6287,6 +6753,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
 (() => {
   const frame = document.getElementById('codex-visualization');
   document.addEventListener('keydown', event => {
+    if (globalThis.olrCampusView?.dimension === 'list') return;
     const key=event.key.toLowerCase();
     if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','o','n','+','=','-','0'].includes(key)) return;
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
@@ -6313,6 +6780,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const oldBuildings = document.getElementById('campus-old-buildings');
   const mode2d = document.getElementById('campus-view-2d');
   const mode3d = document.getElementById('campus-view-3d');
+  const modeList = document.getElementById('campus-view-list');
   const navigation = document.getElementById('campus-3d-navigation');
   const cameraTools = document.getElementById('campus-camera-tools');
   const walkPanel = document.getElementById('campus-walk-panel');
@@ -6334,6 +6802,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
   let expanded = false, renderedState = null, mapState = null, modelCamera = null;
   let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
+  let listReturnDimension = '2d';
   let cameraRequest = 0, pendingCameraRequest = null;
   let oldBuildingPolygons = [];
   const dragMode = 'rotate';
@@ -6346,8 +6815,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
   const walkActive = () => walkState.mode!=='aerial'||walkPending!==null;
-  const sendPlanWalk = () => sendMap('walk-state',{...walkState,presentation:dimension,aerialCamera:walkAerialCamera});
+  const sendPlanWalk = () => sendMap('walk-state',{...walkState,presentation:dimension==='list'?'3d':dimension,aerialCamera:walkAerialCamera});
   function focusWalk() {
+    if(dimension==='list')return;
     if(dimension==='2d')sendMap('walk-focus');
     else modelFrame?.contentWindow?.document.querySelector('canvas')?.focus({preventScroll:true});
   }
@@ -6361,11 +6831,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       document.body.appendChild(modelFrame);
     }
     modelFrame.hidden=false;
-    modelFrame.setAttribute('aria-hidden',String(dimension==='2d'));
-    modelFrame.tabIndex=dimension==='2d'?-1:0;
+    modelFrame.setAttribute('aria-hidden',String(dimension!=='3d'));
+    modelFrame.tabIndex=dimension!=='3d'?-1:0;
   }
   function startQueuedWalk() {
-    if(!queuedWalk||!modelReady||modelNeedsMapCamera)return;
+    if(dimension==='list'||!queuedWalk||!modelReady||modelNeedsMapCamera)return;
     const command=queuedWalk;queuedWalk=null;
     sendModel('walk-presentation',dimension);
     sendModel('active',true);
@@ -6374,9 +6844,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function renderWalk() {
     const active=walkActive(), placing=walkState.mode==='placing'||walkPending==='placing';
     const ready=modelReady&&!modelNeedsMapCamera;
-    panel.dataset.walkActive=String(active);
+    panel.dataset.walkActive=String(active&&dimension!=='list');
     document.body.dataset.campusWalk=walkState.mode;
-    walkPanel.hidden=false;
+    walkPanel.hidden=dimension==='list';
     walkPlace.disabled=active||!mapState?.camera;
     walkStartActions.hidden=active;
     walkActiveActions.hidden=!active;
@@ -6394,7 +6864,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(walkKeyboardHelp)walkKeyboardHelp.textContent=dimension==='3d'
       ? `WASD / arrows move · Shift runs · Space jumps. ${walkState.pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
       : 'WASD / arrows move · Shift runs · Space jumps · Drag to turn.';
-    if(focusAfterWalkExit&&!active){focusAfterWalkExit=false;(mobile?.matches?toggle:walkPlace)?.focus();}
+    if(focusAfterWalkExit&&!active&&dimension!=='list'){focusAfterWalkExit=false;(mobile?.matches?toggle:walkPlace)?.focus();}
   }
   function requestWalk(command) {
     if(command==='walk-exit'&&queuedWalk){
@@ -6466,7 +6936,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   mobile?.addEventListener('change',()=>expand(false));
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;
-    if(walkActive()){event.preventDefault();escapeWalk();return;}
+    if(dimension!=='list'&&walkActive()){event.preventDefault();escapeWalk();return;}
     if(lightingPanel.open){lightingPanel.open=false;lightingPanel.querySelector('summary')?.focus();}
     else if (expanded && mobile?.matches) { expand(false);toggle?.focus?.(); }
   });
@@ -6479,23 +6949,41 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
     sendModel('time-of-day',timeOfDay);
-    sendModel('walk-presentation',dimension);
-    sendModel('active',dimension==='3d'||walkActive());
+    if(dimension!=='list')sendModel('walk-presentation',dimension);
+    sendModel('active',dimension!=='list'&&(dimension==='3d'||walkActive()));
     startQueuedWalk();
   }
   function setDimension(next) {
-    if(!['2d','3d'].includes(next)||next===dimension)return;
+    if(!['2d','3d','list'].includes(next)||next===dimension)return;
+    // A direct List link can be opened before the plan has painted its first
+    // camera. Keep that frame booting until the 3D view can inherit a real pose.
+    if(next==='3d'&&!mapState?.camera){initial3d=true;return;}
+    const previousDimension=dimension;
     initial3d=false;
     dimension=next;
     const route=new URL(location.href);
-    if(next==='3d')route.searchParams.set('view','3d');else route.searchParams.delete('view');
+    if(next==='2d')route.searchParams.delete('view');else route.searchParams.set('view',next);
     history.replaceState(history.state,'',route);
     mode2d.setAttribute('aria-pressed',String(next==='2d'));
     mode3d.setAttribute('aria-pressed',String(next==='3d'));
+    modeList.setAttribute('aria-pressed',String(next==='list'));
+    frame.inert=next!=='2d';
+    frame.setAttribute('aria-hidden',String(next!=='2d'));
+    window.olrCampusList?.setVisible(next==='list');
     lightingPanel.hidden=next!=='3d';
     modelDownloads.hidden=next!=='3d';
     renderWalk();
     if(next!=='3d')lightingPanel.open=false;
+    if(next==='list'){
+      listReturnDimension=previousDimension;
+      try { if(previousDimension==='3d'&&modelReady&&!walkActive())modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
+      document.body.dataset.campusDimension='list';
+      sendPlanWalk();
+      sendModel('active',false);
+      if(modelFrame){modelFrame.hidden=true;modelFrame.setAttribute('aria-hidden','true');modelFrame.tabIndex=-1;}
+      if(mobile?.matches)expand(false);
+      return;
+    }
     if(walkActive()){
       // The same walker continues in both presentations. Its aerial camera is
       // kept separately and must never be replaced by the plan's follower view.
@@ -6505,14 +6993,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       sendPlanWalk();
       sendModel('walk-presentation',next);
       sendModel('active',true);
+      startQueuedWalk();
       renderWalk();
       requestAnimationFrame(focusWalk);
       return;
     }
     if(next==='3d'){
       if(mapState?.view==='existing')sendMap('map','shifted');
-      modelCamera=mapState?.camera || null;
-      requestMapCamera();
+      if(previousDimension!=='list'||listReturnDimension!=='3d'||!modelCamera){
+        modelCamera=mapState?.camera || null;
+        requestMapCamera();
+      }
       ensureModel();
       document.body.dataset.campusDimension='3d';
       if(modelReady)syncModel();
@@ -6521,10 +7012,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       // switching, even if its final gesture postMessage is still queued.
       try {
         const viewer=modelFrame?.contentWindow?.olr3d;
-        if(viewer?.ready)modelCamera=viewer.camera;
+        if(viewer?.ready&&(previousDimension==='3d'||listReturnDimension==='3d'))modelCamera=viewer.camera;
       } catch {}
       sendMap('drag-mode',dragMode);
-      if(modelCamera){
+      if(modelCamera&&(previousDimension==='3d'||listReturnDimension==='3d')){
         mapState={...mapState,...modelCamera,camera:modelCamera};
         sendMap('camera',modelCamera);
       }
@@ -6540,6 +7031,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   mode2d.addEventListener('click',()=>{initial3d=false;setDimension('2d');});
   mode3d.addEventListener('click',()=>setDimension('3d'));
+  modeList.addEventListener('click',()=>{initial3d=false;setDimension('list');});
   document.body.dataset.campusDimension='2d';
   function send(command,value){
     if(walkActive()&&['zoom','rotate','compass','north'].includes(command))return;
@@ -6649,7 +7141,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(s.view==='existing'&&walkActive()&&!queuedWalk&&walkPending!=='exit')requestWalk('walk-exit');
     // A legacy 3D link must wait for the map to boot before requesting its
     // initial camera, otherwise the iframe can miss the snapshot command.
-    if(initial3d){setDimension('3d');if(mobile?.matches)expand(true);}
+    if(initial3d&&s.camera){setDimension('3d');if(mobile?.matches)expand(true);}
     if(dimension==='3d'||walkActive()){
       const requestedCamera=modelNeedsMapCamera;
       if(modelNeedsMapCamera&&s.camera&&s.cameraRequest===pendingCameraRequest){modelCamera=s.camera;if(queuedWalk)walkAerialCamera=s.camera;if(!walkActive()||queuedWalk)sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});modelNeedsMapCamera=false;pendingCameraRequest=null;startQueuedWalk();}
@@ -6660,6 +7152,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   window.olrCampusView={
     get dimension(){return dimension;},get camera(){return dimension==='3d'?modelCamera:mapState?.camera;},get walk(){return {...walkState,pending:walkPending};},setDimension,
     handleKey(key){
+      if(dimension==='list')return true;
       if(key==='Escape'&&walkActive()){escapeWalk();return true;}
       if(dimension!=='3d')return false;
       if(key==='o'){oldBuildings.click();return true;}
@@ -6684,6 +7177,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   compass.addEventListener('click',event=>{if(moved){moved=false;event.preventDefault();return;}send('compass');});
   frame.addEventListener('load',connect);
   window.addEventListener('pageshow',connect);
+  if(new URL(location.href).searchParams.get('view')==='list')setDimension('list');
   connect();
 })();
 </script>
