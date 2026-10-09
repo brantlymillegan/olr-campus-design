@@ -1,20 +1,20 @@
 {
   "version": 4,
-  "cache_key": "9bdc27414db4f89217824f0add365fcdf94d7430a7fd556eb51526667c7f3fca",
-  "public_html_sha256": "3e2fe565bd2c479aa5abf23797a08a845b7afd4b6c161a2f6e676922834e6b50",
+  "cache_key": "05fd028a183d9439a44a7c9e42cbd35698673291bd0453b2996b50b2bec88c37",
+  "public_html_sha256": "f8473e8bd77bf4289591cfe2819b47e64d34d18db13f05e2e6d3cf5366256846",
   "combined_source_sha256": "f96535897555e43e81c40a7fd0280416266ec9f51706abe3526a39e04b54bdd8",
   "exporter_sha256": "ac694313b9c68f7082518355cc01a4b0d8edd7cdbc286e5923d1cb1f92312fa8",
   "renderer_harness_sha256": "8bde2227c12d94a61325554b2dd09a6402457daa1c8b23aa0e0bac8c5d535274",
   "renderer_elements_sha256": "f0999ce34fdc94c7e5a71609df0f0971a589fccb3e944911490dc18aa2a23988",
-  "perspective_manifest_sha256": "5fa72d483dd1c2c7fc8e250e88a00365ca0aaaac6c6571951c9c06aac377a665",
+  "perspective_manifest_sha256": "bfa2e903a752cc5a674524cadbc5935533f11221a4bc7ea92dfdf2249e340bd3",
   "cover_config_sha256": "2295205c97dca432a28f593c6f4876cb569d4d83d72ccc0378941aa4075cf814",
   "build_date": "2026-10-09",
   "pdf_library_sha256": "0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f",
   "cover_logo_sha256": "d7b4e89076862401a441f1ed727cd5d60e70621f49e97ba92af2810eded8fec4",
   "specs_data_sha256": "e27a5969833fa03d3bfc85efde2405cd0de3ee9f25c90935425bbd3c4aa1eb1a",
   "specs_renderer_sha256": "f57d180ab57654f243eaf3d890683d9d2c1ad14ef028300c1589497ea3d2769c",
-  "input_fingerprints_sha256": "a85dbb5e6b056c84c03a23eb780425b594824fe4fe99aef1d571d836f9dbd794",
-  "created_at": "2026-10-09T16:51:01.554Z",
+  "input_fingerprints_sha256": "c6766e769a4c045149f746603f0940b733c622cb101201f55be48084f3e456f5",
+  "created_at": "2026-10-09T16:57:18.095Z",
   "download_date": {
     "version": 1,
     "field": "olr.download-date",
@@ -275,9 +275,9 @@
       "overflow": false
     }
   ],
-  "pdf_sha256": "c8a6005bc7720726eb71dedbb5970cac50c5aa05e2b542612447828ee86a1b53",
-  "pdf_bytes": 4993647,
-  "preview_sha256": "76cbbc037b738b19f200217ef1abfa24893820ec6f573082a05edc92062ec078",
+  "pdf_sha256": "23666500e8a77c8908aacab341789cf05746dfbacb68dfaf0534364306b7390b",
+  "pdf_bytes": 4999339,
+  "preview_sha256": "b1b2c7b170d0dba40f243d32099abfc4615adacfe61145409bf8f0110d81f6c5",
   "renderer": "Canonical campus SVG and Blender perspectives, printed by Chromium",
   "browser_version": "154.0.8037.98",
   "pages": [
@@ -292,7 +292,7 @@
       "logo_sha256": "d7b4e89076862401a441f1ed727cd5d60e70621f49e97ba92af2810eded8fec4",
       "logo_source": "https://olr.church/wp-content/uploads/2023/04/olr-logo.png",
       "view_id": "playground-gardens",
-      "image_sha256": "cfe2c4ebb1978c4177864aa0d6ec9fb3998c997465bbde8f94c0ee13b55ffce7",
+      "image_sha256": "73afc630078833110ca16f096337e8b99c7bb75d37dc437fd84d9433798f38e5",
       "image_dimensions": [
         3072,
         2049
@@ -402,12 +402,12 @@
       "title": "New campus: 3D view from Frontage Road",
       "type": "3d-perspective",
       "view_id": "frontage-road",
-      "image_sha256": "005e83d09d16022171a46e64918e93a357487aa905e704320d8f49fc0aeb918c",
+      "image_sha256": "87824e26695d186e6325a6f83f98e53ef05fe7a32a80bb80177a62ea216e8342",
       "image_dimensions": [
         3072,
         1860
       ],
-      "model_sha256": "d53ecdcbc7cbcb3eac0cb4187f8e2fd8814d91189d4a24fdf1b249aa9bb21831",
+      "model_sha256": "efb2524da0c8987c71d83229c56a735affa2955adf9ee49659c054134227a44d",
       "camera": {
         "position_ft": [
           80,
@@ -428,12 +428,12 @@
       "title": "New campus: 3D view from James Drive",
       "type": "3d-perspective",
       "view_id": "james-drive",
-      "image_sha256": "42c1fa1f4dcd50839ce806636fd552fbdefc9b8c7615be94a46cfa4c7cc661e1",
+      "image_sha256": "fa2595b22d1ec2c1c57f2de6fd0ca8fcb365a8aac9ecfa2b4be4b9d97e76599e",
       "image_dimensions": [
         3072,
         1860
       ],
-      "model_sha256": "d53ecdcbc7cbcb3eac0cb4187f8e2fd8814d91189d4a24fdf1b249aa9bb21831",
+      "model_sha256": "efb2524da0c8987c71d83229c56a735affa2955adf9ee49659c054134227a44d",
       "camera": {
         "position_ft": [
           -80,
@@ -454,12 +454,12 @@
       "title": "New campus: 3D campus overview",
       "type": "3d-perspective",
       "view_id": "campus-overview",
-      "image_sha256": "689d99bc8bfed404326609638ee57e261086bb2d2dcf220fba8ae49e9e1e386c",
+      "image_sha256": "6be931e35d6d54c7e25c073419a206583e16bd112e21afac4fc7f94d84e6d6c1",
       "image_dimensions": [
         3072,
         1860
       ],
-      "model_sha256": "d53ecdcbc7cbcb3eac0cb4187f8e2fd8814d91189d4a24fdf1b249aa9bb21831",
+      "model_sha256": "efb2524da0c8987c71d83229c56a735affa2955adf9ee49659c054134227a44d",
       "camera": {
         "position_ft": [
           -800,
@@ -479,12 +479,12 @@
       "title": "New campus: 3D playground and Guardian Angel garden",
       "type": "3d-perspective",
       "view_id": "playground-gardens",
-      "image_sha256": "cfe2c4ebb1978c4177864aa0d6ec9fb3998c997465bbde8f94c0ee13b55ffce7",
+      "image_sha256": "73afc630078833110ca16f096337e8b99c7bb75d37dc437fd84d9433798f38e5",
       "image_dimensions": [
         3072,
         2049
       ],
-      "model_sha256": "d53ecdcbc7cbcb3eac0cb4187f8e2fd8814d91189d4a24fdf1b249aa9bb21831",
+      "model_sha256": "efb2524da0c8987c71d83229c56a735affa2955adf9ee49659c054134227a44d",
       "camera": {
         "position_ft": [
           -239.35553444751628,
