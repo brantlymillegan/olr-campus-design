@@ -19,7 +19,10 @@ function walkThroughObject(object) {
   return false;
 }
 function walkThroughMaterial(material) {
-  return material?.userData?.walkThrough === true || /Interior[\s_.•-]+door[\s_.•-]+leaf/i.test(material?.name || '');
+  const name = material?.name || '';
+  return material?.userData?.walkThrough === true
+    || /Interior[\s_.•-]+door[\s_.•-]+leaf/i.test(name)
+    || /^Interior[\s_.•-]+furniture(?:[\s_.•-]|$)/i.test(name);
 }
 function walkThroughHit(hit) {
   const materials = hit.object.material;
@@ -47,7 +50,8 @@ function makeSurfaceIndex(model) {
   model.traverse(object => {
     if (!object.isMesh || !object.visible || !object.geometry?.attributes.position) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
-    // Door leaves remain visible but never add a hidden wall or a false floor.
+    // Door leaves and furniture stay visible but never block movement,
+    // become a stepping surface, or intercept a placement ray.
     // Exporters may preserve extras on a parent, or consolidate by material.
     if (walkThroughObject(object) || materials.every(walkThroughMaterial)) {
       walkThroughMeshes++;

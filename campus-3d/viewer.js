@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=c5463daed195a5e7';
-import { createCampusWalk } from './campus-walk.js?v=9d2907b51d4376a6';
+import { createCampusWalk } from './campus-walk.js?v=766d42beb01a3315';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=57009a4acce3f5d2';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
