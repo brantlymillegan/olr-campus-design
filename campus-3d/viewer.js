@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
+const ASSET_REVISION = 'd713d836bde10a67';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -158,10 +159,10 @@ async function init() {
   new ResizeObserver(resize).observe(wrap);
   resize();
   const [gltf, cameraConfig] = await Promise.all([
-    new GLTFLoader().loadAsync('./OLR-New-Campus.glb', event => {
+    new GLTFLoader().loadAsync(`./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
       document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
     }),
-    fetch('./views.json').then(response => response.ok ? response.json() : {}).catch(() => ({}))
+    fetch(`./views.json?v=${ASSET_REVISION}`).then(response => response.ok ? response.json() : {}).catch(() => ({}))
   ]);
   model = gltf.scene;
   model.traverse(object => {
