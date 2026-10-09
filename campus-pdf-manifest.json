@@ -1,7 +1,7 @@
 {
   "version": 4,
-  "cache_key": "652d8c3a2ee3ef76c9d0fd38961a6100f90d07d8ad71952235a6ddd2c38f16fc",
-  "public_html_sha256": "93c395567ceaf76003af6a7f9b7e7b05618e9e9cb0d34d90898b92cfcaec14d8",
+  "cache_key": "9bdc27414db4f89217824f0add365fcdf94d7430a7fd556eb51526667c7f3fca",
+  "public_html_sha256": "3e2fe565bd2c479aa5abf23797a08a845b7afd4b6c161a2f6e676922834e6b50",
   "combined_source_sha256": "f96535897555e43e81c40a7fd0280416266ec9f51706abe3526a39e04b54bdd8",
   "exporter_sha256": "ac694313b9c68f7082518355cc01a4b0d8edd7cdbc286e5923d1cb1f92312fa8",
   "renderer_harness_sha256": "8bde2227c12d94a61325554b2dd09a6402457daa1c8b23aa0e0bac8c5d535274",
@@ -13,8 +13,8 @@
   "cover_logo_sha256": "d7b4e89076862401a441f1ed727cd5d60e70621f49e97ba92af2810eded8fec4",
   "specs_data_sha256": "e27a5969833fa03d3bfc85efde2405cd0de3ee9f25c90935425bbd3c4aa1eb1a",
   "specs_renderer_sha256": "f57d180ab57654f243eaf3d890683d9d2c1ad14ef028300c1589497ea3d2769c",
-  "input_fingerprints_sha256": "02853417e839c011093a2becb32928ed38fa155db9cff43fb6fb4a4af0158e4f",
-  "created_at": "2026-10-09T16:35:45.850Z",
+  "input_fingerprints_sha256": "a85dbb5e6b056c84c03a23eb780425b594824fe4fe99aef1d571d836f9dbd794",
+  "created_at": "2026-10-09T16:51:01.554Z",
   "download_date": {
     "version": 1,
     "field": "olr.download-date",
@@ -275,7 +275,7 @@
       "overflow": false
     }
   ],
-  "pdf_sha256": "a574ebe0878d8b814e822b2b570ab9d2173241bba7ff6fdaf61ab8bacfd9e73e",
+  "pdf_sha256": "c8a6005bc7720726eb71dedbb5970cac50c5aa05e2b542612447828ee86a1b53",
   "pdf_bytes": 4993647,
   "preview_sha256": "76cbbc037b738b19f200217ef1abfa24893820ec6f573082a05edc92062ec078",
   "renderer": "Canonical campus SVG and Blender perspectives, printed by Chromium",
