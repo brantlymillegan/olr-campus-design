@@ -1,4 +1,5 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
+import { createCampusLighting, formatTime, lightingAtTime, normalizeMinutes } from './campus-lighting.js?v=0e3eb9b504964545';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -14,7 +15,7 @@ let themePreference = 'system', resolvedTheme = 'light', active = !EMBEDDED;
 let hemi, sun, oldOutlines, oldOutlinePolygons = [], oldOutlineVisible = true;
 let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARING, tilt: DEFAULT_TILT, zoom: 1, width: innerWidth, height: innerHeight };
 let savedEmbeddedCamera = null, dragMode = 'rotate';
-const materialColors = new Map();
+let campusLighting = null, timeOfDay = 840, lightingDirty = true;
 const ASSET_REVISION = '26a378d94d922af1';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
@@ -57,6 +58,11 @@ function draw(now = performance.now()) {
     if (t === 1) transition = null;
   }
   const changed = controls?.update();
+  if (lightingDirty && campusLighting) {
+    campusLighting.setTime(timeOfDay);
+    lightingDirty = false;
+    updateOutlineColor();
+  }
   renderer.render(scene, camera);
   renderedFrames++;
   if (transition || changed) requestDraw();
@@ -216,30 +222,38 @@ function applyTheme(explicitResolved) {
   document.documentElement.dataset.theme = resolvedTheme;
   document.getElementById('viewer-theme').value = themePreference;
   document.querySelector('meta[name="theme-color"]').content = dark ? '#181818' : '#ffffff';
-  if (!scene) return;
-  scene.background.set(dark ? 0x181818 : 0xffffff);
-  renderer.setClearColor(scene.background);
-  scene.environmentIntensity = dark ? 0.34 : 0.28;
-  hemi.color.set(dark ? 0xbdd5f1 : 0xd3e3f0);
-  hemi.groundColor.set(dark ? 0x50545b : 0x6c735f);
-  hemi.intensity = dark ? 1.55 : 1.6;
-  sun.color.set(dark ? 0xdbe9ff : 0xfff8ef);
-  sun.intensity = dark ? 1.9 : 2.5;
-  model?.traverse(object => {
-    if (!object.isMesh) return;
-    for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
-      if (!material.color) continue;
-      if (!materialColors.has(material)) materialColors.set(material, material.color.clone());
-      material.color.copy(materialColors.get(material));
-      if (dark) {
-        const name = material.name.toLowerCase();
-        material.color.multiplyScalar(/lawn|foliage|grass|garden|mulch/.test(name) ? 0.52 : /stone|concrete|paver|roof|wall|stucco|limestone/.test(name) ? 0.72 : 0.88);
-      }
-    }
-  });
-  oldOutlines?.traverse(object => { if (object.isLine) object.material.color.set(dark ? 0xffffff : 0x303030); });
+  updateOutlineColor();
   requestDraw();
 }
+function updateOutlineColor() {
+  const darkScene = (campusLighting?.state?.daylight ?? lightingAtTime(timeOfDay).daylight) < .3;
+  oldOutlines?.traverse(object => { if (object.isLine) object.material.color.set(darkScene ? 0xffffff : 0x303030); });
+}
+function setTimeOfDay(value, persist = true) {
+  timeOfDay = normalizeMinutes(value);
+  const clock = document.getElementById('time-of-day');
+  const label = formatTime(timeOfDay);
+  clock.value = String(timeOfDay);
+  clock.setAttribute('aria-valuetext', label);
+  document.getElementById('time-of-day-label').textContent = label;
+  document.getElementById('time-of-day-phase').textContent = lightingAtTime(timeOfDay).phase;
+  document.querySelectorAll('[data-time-minutes]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.timeMinutes) === timeOfDay)));
+  if (persist) { try { localStorage.setItem('olr-campus-time-of-day', String(timeOfDay)); } catch {} }
+  lightingDirty = true;
+  requestDraw();
+}
+function setupTimeOfDay() {
+  try { const saved = localStorage.getItem('olr-campus-time-of-day'); if (saved !== null) timeOfDay = normalizeMinutes(saved); } catch {}
+  setTimeOfDay(timeOfDay, false);
+  const slider = document.getElementById('time-of-day');
+  slider.addEventListener('input', () => setTimeOfDay(slider.value, false));
+  slider.addEventListener('change', () => setTimeOfDay(slider.value));
+  document.querySelectorAll('[data-time-minutes]').forEach(button => button.addEventListener('click', () => setTimeOfDay(button.dataset.timeMinutes)));
+  window.addEventListener('storage', event => {
+    if (event.key === 'olr-campus-time-of-day') setTimeOfDay(event.newValue === null ? 840 : event.newValue, false);
+  });
+}
+
 function setOldOutlines(value) {
   if (typeof value === 'boolean') oldOutlineVisible = value;
   else if (value && typeof value === 'object') {
@@ -266,6 +280,7 @@ function setOldOutlines(value) {
     line.computeLineDistances(); line.renderOrder = 1000; oldOutlines.add(line);
   }
   scene.add(oldOutlines);
+  updateOutlineColor();
   requestDraw();
 }
 function installEmbeddedNavigation() {
@@ -364,6 +379,8 @@ window.addEventListener('message', event => {
   } else if (command === 'theme') {
     if (['system', 'light', 'dark'].includes(value?.preference)) themePreference = value.preference;
     applyTheme(['light', 'dark'].includes(value?.resolved) ? value.resolved : undefined);
+  } else if (command === 'time-of-day' && typeof value === 'number' && Number.isFinite(value)) {
+    setTimeOfDay(value);
   } else if (command === 'oldBuildings') setOldOutlines(value);
   else if (command === 'outlines') setOldOutlines({ visible: value?.visible, polygons: value?.rings });
   else if (command === 'drag-mode') setDragMode(value);
@@ -377,6 +394,7 @@ let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return Boolean(model); }, get embedded() { return EMBEDDED; }, get active() { return active; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
+  get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   project(x, y, elevationFeet = 0) {
@@ -503,11 +521,9 @@ async function init() {
     controls.minDistance = Math.max(3, extent * 0.025);
     controls.maxDistance = fitDistance * 3.0;
   }
-  sun.position.copy(target).add(new THREE.Vector3(-extent * 0.4, extent * 0.75, extent * 0.6));
-  sun.target.position.copy(target);
-  Object.assign(sun.shadow.camera, { left: -extent * 0.7, right: extent * 0.7, top: extent * 0.7, bottom: -extent * 0.7, near: 1, far: extent * 3 });
-  sun.shadow.camera.updateProjectionMatrix();
-  renderer.shadowMap.needsUpdate = true;
+  campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
+  campusLighting.setTime(timeOfDay);
+  lightingDirty = false;
   applyTheme();
   if (EMBEDDED) applyEmbeddedCamera();
   else selectView('overview', false);
@@ -541,6 +557,7 @@ for (const event of ['fullscreenchange', 'webkitfullscreenchange']) document.add
   fullscreen.title = isFullscreen() ? 'Exit full screen' : 'Full screen';
 });
 setupTheme();
+setupTimeOfDay();
 if (EMBEDDED) document.documentElement.classList.add('embedded');
 document.addEventListener('visibilitychange', requestDraw);
 init().catch(fail);
