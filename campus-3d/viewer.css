@@ -10,3 +10,16 @@
 @media(min-width:761px) and (max-width:820px){.views{bottom:126px}}
 @media(max-width:760px){.navigation{left:20px;right:20px;justify-content:center}.navigation button{width:38px}.navigation button[data-drag-mode]{width:auto}}
 @media(max-width:400px){.navigation{left:12px;right:12px;gap:1px}.navigation button{width:36px}.navigation button[data-drag-mode]{padding:0 8px}}
+
+/* The main map shell owns one shared toolbar in embedded mode. */
+html.embedded .masthead,html.embedded .views,html.embedded .navigation,html.embedded footer,html.embedded .preview{display:none!important}
+html.embedded #viewer{height:100%;min-height:100dvh}
+:root{--cream:#fff;--hover:#e6eade;--panel-border:#fffdf6;--selected-text:#fffdf6}
+:root[data-theme=dark]{color-scheme:dark;--cream:#181818;--paper:#232323ed;--forest:#efefea;--muted:#b6beb7;--line:#4c514c;--shadow:0 6px 24px #0004;--hover:#393e39;--panel-border:#454845;--selected-text:#181818}
+.panel{border-color:var(--panel-border)}.masthead{background:linear-gradient(var(--cream) 15%,transparent)}.downloads[open],.error,.help>div{background:var(--paper)}.download-menu a:hover,.views button:hover:not(:disabled),.navigation button:hover:not(:disabled){background:var(--hover)}.views button[aria-pressed=true],.views button[aria-pressed=true]:hover:not(:disabled),.navigation button[data-drag-mode][aria-pressed=true]{background:var(--forest);color:var(--selected-text)}
+.theme-control{display:flex;gap:6px;align-items:center;font-size:11px;padding:0 5px}.theme-control select{font:inherit;border:1px solid var(--line);background:var(--paper);color:var(--forest);border-radius:6px;padding:8px 5px;min-height:36px}
+@media(max-width:760px){.theme-control{font-size:10px}.theme-control select{padding:7px 2px}.navigation{flex-wrap:wrap}.navigation button{width:34px}.navigation button[data-drag-mode]{padding:0 6px}}
+@media(min-width:761px) and (max-width:1050px){.views{bottom:126px}}
+
+.footer-notes{display:flex;align-items:center;gap:18px}.boundary-key{display:flex;align-items:center;gap:7px;color:var(--forest)}.boundary-key i{display:block;width:24px;height:5px;background:#eeb33c;border:1px solid #344137;border-radius:2px}@media(max-width:760px){.footer-notes{align-items:flex-start;flex-direction:column;gap:3px;font-size:9px}}
+@media(max-width:760px){.views{bottom:160px}}

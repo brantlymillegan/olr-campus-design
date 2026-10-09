@@ -1270,6 +1270,10 @@ html>body { padding:0; }
 .campus-compass { grid-area:north; }
 .campus-display-tools { grid-area:display; }
 .campus-view-3d { grid-area:three; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; }
+.campus-view-3d { justify-content:flex-start; }
+#campus-3d-frame { position:fixed; inset:0; z-index:1; width:100%; height:100%; border:0; background:var(--background); }
+#campus-3d-frame[hidden] { display:none; }
+body[data-campus-dimension="3d"] #codex-visualization { visibility:hidden; pointer-events:none; }
 .campus-view-3d svg { flex:none; pointer-events:none; }
 .campus-view-3d:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .campus-download-pdf { grid-area:download; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; }
@@ -1374,6 +1378,8 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
       frame.style.colorScheme = current.resolved;
       frame.contentWindow?.postMessage({type: 'olr-theme', ...current}, '*');
     }
+    const modelFrame = document.getElementById('campus-3d-frame');
+    modelFrame?.contentWindow?.postMessage({type:'olr-3d-command',command:'theme',value:current}, '*');
   }
   // Apply before the first paint and before the sandbox's bootstrap is created.
   apply();
@@ -1433,11 +1439,11 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     </label>
     <button type="button" class="btn" id="campus-fullscreen" disabled>Full screen</button>
   </div>
-  <a class="btn campus-view-3d" id="campus-view-3d" href="./campus-3d/" aria-label="Explore the new campus in 3D">
-    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m10 2 7 4v8l-7 4-7-4V6zM3 6l7 4 7-4M10 10v8"/></svg>
-    3D campus
-  </a>
-  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=6a8f50f27e7829e8" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
+  <div class="campus-view-3d" role="group" aria-label="Map dimension">
+    <button type="button" class="btn" id="campus-view-2d" aria-pressed="true">2D map</button>
+    <button type="button" class="btn" id="campus-view-3d" aria-pressed="false">3D campus</button>
+  </div>
+  <a class="btn campus-download-pdf" id="campus-download-pdf" href="./OLR-Campus-Maps.pdf?v=3017f0a7f6bdf037" download="OLR-Campus-Maps.pdf" aria-label="Download PDF of all six campus map views">
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"/></svg>
     Download PDF
   </a>
@@ -4665,7 +4671,19 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   window.olrMapZoom={get value(){return zoom;},min:1,max:32,set:setZoom,in:()=&gt;setZoom(zoom*1.5),out:()=&gt;setZoom(zoom/1.5),fit,
     // Both maps use one camera. A hidden SVG cannot overwrite a pending pose.
     remember(){},restore:redraw};
-  window.olrMapCamera={get bearing(){return bearing;},get rotation(){return northAngle+bearing;},get center(){return center?{...center}:null;},setBearing,north:()=&gt;setBearing(0),toggleOrientation,worldAt,screenAt};
+  const snapshot=()=&gt;{
+    const stage=active(),m=stage&amp;&amp;measure(stage);
+    return m&amp;&amp;center?{center:{...center},scale:m.scale,zoom,bearing,width:m.width,height:m.height}:null;
+  };
+  const setPose=pose=&gt;{
+    if(!pose?.center||![pose.center.x,pose.center.y,pose.bearing,pose.scale].every(Number.isFinite)||pose.scale&lt;=0)return;
+    const stage=active(),m=stage&amp;&amp;measure(stage);
+    if(!m)return;
+    center={...pose.center};bearing=wrap(pose.bearing);
+    zoom=Math.min(32,Math.max(1,pose.scale/m.base));
+    redraw(false);idleDetails();
+  };
+  window.olrMapCamera={get bearing(){return bearing;},get rotation(){return northAngle+bearing;},get center(){return center?{...center}:null;},snapshot,setPose,setBearing,north:()=&gt;setBearing(0),toggleOrientation,worldAt,screenAt};
   window.olrFitCanvas=(svg,dx,dy,top,bottom)=&gt;{
     const stage=svg.parentElement,state=stateFor(stage);
     if (![dx,dy,top,bottom].every(Number.isFinite)||dx&lt;=0||dy&lt;=0) return null;
@@ -4938,16 +4956,21 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let connected = false;
   let lastPublished = null;
   const campus = document.getElementById(&#x27;fc-parking-comparison&#x27;);
+  const campusData = JSON.parse(document.getElementById(&#x27;fc-east-shift-data&#x27;).textContent);
+  const bbox = campusData.bbox;
   const floors = [...root.querySelectorAll(&#x27;[data-campus-floor]&#x27;)];
   function publish() {
     if (!connected) return;
     const zoom = window.olrMapZoom;
+    const camera = window.olrMapCamera?.snapshot();
+    if(camera)camera.center={x:camera.center.x+bbox[0],y:bbox[3]-camera.center.y};
     const state = {type:&#x27;olr-tools-state&#x27;,
       view: document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27; ? &#x27;existing&#x27; : &#x27;shifted&#x27;,
       floor: Number(floors.find(b=&gt;b.getAttribute(&#x27;aria-pressed&#x27;) === &#x27;true&#x27;)?.dataset.campusFloor ?? 1),
       zoom: zoom?.value ?? 1, minZoom: zoom?.min ?? 1, maxZoom: zoom?.max ?? 32,
       bearing: window.olrMapCamera?.bearing ?? 0,
-      oldBuildings: campus?.oldBuildingsVisible ?? true
+      oldBuildings: campus?.oldBuildingsVisible ?? true,
+      camera
     };
     // Camera frames may change only the transform, or reach the same zoom limit.
     // Avoid delivering duplicate states to the parent controls.
@@ -4962,9 +4985,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (command === &#x27;connect&#x27;) {
       connected = true;
       lastPublished = null;
+      window.parent.postMessage({type:&#x27;olr-tools-data&#x27;,oldBuildingPolygons:campusData.existing.buildings.filter(building=&gt;building.remove_in_proposal).flatMap(building=&gt;building.rings)}, &#x27;*&#x27;);
       root.dataset.externalTools = &#x27;true&#x27;;
       window.olrMapZoom?.restore();
     } else if (!connected) return;
+    else if (command === &#x27;camera&#x27; &amp;&amp; value?.center) {
+      window.olrMapCamera?.setPose({...value,center:{x:value.center.x-bbox[0],y:bbox[3]-value.center.y}});
+    }
     else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
     else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
       if (document.getElementById(&#x27;fc-shifted-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) !== &#x27;true&#x27;) document.getElementById(&#x27;fc-shifted-tab&#x27;).click();
@@ -4978,12 +5005,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     else if (command === &#x27;rotate&#x27; &amp;&amp; Number.isFinite(value) &amp;&amp; Math.abs(value) &lt;= 180) window.olrMapCamera?.setBearing(window.olrMapCamera.bearing + value);
     else return;
+    if(command===&#x27;zoom&#x27;&amp;&amp;value===&#x27;fit&#x27;)lastPublished=null;
     publish();
   });
   document.addEventListener(&#x27;olr-map-view-change&#x27;, publish);
   document.addEventListener(&#x27;olr-map-layer-change&#x27;, publish);
   window.addEventListener(&#x27;olr-camera-change&#x27;, publish);
-  window.parent.postMessage({type:&#x27;olr-tools-ready&#x27;}, &#x27;*&#x27;);
+  window.parent.postMessage({type:&#x27;olr-tools-ready&#x27;,oldBuildingPolygons:campusData.existing.buildings.filter(building=&gt;building.remove_in_proposal).flatMap(building=&gt;building.rings)}, &#x27;*&#x27;);
 })();
 
   &lt;/script&gt;
@@ -5884,7 +5912,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
     const data=key==='t'?{type:'olr-toggle-active-view'}:key==='f'?{type:'olr-toggle-story'}:key==='b'?{type:'olr-toggle-buildings'}:key==='o'?{type:'olr-toggle-old-buildings'}:
       {type:'olr-zoom-command',command:key==='0'?'fit':key==='n'?'north':key==='-'?'out':'in'};
-    event.preventDefault();frame.contentWindow?.postMessage(data, '*');
+    event.preventDefault();
+    if(globalThis.olrCampusView?.handleKey(key))return;
+    frame.contentWindow?.postMessage(data, '*');
   });
 })();
 </script>
@@ -5901,8 +5931,14 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const needle = document.getElementById('campus-compass-needle');
   const toggle = document.getElementById('campus-tools-toggle');
   const oldBuildings = document.getElementById('campus-old-buildings');
+  const mode2d = document.getElementById('campus-view-2d');
+  const mode3d = document.getElementById('campus-view-3d');
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
-  let expanded = false, renderedState = null;
+  let expanded = false, renderedState = null, mapState = null, modelCamera = null;
+  let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
+  let oldBuildingPolygons = [];
+  const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
+  const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
   function expand(next) {
     expanded = next;
     panel.dataset.mobileExpanded = String(expanded);
@@ -5915,67 +5951,147 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (event.key === 'Escape' && expanded && mobile?.matches) { expand(false);toggle?.focus?.(); }
   });
   expand(false);
-  const send = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
-  const connect = () => send('connect');
-  maps.forEach(b=>b.addEventListener('click',()=>send('map',b.dataset.campusMap)));
+  function syncModel() {
+    sendModel('theme',window.olrThemeState?.() || {preference:'system',resolved:'light'});
+    if(mapState?.camera)sendModel('camera',{...mapState.camera,oldBuildings:mapState.oldBuildings!==false});
+    sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
+    sendModel('active',dimension==='3d');
+  }
+  function setDimension(next) {
+    if(next===dimension)return;
+    dimension=next;
+    mode2d.setAttribute('aria-pressed',String(next==='2d'));
+    mode3d.setAttribute('aria-pressed',String(next==='3d'));
+    if(next==='3d'){
+      if(mapState?.view==='existing')sendMap('map','shifted');
+      modelNeedsMapCamera=true;
+      modelCamera=mapState?.camera || null;
+      if(!modelFrame){
+        modelFrame=document.createElement('iframe');
+        modelFrame.id='campus-3d-frame';
+        modelFrame.title='Interactive 3D campus';
+        modelFrame.src='./campus-3d/?embedded=1&v=ce2354b6ef726548';
+        modelFrame.addEventListener('load',syncModel);
+        document.body.appendChild(modelFrame);
+      }
+      modelFrame.hidden=false;
+      document.body.dataset.campusDimension='3d';
+      if(modelReady){syncModel();modelNeedsMapCamera=false;}
+    }else{
+      if(modelCamera){
+        mapState={...mapState,...modelCamera,camera:modelCamera};
+        sendMap('camera',modelCamera);
+      }
+      sendModel('active',false);
+      // Let the map repaint the transferred camera before revealing it.
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        if(dimension!=='2d')return;
+        document.body.dataset.campusDimension='2d';
+        if(modelFrame)modelFrame.hidden=true;
+      }));
+    }
+  }
+  mode2d.addEventListener('click',()=>setDimension('2d'));
+  mode3d.addEventListener('click',()=>setDimension('3d'));
+  document.body.dataset.campusDimension='2d';
+  function send(command,value){
+    if(dimension==='3d'&&['zoom','rotate','compass','north'].includes(command)){
+      if(command==='zoom'&&value==='fit'){
+        modelNeedsMapCamera=true;sendMap('zoom','fit');
+      }else sendModel(command,value);
+      return;
+    }
+    sendMap(command,value);
+  }
+  const connect=()=>sendMap('connect');
+  maps.forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.campusMap==='existing')setDimension('2d');
+    sendMap('map',b.dataset.campusMap);
+  }));
   oldBuildings?.addEventListener('click',()=>{
-    if(!oldBuildings.disabled)send('old-buildings',oldBuildings.getAttribute('aria-pressed')!=='true');
+    if(!oldBuildings.disabled)sendMap('old-buildings',oldBuildings.getAttribute('aria-pressed')!=='true');
   });
   floors.forEach(b=>b.addEventListener('click',()=>{
-    if (b.disabled) return;
-    send('floor',Number(b.dataset.campusFloor));
-    if (mobile?.matches && expanded) {
-      expand(false);
-      if (b.dataset.campusFloor === '0') toggle?.focus?.();
-    }
+    if(b.disabled)return;
+    setDimension('2d');sendMap('floor',Number(b.dataset.campusFloor));
+    if(mobile?.matches&&expanded){expand(false);if(b.dataset.campusFloor==='0')toggle?.focus?.();}
   }));
   zoom.forEach(b=>b.addEventListener('click',()=>send('zoom',b.dataset.campusZoom)));
-  window.addEventListener('message', event => {
-    if (event.source !== frame.contentWindow) return;
-    const s = event.data;
-    if (s?.type === 'olr-tools-ready') { connect(); return; }
-    if (s?.type !== 'olr-tools-state' || !['existing','shifted'].includes(s.view) || ![0,1,2].includes(s.floor) ||
-        ![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite)) return;
-    const previous = renderedState;
-    // Updating the camera must not invalidate every control's style and layout.
-    if (!previous || previous.view !== s.view) {
-      maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap === s.view)));
-      floorGroup.hidden = false;
-      floorGroup.setAttribute('aria-disabled',String(s.view !== 'shifted'));
-      floors.forEach(b=>{ b.disabled = s.view !== 'shifted'; });
+  function render(s){
+    const previous=renderedState;
+    if(!previous||previous.view!==s.view){
+      maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap===s.view)));
+      floorGroup.hidden=false;
+      floorGroup.setAttribute('aria-disabled',String(s.view!=='shifted'));
+      floors.forEach(b=>{b.disabled=s.view!=='shifted';});
       if(oldBuildings)oldBuildings.disabled=s.view!=='shifted';
     }
-    if (!previous || previous.floor !== s.floor) {
-      floors.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor) === s.floor)));
-    }
-    if(oldBuildings){
-      if (!previous || previous.oldBuildings !== (s.oldBuildings!==false)) oldBuildings.setAttribute('aria-pressed',String(s.oldBuildings!==false));
-    }
+    if(!previous||previous.floor!==s.floor)floors.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor)===s.floor)));
+    if(oldBuildings&&(!previous||previous.oldBuildings!==(s.oldBuildings!==false)))oldBuildings.setAttribute('aria-pressed',String(s.oldBuildings!==false));
     zoom.forEach(b=>{
-      const disabled = b.dataset.campusZoom === 'out' ? s.zoom <= s.minZoom : b.dataset.campusZoom === 'in' ? s.zoom >= s.maxZoom : false;
-      if (!previous || b.disabled !== disabled) b.disabled = disabled;
+      const disabled=b.dataset.campusZoom==='out'?s.zoom<=s.minZoom:b.dataset.campusZoom==='in'?s.zoom>=s.maxZoom:false;
+      if(b.disabled!==disabled)b.disabled=disabled;
     });
-    if (!previous || previous.bearing !== s.bearing) {
-      needle.style.transform = `rotate(${s.bearing}deg)`;
-      const label = Math.abs(s.bearing) < 1e-7 ? 'North is up. Click to align Building 1 with the screen.' : `North points ${Math.round((s.bearing+360)%360)} degrees clockwise from up. Click to return north to the top.`;
-      if (compass.getAttribute('aria-label') !== label) compass.setAttribute('aria-label',label);
+    if(!previous||previous.bearing!==s.bearing){
+      needle.style.transform=`rotate(${s.bearing}deg)`;
+      const label=Math.abs(s.bearing)<1e-7?'North is up. Click to align Building 1 with the screen.':`North points ${Math.round((s.bearing+360)%360)} degrees clockwise from up. Click to return north to the top.`;
+      compass.setAttribute('aria-label',label);
     }
-    renderedState = {view:s.view, floor:s.floor, bearing:s.bearing, oldBuildings:s.oldBuildings!==false};
+    renderedState={...s,oldBuildings:s.oldBuildings!==false};
+  }
+  const validCamera=c=>c?.center&&[c.center.x,c.center.y,c.scale,c.bearing,c.zoom].every(Number.isFinite)&&c.scale>0;
+  window.addEventListener('message',event=>{
+    const s=event.data;
+    if(modelFrame&&event.source===modelFrame.contentWindow&&event.origin===location.origin){
+      if(s?.type==='olr-3d-ready'){modelReady=true;if(dimension==='3d'){syncModel();modelNeedsMapCamera=false;}else sendModel('active',false);}
+      else if(s?.type==='olr-3d-state'&&dimension==='3d'&&validCamera(s.camera)){
+        modelCamera=s.camera;
+        if(mapState)render({...mapState,...s.camera});
+      }else if(s?.type==='olr-3d-key')window.olrCampusView.handleKey(s.key);
+      return;
+    }
+    if(event.source!==frame.contentWindow)return;
+    if(s?.type==='olr-tools-data'&&Array.isArray(s.oldBuildingPolygons)){
+      oldBuildingPolygons=s.oldBuildingPolygons;
+      if(dimension==='3d')sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
+      return;
+    }
+    if(s?.type==='olr-tools-ready'){
+      if(Array.isArray(s.oldBuildingPolygons))oldBuildingPolygons=s.oldBuildingPolygons;
+      connect();return;
+    }
+    if(s?.type!=='olr-tools-state'||!['existing','shifted'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
+    const previous=mapState;mapState=s;
+    if(dimension==='3d'){
+      if(modelNeedsMapCamera&&s.camera){modelCamera=s.camera;sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});modelNeedsMapCamera=false;}
+      if(!previous||previous.oldBuildings!==s.oldBuildings)sendModel('oldBuildings',{visible:s.oldBuildings!==false,polygons:oldBuildingPolygons});
+      render({...s,...(modelCamera||{})});
+    }else render(s);
   });
-  let drag = null, moved = false;
-  const angle = event => { const b=compass.getBoundingClientRect(); return Math.atan2(event.clientY-b.top-b.height/2,event.clientX-b.left-b.width/2)*180/Math.PI; };
-  compass.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return;
-    drag = {id:event.pointerId, angle:angle(event), x:event.clientX, y:event.clientY}; moved=false;
-    compass.setPointerCapture?.(event.pointerId);
+  window.olrCampusView={
+    get dimension(){return dimension;},get camera(){return dimension==='3d'?modelCamera:mapState?.camera;},setDimension,
+    handleKey(key){
+      if(dimension!=='3d')return false;
+      if(key==='o'){oldBuildings.click();return true;}
+      if(key==='t'){setDimension('2d');sendMap('map','existing');return true;}
+      if(key==='b'||key==='f'){setDimension('2d');sendMap('floor',key==='b'?0:mapState?.floor===1?2:1);return true;}
+      if(['+','=','-','0','n'].includes(key)){send(key==='n'?'north':'zoom',key==='0'?'fit':key==='-'?'out':'in');return true;}
+      return false;
+    }
+  };
+  let drag=null,moved=false;
+  const angle=event=>{const b=compass.getBoundingClientRect();return Math.atan2(event.clientY-b.top-b.height/2,event.clientX-b.left-b.width/2)*180/Math.PI;};
+  compass.addEventListener('pointerdown',event=>{
+    if(event.button!==0)return;
+    drag={id:event.pointerId,angle:angle(event),x:event.clientX,y:event.clientY};moved=false;compass.setPointerCapture?.(event.pointerId);
   });
-  compass.addEventListener('pointermove', event => {
-    if (!drag || event.pointerId !== drag.id || (!moved && Math.hypot(event.clientX-drag.x,event.clientY-drag.y) <= 4)) return;
-    const next=angle(event), delta=((next-drag.angle+540)%360)-180;
-    send('rotate',delta); drag.angle=next; moved=true; event.preventDefault();
+  compass.addEventListener('pointermove',event=>{
+    if(!drag||event.pointerId!==drag.id||(!moved&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<=4))return;
+    const next=angle(event),delta=((next-drag.angle+540)%360)-180;
+    send('rotate',delta);drag.angle=next;moved=true;event.preventDefault();
   });
-  for (const type of ['pointerup','pointercancel','lostpointercapture']) compass.addEventListener(type,()=>{drag=null;});
-  compass.addEventListener('click', event => { if (moved) {moved=false;event.preventDefault();return;} send('compass'); });
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])compass.addEventListener(type,()=>{drag=null;});
+  compass.addEventListener('click',event=>{if(moved){moved=false;event.preventDefault();return;}send('compass');});
   frame.addEventListener('load',connect);
   window.addEventListener('pageshow',connect);
   connect();

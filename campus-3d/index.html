@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f3f0e8">
+  <meta name="theme-color" content="#ffffff">
+  <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded");try{const p=localStorage.getItem("olr-campus-theme")||"system";document.documentElement.dataset.theme=p==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):p;}catch{}</script>
   <meta name="description" content="Explore the proposed Our Lady of the Rosary campus in 3D, including the church, Guadalupe Hall, new school buildings, gardens and playgrounds.">
   <title>New campus in 3D · Our Lady of the Rosary</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./viewer.css?v=b2836128e510b4cb">
+  <link rel="stylesheet" href="./viewer.css?v=d26907c7b6608c4f">
   <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
 </head>
 <body>
@@ -45,12 +46,13 @@
       <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (+)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg></button>
       <button type="button" id="fit" aria-label="Fit campus to screen" title="Fit campus (0)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m6 0h4v-4"/></svg></button>
       <span class="divider"></span>
+      <label class="theme-control">Theme <select id="viewer-theme" aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button type="button" id="fullscreen" aria-label="Enter full screen" title="Full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 2H2v5m11-5h5v5M2 13v5h5m6 0h5v-5"/></svg></button>
     </div>
-    <footer><span class="concept">Proposed campus · exterior study</span><details class="help"><summary aria-label="How to navigate the model">?</summary><div class="panel"><strong>Explore the campus</strong><p><b>Rotate</b> Select Rotate, then drag with one finger or the left mouse button to look around.</p><p><b>Pan</b> Select Pan, then drag to move sideways, up or down. You can also use two fingers or the right mouse button.</p><p><b>Zoom</b> Pinch or scroll.</p><p><b>Keyboard</b> Focus the model, then use arrow keys to pan, + / − to zoom, and 0 to reset.</p><p class="help-note">The church exterior follows photo references. New buildings and landscaping are conceptual. Guadalupe Hall, Benedict Hall, the office and houses are simplified forms.</p></div></details></footer>
+    <footer><div class="footer-notes"><span class="boundary-key"><i aria-hidden="true"></i>Campus boundary</span><span class="concept">Proposed campus · exterior study</span></div><details class="help"><summary aria-label="How to navigate the model">?</summary><div class="panel"><strong>Explore the campus</strong><p><b>Rotate</b> Select Rotate, then drag with one finger or the left mouse button to look around.</p><p><b>Pan</b> Select Pan, then drag to move sideways, up or down. You can also use two fingers or the right mouse button.</p><p><b>Zoom</b> Pinch or scroll.</p><p><b>Keyboard</b> Focus the model, then use arrow keys to pan, + / − to zoom, and 0 to reset.</p><p class="help-note">The church exterior follows photo references. New buildings and landscaping are conceptual. Guadalupe Hall, Benedict Hall, the office and houses are simplified forms.</p></div></details></footer>
     <p id="status" class="sr-only" role="status" aria-live="polite"></p>
     <noscript><div class="error panel">This interactive model needs JavaScript. You can still view the rendered overview or download the Blender model above.</div></noscript>
   </main>
-  <script type="module" src="./viewer.js?v=d305ad2a7f1ab289"></script>
+  <script type="module" src="./viewer.js?v=b965871909b6c5c2"></script>
 </body>
 </html>
