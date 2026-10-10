@@ -21,7 +21,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '499d39f18da2d3cb';
+const ASSET_REVISION = 'f12be32972c9fe91';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -639,13 +639,20 @@ async function init() {
     if (object.isMesh) {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       const windowGlass = material => /glazing|School clear glass/i.test(material.name);
-      // Alpha-blended panes show the actual interior and must not cast a solid
-      // opaque window-sized shadow. Door frames and bronze trim remain solid.
-      object.castShadow = materials.some(material => !windowGlass(material));
+      const frostedGlass = material => material.name === 'Bathroom frosted translucent glass';
+      // Clear and frosted panes admit light; their surrounding frames remain solid.
+      object.castShadow = materials.some(material => !windowGlass(material) && !frostedGlass(material));
       // This thin sloped apron self-shadows at the campus-wide shadow-map scale.
       object.receiveShadow = object.name !== 'Gaga_Ball_graded_lawn_apron';
       for (const material of materials) {
-        if (windowGlass(material)) {
+        if (frostedGlass(material)) {
+          // Preserve the model's rough transmission. Alpha blending would expose
+          // sharp bathroom details through the privacy glass.
+          material.transparent = false;
+          material.opacity = 1;
+          material.depthWrite = true;
+          material.side = THREE.DoubleSide;
+        } else if (windowGlass(material)) {
           material.transparent = true;
           material.opacity = Math.min(material.opacity, /School clear glass/i.test(material.name) ? .25 : .35);
           material.depthWrite = false;
