@@ -6462,7 +6462,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   card('Total building area', sf(data.summary.grossSf), 'Gross floor area · all listed floors combined');
   card('Listed rooms & floor spaces', fmt(data.summary.roomCount), `${sf(data.summary.netRoomSf)} of net room area`);
   const classrooms = data.summary.classrooms;
-  card('Classrooms', fmt(classrooms.grade + classrooms.specialist), `${fmt(classrooms.grade)} grade classrooms + ${fmt(classrooms.specialist)} specialist classrooms; ${fmt(classrooms.spare)} spare rooms listed separately`);
+  card('Classrooms', fmt(classrooms.grade + classrooms.specialist + classrooms.spare), `${fmt(classrooms.grade)} grade classrooms + ${fmt(classrooms.specialist)} specialist classrooms + ${fmt(classrooms.spare)} spare classrooms`);
   card('Restroom fixtures', `${fmt(data.summary.fixtures.wc)} toilets`, `${fmt(data.summary.fixtures.urinal)} urinals · ${fmt(data.summary.fixtures.sink)} sinks across ${fmt(data.summary.restroomRoomCount)} restroom spaces`);
   page.append(summary);
 
@@ -6680,7 +6680,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     get state() { return { visible, matchingRoomIds: matchingRooms.map(room => room.id), filters: { query: query.value, building: buildingFilter.value, floor: floorFilter.value, category: categoryFilter.value } }; }
   };
 })();
-
 </script>
 <script id="campus-page-controls">
 (() => {

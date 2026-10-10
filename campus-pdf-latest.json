@@ -1,17 +1,17 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "aff67d721ec287fe820f10cb2305dc82069fe91c81da4d58adcbb79b801c6e15",
+  "revision": "c2282b10a01a7f437bd66b1238ffc9062ae85d8dd7f2c2625f2d211e5e274ee0",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-ef45dd06beb6e5064cfdee44cd3ca6824093e1d2e295d6d5d80c420e6e9564dd.json",
-    "sha256": "ef45dd06beb6e5064cfdee44cd3ca6824093e1d2e295d6d5d80c420e6e9564dd",
+    "url": "./pdf-inputs/campus-pdf-inputs-3f5c19d7ae22d5e82a9afa29f99242293697ab3485fb641824c672bde28d88dc.json",
+    "sha256": "3f5c19d7ae22d5e82a9afa29f99242293697ab3485fb641824c672bde28d88dc",
     "bytes": 41328,
     "mime": "application/json"
   },
   "generator": {
-    "url": "./pdf-inputs/pdf-compose-640c765912470b557f3aad8d38dcf745264c105c0f5aa610d354dcc8f5f23ed2.js",
-    "sha256": "640c765912470b557f3aad8d38dcf745264c105c0f5aa610d354dcc8f5f23ed2",
-    "bytes": 28574,
+    "url": "./pdf-inputs/pdf-compose-d03a5c00b396e879788c8549f2eca2d4a9a7d129032ceef5ce6e77ef224ff8d4.js",
+    "sha256": "d03a5c00b396e879788c8549f2eca2d4a9a7d129032ceef5ce6e77ef224ff8d4",
+    "bytes": 28585,
     "mime": "text/javascript"
   },
   "libraries": {
