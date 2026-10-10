@@ -21,6 +21,26 @@ export function applyCampusPalette(model) {
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material?.color || visited.has(material)) continue;
       visited.add(material);
+      if (['Interior walls • warm ivory', 'Interior trim • painted white'].includes(material.name)) {
+        // These enclosed, white-painted surfaces should receive neutral room
+        // bounce, not the exterior environment's blue sky and green lawn tint.
+        // The fixtures are always on, but their emissive lenses provide no GI.
+        // A steady neutral bounce fills that gap without proximity light pools.
+        // Keep directional shading and direct sunlight/fixture colors intact.
+        material.onBeforeCompile = shader => {
+          shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `
+            #include <lights_fragment_end>
+            const vec3 interiorWhiteLuminance = vec3(0.2126, 0.7152, 0.0722);
+            vec3 interiorWhiteWorldNormal = inverseTransformDirection(normal, viewMatrix);
+            float interiorFixtureBounce = 0.54 + 0.18 * interiorWhiteWorldNormal.y;
+            reflectedLight.indirectDiffuse = diffuseColor.rgb * interiorFixtureBounce
+              + vec3(1.5 * dot(reflectedLight.indirectDiffuse, interiorWhiteLuminance));
+            reflectedLight.indirectSpecular = vec3(dot(reflectedLight.indirectSpecular, interiorWhiteLuminance));
+          `);
+        };
+        material.customProgramCacheKey = () => 'neutral-white-interior-bounce-v1';
+        material.needsUpdate = true;
+      }
       if (/^Interior[\s_.•-]+ceiling[\s_.•-]+acoustic[\s_.•-]+white$/i.test(material.name)) {
         material.color.setRGB(.86, .86, .86);
         material.roughness = .95;
