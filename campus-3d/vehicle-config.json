@@ -7,9 +7,9 @@
     "heading": 0
   },
   "dimensions_ft": {
-    "length": 15.641892050194928,
+    "length": 15.494760096542478,
     "width": 6.856955098980681,
-    "height": 4.724409636550062
+    "height": 4.723077527494255
   },
   "driver_eye_m": [
     -0.385,
@@ -107,13 +107,13 @@
     }
   ],
   "model": {
-    "url": "./vehicles/model3-3f7843367608185fe7baaa4f93186c238b00dc1b02749985b7371573a58342ba.glb",
-    "sha256": "3f7843367608185fe7baaa4f93186c238b00dc1b02749985b7371573a58342ba",
-    "bytes": 3539676
+    "url": "./vehicles/model3-0328532e74aab2066b8d8139939a8800354712b106c71cb58c20f1b08cfbda4a.glb",
+    "sha256": "0328532e74aab2066b8d8139939a8800354712b106c71cb58c20f1b08cfbda4a",
+    "bytes": 4294248
   },
   "native": {
-    "url": "./vehicles/model3-e493727174c68bf1c6c002b3c8503070a00dd13ccbc1071a7dfdeaef3b31c0c3.blend",
-    "sha256": "e493727174c68bf1c6c002b3c8503070a00dd13ccbc1071a7dfdeaef3b31c0c3",
-    "bytes": 807471
+    "url": "./vehicles/model3-b444d299e5a2cf614dfea1a94467abe919ce2341c1c66f5de79ef721e920aa75.blend",
+    "sha256": "b444d299e5a2cf614dfea1a94467abe919ce2341c1c66f5de79ef721e920aa75",
+    "bytes": 1168657
   }
 }

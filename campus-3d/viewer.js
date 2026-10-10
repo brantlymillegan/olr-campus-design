@@ -665,7 +665,7 @@ async function warmModel() {
 }
 
 async function loadVehicle() {
-  const url = './vehicle-config.json?v=2e38d758d116b584';
+  const url = './vehicle-config.json?v=e944a480319412a8';
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Vehicle metadata HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
