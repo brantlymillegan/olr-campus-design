@@ -5,7 +5,7 @@ import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
 import * as THREE from 'three';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=2f29a235b91a7fe7';
+import { createCampusBird } from './campus-bird.js?v=d796ffe76d5c4ec3';
 import { createCampusAmbience } from './campus-ambience.js?v=704c16929b52e977';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

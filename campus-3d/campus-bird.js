@@ -1,40 +1,53 @@
 import * as THREE from 'three';
 
-const FT = 0.3048;
-const TAU = Math.PI * 2;
+const FT = .3048, TAU = Math.PI * 2;
 const NO_RAYCAST = () => {};
-// Coordinates here are site feet: east, north, elevation. The route stays
-// west of the bell tower and above the school roofs and playground trees.
-export const CAMPUS_BIRD_ROUTE = Object.freeze({
-  centerFeet: Object.freeze([112, 210]),
-  radiusFeet: Object.freeze([62, 62]),
-  altitudeFeet: Object.freeze([64, 74]),
-  lapSeconds: 25,
-  daylightMinutes: Object.freeze([390, 1140]),
-});
-
-// Two birds share each corridor. Their opposite phases and small height offsets
-// keep them apart, while different lap lengths spread movement across campus.
-export const CAMPUS_BIRD_ROUTES = Object.freeze([
-  CAMPUS_BIRD_ROUTE,
-  Object.freeze({ centerFeet: Object.freeze([85, 35]), radiusFeet: Object.freeze([60, 48]), altitudeFeet: Object.freeze([52, 62]), lapSeconds: 31 }),
-  Object.freeze({ centerFeet: Object.freeze([201, 158]), radiusFeet: Object.freeze([22, 34]), altitudeFeet: Object.freeze([58, 68]), lapSeconds: 22 }),
-  Object.freeze({ centerFeet: Object.freeze([-210, 50]), radiusFeet: Object.freeze([60, 50]), altitudeFeet: Object.freeze([64, 74]), lapSeconds: 36 }),
+const freeze = value => Object.freeze(value);
+// Small songbirds have different silhouettes as well as plumage. Dimensions
+// are in meters before each species' scale; local -Z is the beak direction.
+export const CAMPUS_BIRD_SPECIES = freeze([
+  freeze({ id: 'cardinal', name: 'Northern cardinal', scale: .35, crest: .070,
+    back: '#ad3029', breast: '#d84532', head: '#c6392f', dark: '#622c2b',
+    wing: '#a73531', edge: '#bd5140', tail: '#8d302b', beak: '#e58d51', mask: '#262325' }),
+  freeze({ id: 'blue-jay', name: 'Blue jay', scale: .44, crest: .050,
+    back: '#4b8ab7', breast: '#dddcd0', head: '#649ac5', dark: '#253344',
+    wing: '#427dad', edge: '#f0ecdc', tail: '#4179a6', beak: '#333b42', mask: '#263340' }),
+  freeze({ id: 'robin', name: 'American robin', scale: .38, crest: 0,
+    back: '#66685e', breast: '#ce7244', head: '#424a46', dark: '#41433e',
+    wing: '#61665e', edge: '#a09883', tail: '#53584f', beak: '#e0ba59', mask: null }),
+  freeze({ id: 'dove', name: 'Mourning dove', scale: .45, crest: 0,
+    back: '#a29a89', breast: '#cbb9a0', head: '#aaa499', dark: '#66635e',
+    wing: '#a79f8e', edge: '#d5cbb5', tail: '#9f9583', beak: '#4c4b46', mask: null }),
+  freeze({ id: 'sparrow', name: 'Song sparrow', scale: .28, crest: 0,
+    back: '#81684b', breast: '#d8cbb0', head: '#917557', dark: '#493d30',
+    wing: '#8e7252', edge: '#cfb990', tail: '#746048', beak: '#71624c', mask: null }),
+  freeze({ id: 'crow', name: 'American crow', scale: .66, crest: 0,
+    back: '#292e33', breast: '#363b40', head: '#252b30', dark: '#20262d',
+    wing: '#303841', edge: '#414951', tail: '#272f37', beak: '#292c30', mask: null }),
 ]);
 
-// Five shared geometries and one material serve the entire flock. Each bird
-// has its own wing joints, so flapping and gliding are not synchronized.
-function makeBird() {
+export const CAMPUS_BIRD_ROUTE = freeze({ centerFeet: [112,210], radiusFeet: [62,62], altitudeFeet: [64,74], lapSeconds: 25, daylightMinutes: [390,1140] });
+export const CAMPUS_BIRD_ROUTES = freeze([
+  CAMPUS_BIRD_ROUTE,
+  freeze({ centerFeet: [85,35], radiusFeet: [60,48], altitudeFeet: [52,62], lapSeconds: 31 }),
+  freeze({ centerFeet: [201,158], radiusFeet: [22,34], altitudeFeet: [58,68], lapSeconds: 22 }),
+  freeze({ centerFeet: [-210,50], radiusFeet: [60,50], altitudeFeet: [64,74], lapSeconds: 36 }),
+  // Low corridors and all foot placements are checked against the current
+  // model. Keep clear of paths through buildings, roads and dense crowns.
+  freeze({"centerFeet":[204,159.5],"radiusFeet":[10,14.5],"altitudeFeet":[16,20],"lapSeconds":14}),
+  freeze({"centerFeet":[-12.5,299],"radiusFeet":[37.5,19],"altitudeFeet":[4,8],"lapSeconds":23}),
+  freeze({"centerFeet":[-189.5,66.5],"radiusFeet":[9.5,18.5],"altitudeFeet":[5,8],"lapSeconds":18}),
+]);
+export const CAMPUS_BIRD_HABITATS = freeze({
+  ground: freeze([{"at":[27,68,-0.09899999946355818],"support":"School walk • grass verges","radiusFeet":0.45,"groundSlope":[0.0,0.0]},{"at":[27,81,-0.0989999994635582],"support":"School walk • grass verges","radiusFeet":0.45,"groundSlope":[0.0,0.0]},{"at":[27,145,-0.0989999994635582],"support":"School walk • grass verges","radiusFeet":0.6,"groundSlope":[6.938893903907228e-17,0.0]},{"at":[27,195,-0.0989999994635582],"support":"School walk • grass verges","radiusFeet":0.6,"groundSlope":[0.0,0.0]},{"at":[190,170,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":1.1,"groundSlope":[0.0,-1.3877787807814457e-16]},{"at":[194,147,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":1.5,"groundSlope":[0.0,0.0]},{"at":[218,150,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":1.5,"groundSlope":[0.0,0.0]},{"at":[219,171,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":1.1,"groundSlope":[0.0,0.0]},{"at":[10,48,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":0.7,"groundSlope":[0.0,-1.3877787807814457e-16]},{"at":[232,172,0.1599999964237213],"support":"07 • Paths parking and landscape structure / Campus lawn","radiusFeet":0.7,"groundSlope":[1.3877787807814457e-16,-1.3877787807814457e-16]},{"at":[-190,55,-6.761407852172852],"support":"Landform • upper campus and west slope","radiusFeet":1.5,"groundSlope":[0.13459100723266282,0.0]},{"at":[-190,5,-6.761407852172852],"support":"Landform • upper campus and west slope","radiusFeet":1.5,"groundSlope":[0.13459100723266282,0.0]}]),
+  tree: freeze([{"at":[179.6211700439453,177.81519063313803,9.665526993879304],"support":"09L • Natural trees / tree-32 ornamental","heading":-1.6998516278962963,"species":"sparrow"},{"at":[227.23004659016928,177.17073567708334,9.665526479883473],"support":"09L • Natural trees / tree-33 ornamental","heading":0.7001222663407586,"species":"sparrow"},{"at":[187.52616373697916,143.31014506022134,9.665528432744736],"support":"09L • Natural trees / tree-34 ornamental","heading":3.100079189342525,"species":"sparrow"},{"at":[222.35082499186197,137.58655293782553,9.665523756801763],"support":"09L • Natural trees / tree-35 ornamental","heading":-0.7831657869633613,"species":"sparrow"},{"at":[265.06313069661456,86.72885386149089,10.905356149724025],"support":"09L • Natural trees / tree-16 oak","heading":1.1472781206527578,"species":"cardinal"},{"at":[214.08000691731772,-27.69058609008789,12.032833159321367],"support":"09L • Natural trees / tree-28 oak","heading":1.6765704577310578,"species":"robin"},{"at":[291.27085367838544,52.516326904296875,6.950880827751594],"support":"09L • Natural trees / tree-30 maple","heading":2.4696456753743643,"species":"cardinal"},{"at":[-77.85065205891927,335.24830118815106,15.640480456492782],"support":"09L • Natural trees / tree-01 oak","heading":2.846938184073533,"species":"robin"}]),
+  roof: freeze([{"at":[-16,120,36.5],"support":"02 • New school buildings / Charcoal shingle roof","heading":1.5707963267948966},{"at":[-16,200,36.5],"support":"02 • New school buildings / Charcoal shingle roof","heading":1.5707963267948966},{"at":[95,140,36.5],"support":"02 • New school buildings / Charcoal shingle roof","heading":1.5707963267948966},{"at":[110,160,36.5],"support":"02 • New school buildings / Charcoal shingle roof","heading":1.5707963267948966},{"at":[348.5,135,40.79999923706055],"support":"03 • Church | photo referenced exterior / Charcoal shingle roof","heading":1.5707963267948966},{"at":[348.5,180,40.79999923706055],"support":"03 • Church | photo referenced exterior / Charcoal shingle roof","heading":1.5707963267948966}]),
+});
+
+function makeSpecies(spec) {
   const geometries = [];
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .82, metalness: 0 });
-  material.name = 'Campus bird • warm gray plumage';
-  const colors = {
-    back: new THREE.Color('#8c8172'), breast: new THREE.Color('#d2c8b4'),
-    head: new THREE.Color('#96938b'), dark: new THREE.Color('#444852'),
-    wing: new THREE.Color('#797b80'), edge: new THREE.Color('#b6b4ab'),
-    tail: new THREE.Color('#8d6750'), beak: new THREE.Color('#333333'),
-    eye: new THREE.Color('#111518'),
-  };
+  const colors = Object.fromEntries(['back','breast','head','dark','wing','edge','tail','beak'].map(key => [key, new THREE.Color(spec[key])]));
+  colors.eye = new THREE.Color('#0e1316'); colors.leg = new THREE.Color(spec.id === 'crow' ? '#353c42' : '#987661');
   function batch() {
     const position = [], normal = [], color = [], index = [];
     const matrix = new THREE.Matrix4(), rotation = new THREE.Quaternion();
@@ -66,166 +79,216 @@ function makeBird() {
         [(a[0] + b[0]) * .5, (a[1] + b[1]) * .5, (a[2] + b[2]) * .5],
         [width, length * .5, thickness], rotation);
     }
-    function mesh(name) {
+    function finish() {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
       geometry.setAttribute('color', new THREE.Float32BufferAttribute(color, 3));
       geometry.setIndex(index); geometry.computeBoundingSphere(); geometries.push(geometry);
-      const mesh = new THREE.Mesh(geometry, material); mesh.name = name;
-      mesh.castShadow = false; mesh.receiveShadow = false; mesh.raycast = NO_RAYCAST;
-      return mesh;
+      return geometry;
     }
-    return { add, oval, feather, mesh };
+    return { add, oval, feather, finish };
   }
-  const root = new THREE.Group(); root.name = 'Campus ambience • bird';
-  root.scale.setScalar(.65);
-  root.userData.campusAmbient = true; root.userData.excludeFromCollision = true;
   const body = batch();
-  body.oval(colors.back, [0, .01, .015], [.105, .09, .235], 12, 8);
-  body.oval(colors.breast, [0, -.025, -.06], [.088, .068, .15]);
-  body.oval(colors.head, [0, .055, -.195], [.071, .068, .080]);
-  body.oval(colors.breast, [0, .015, -.227], [.051, .034, .045]);
-  const beakRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-  body.add(new THREE.ConeGeometry(1, 2, 6), colors.beak, [0, .037, -.294], [.026, .047, .021], beakRotation);
-  for (const sign of [-1, 1]) {
-    body.oval(colors.eye, [sign * .061, .073, -.220], [.008, .009, .008], 6, 4);
-    body.feather(colors.dark, [sign * .039, -.064, .10], [sign * .031, -.079, .18], .007, .007);
+  body.oval(colors.back, [0,.01,.015], [.105,.09,.235], 12,8);
+  body.oval(colors.breast, [0,-.025,-.066], [.091,.071,.155], 12,8);
+  for (let i=0;i<5;i++) {
+    const spread=(i-2)*.026;
+    const tip=spec.id==='dove'?.44:spec.id==='blue-jay'?.43:.38;
+    body.feather(i===0||i===4?colors.dark:colors.tail,
+      [spread*.35,-.004,.16], [spread,-.022,tip-Math.abs(i-2)*.022],.024,.008);
   }
-  // Individually tapered tail feathers produce a small, recognizable fan.
-  for (let i = 0; i < 5; i++) {
-    const spread = (i - 2) * .026;
-    body.feather(i === 0 || i === 4 ? colors.dark : colors.tail,
-      [spread * .35, -.004, .16], [spread, -.022, .38 - Math.abs(i - 2) * .022], .024, .008);
+  if(spec.id==='sparrow')for(let i=-2;i<=2;i++) {
+    body.feather(colors.dark,[i*.020,-.074,-.10],[i*.023,-.085,-.04],.005,.004);
   }
-  root.add(body.mesh('Campus bird • body head and tail'));
-  const wings = [];
-  for (const sign of [-1, 1]) {
-    const shoulder = new THREE.Group(); shoulder.name = sign < 0 ? 'Bird wing left' : 'Bird wing right';
-    shoulder.position.set(sign * .075, .020, -.025); root.add(shoulder);
-    const inner = batch();
-    // Overlapping feather forms give rounded leading edges and layered trailing edges.
-    inner.oval(colors.wing, [sign * .14, 0, .01], [.19, .021, .125]);
-    for (let i = 0; i < 5; i++) {
-      const x = .025 + i * .059;
-      inner.feather(i < 2 ? colors.edge : colors.wing,
-        [sign * x, .004, -.069 + i * .012], [sign * (x + .025), -.004, .12 + i * .019], .030, .010);
+  const head=batch();
+  head.oval(colors.head,[0,0,0],[.071,.068,.080],12,8);
+  head.oval(colors.breast,[0,-.040,-.032],[.050,.034,.045]);
+  if(spec.mask) {
+    const mask=new THREE.Color(spec.mask);
+    for(const sign of [-1,1])head.oval(mask,[sign*.043,-.006,-.047],[.023,.042,.035]);
+  }
+  const beakRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);
+  head.add(new THREE.ConeGeometry(1,2,8),colors.beak,[0,-.018,-.099],
+    [spec.id==='cardinal'?.032:.023,spec.id==='crow'?.071:.047,.021],beakRotation);
+  for(const sign of [-1,1]) {
+    // Pale eye rims and black pupils remain readable up close.
+    if(['robin','dove'].includes(spec.id))head.oval(colors.edge,[sign*.065,.018,-.026],[.012,.012,.010],8,6);
+    head.oval(colors.eye,[sign*.070,.018,-.026],[.007,.008,.007],8,6);
+    head.oval(new THREE.Color('#fff7e9'),[sign*.075,.021,-.029],[.0025,.0025,.0025],6,4);
+  }
+  if(spec.crest)for(let i=0;i<4;i++)head.feather(colors.head,
+    [(i-1.5)*.012,.041,.025],[(i-1.5)*.006,.063+spec.crest,.044+i*.004],.015,.010);
+  if(spec.id==='sparrow')for(const sign of [-1,1])head.feather(colors.edge,[sign*.052,.037,-.045],[sign*.060,.037,.034],.007,.006);
+  const parts={ body:body.finish(),head:head.finish() };
+  for(const sign of [-1,1]) {
+    const inner=batch();
+    inner.oval(colors.wing,[sign*.14,0,.01],[.19,.022,.125]);
+    for(let i=0;i<5;i++) {
+      const x=.025+i*.059;
+      inner.feather(i<2?colors.edge:colors.wing,[sign*x,.004,-.069+i*.012],[sign*(x+.025),-.004,.12+i*.019],.030,.010);
     }
-    shoulder.add(inner.mesh('Campus bird • inner wing ' + sign));
-    const wrist = new THREE.Group(); wrist.name = sign < 0 ? 'Bird wrist left' : 'Bird wrist right';
-    wrist.position.set(sign * .30, 0, .042); shoulder.add(wrist);
-    const outer = batch();
-    for (let i = 0; i < 6; i++) {
-      const x = .20 - i * .013, back = -.010 + i * .047;
-      outer.feather(i === 0 ? colors.wing : colors.dark,
-        [sign * .002, 0, -.055 + i * .021], [sign * x, -.010, back], .022, .007);
-    }
-    wrist.add(outer.mesh('Campus bird • primary feathers ' + sign));
-    wings.push({ sign, shoulder, wrist });
+    // Jay bars, dove spots, and sparrow streaks distinguish folded wings too.
+    if(spec.id==='blue-jay')for(let i=0;i<3;i++)inner.feather(i===1?colors.edge:colors.dark,[sign*.12,.024,.025+i*.028],[sign*.27,.024,.045+i*.028],.009,.003);
+    if(spec.id==='dove')for(let i=0;i<4;i++)inner.oval(colors.dark,[sign*(.08+i*.042),.024,.055],[.012,.004,.017],6,4);
+    if(spec.id==='sparrow')for(let i=0;i<4;i++)inner.feather(colors.dark,[sign*(.05+i*.048),.024,-.015],[sign*(.08+i*.048),.024,.075],.006,.004);
+    parts['inner'+sign]=inner.finish();
+    const outer=batch();
+    for(let i=0;i<6;i++)outer.feather(i===0?colors.wing:colors.dark,
+      [sign*.002,0,-.055+i*.021],[sign*(.20-i*.013),-.010,-.010+i*.047],.022,.007);
+    parts['outer'+sign]=outer.finish();
   }
-  return { root, wings, geometries, material };
+  const leg=batch();
+  leg.feather(colors.leg,[0,0,0],[0,-.063,.014],.008,.008);
+  leg.feather(colors.leg,[0,-.063,.014],[0,-.114,0],.006,.006);
+  for(let i=-1;i<=1;i++)leg.feather(colors.leg,[0,-.114,0],[i*.024,-.118,-.047+Math.abs(i)*.009],.004,.004);
+  leg.feather(colors.leg,[0,-.114,0],[.004,-.118,.032],.004,.004);
+  parts.legs=leg.finish();
+  return {parts,geometries};
 }
 
-/** Scene sibling only: never add the flock to the model/collision tree.
- * Inactive/night intervals are discarded, so resuming a tab or switching back
- * from 2D does not advance any of the birds while the scene is paused.
+/** Scene sibling, separate from the model and its collision/picking tree.
+ * Forty individuals are drawn in seven instanced batches per species. Each
+ * keeps its own pose and timing, with no per-frame geometry or material work.
  */
-export function createCampusBird({ scene }) {
-  if (!scene?.isScene) throw new TypeError('createCampusBird requires a THREE.Scene');
-  const prototype = makeBird();
-  const { geometries, material } = prototype;
-  const flock = new THREE.Group(); flock.name = 'Campus ambience • bird flock';
-  flock.userData.campusAmbient = true; flock.userData.excludeFromCollision = true;
-  scene.add(flock); flock.visible = false;
-  const birds = CAMPUS_BIRD_ROUTES.flatMap((route, routeIndex) => [0, 1].map(member => {
-    const index = routeIndex * 2 + member;
-    const root = index === 0 ? prototype.root : prototype.root.clone(true);
-    root.name = 'Campus bird • ' + (index + 1);
-    delete root.userData.campusAmbient;
-    root.scale.setScalar(.62 + (index % 3) * .035);
-    root.traverse(object => { if (object.isMesh) object.raycast = NO_RAYCAST; });
-    flock.add(root);
-    const wings = [-1, 1].map(sign => ({
-      sign,
-      shoulder: root.getObjectByName(sign < 0 ? 'Bird wing left' : 'Bird wing right'),
-      wrist: root.getObjectByName(sign < 0 ? 'Bird wrist left' : 'Bird wrist right'),
-    }));
-    return { root, wings, route, routeIndex,
-      phase: .72 + routeIndex * .87 + member * Math.PI,
-      heightOffsetFeet: member ? 2 : -2,
-      direction: routeIndex % 2 ? -1 : 1,
-      flapPhase: index * 1.37,
-      flapRate: 2.35 + (index % 4) * .14,
-    };
-  }));
-  let enabled = true, disposed = false, lastElapsed = null, flightTime = 0;
-  let previousRunning = false;
-  const positionsMeters = birds.map(() => [0, 0, 0]);
-  const state = {
-    active: false, visible: false, daylight: false, paused: true,
-    flightSeconds: 0, laps: 0, wingSpanMeters: .83,
-    birdCount: birds.length, routeCount: CAMPUS_BIRD_ROUTES.length,
-    triangles: geometries.reduce((n, g) => n + g.index.count / 3, 0) * birds.length,
-    meshCount: geometries.length * birds.length,
-    uniqueGeometries: geometries.length, materialCount: 1,
-    positionMeters: positionsMeters[0], positionsMeters,
-  };
-  function update(elapsedSeconds, options) {
-    if (disposed) return state;
-    const elapsed = Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0;
-    const active = options?.active !== false;
-    const minutes = Number.isFinite(options?.minutes) ? ((options.minutes % 1440) + 1440) % 1440 : 840;
-    const daylight = minutes >= CAMPUS_BIRD_ROUTE.daylightMinutes[0] && minutes < CAMPUS_BIRD_ROUTE.daylightMinutes[1];
-    const running = enabled && active && daylight;
-    const dt = lastElapsed === null ? 0 : Math.max(0, Math.min(.1, elapsed - lastElapsed));
-    lastElapsed = elapsed;
-    if (running && previousRunning) flightTime += dt;
-    previousRunning = running;
-    state.active = enabled && active; state.daylight = daylight;
-    state.visible = flock.visible = running; state.paused = !running;
-    if (!running) return state;
-    for (let index = 0; index < birds.length; index++) {
-      const bird = birds[index];
-      const { root, route, direction } = bird;
-      const a = flightTime * TAU / route.lapSeconds * direction + bird.phase;
-      const sin = Math.sin(a), cos = Math.cos(a);
-      const amplitude = (route.altitudeFeet[1] - route.altitudeFeet[0]) * .5;
-      const centerHeight = (route.altitudeFeet[0] + route.altitudeFeet[1]) * .5;
-      const elevation = centerHeight + amplitude * Math.sin(a * 2 + .35) + bird.heightOffsetFeet;
-      const [rx, ry] = route.radiusFeet;
-      root.position.set((route.centerFeet[0] + rx * cos) * FT, elevation * FT,
-        -(route.centerFeet[1] + ry * sin) * FT);
-      // Local -Z follows the ellipse tangent; pitch follows its vertical slope.
-      const tangentLength = Math.hypot(rx * sin, ry * cos);
-      const pitch = Math.atan2(2 * amplitude * Math.cos(a * 2 + .35) * direction, tangentLength);
-      const yaw = Math.atan2(rx * sin * direction, ry * cos * direction);
-      root.rotation.set(pitch, yaw, .12 * direction, 'YXZ');
-      const cycle = (flightTime + bird.flapPhase) % 8.4;
-      const flapEnvelope = cycle < 3.0 ? Math.sin(Math.PI * cycle / 3.0) ** 2 : 0;
-      const wingTime = (flightTime + bird.flapPhase) * TAU * bird.flapRate;
-      const flap = Math.sin(wingTime) * .57 * flapEnvelope;
-      const fold = Math.max(0, Math.cos(wingTime)) * .23 * flapEnvelope;
-      for (const wing of bird.wings) {
-        wing.shoulder.rotation.z = wing.sign * (.055 + flap);
-        wing.wrist.rotation.z = wing.sign * (-.04 - flap * .34 + fold);
-        wing.wrist.rotation.y = -wing.sign * (.04 + fold * .6);
+export function createCampusBird({scene}) {
+  if(!scene?.isScene)throw new TypeError('createCampusBird requires a THREE.Scene');
+  const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.82,metalness:0});
+  material.name='Campus birds • natural plumage';
+  const flock=new THREE.Group();flock.name='Campus ambience • bird flock';
+  flock.userData.campusAmbient=true;flock.userData.excludeFromCollision=true;
+  scene.add(flock);flock.visible=false;
+  const species=CAMPUS_BIRD_SPECIES.map(spec=>({...spec,...makeSpecies(spec),birds:[],batches:{}}));
+  const birds=[];
+  function bird(type,behavior,data) {
+    const spec=species.find(s=>s.id===type),index=birds.length;
+    const item={index,id:'campus-bird-'+(index+1),spec,behavior,...data,
+      slot:spec.birds.length,phase:.72+index*1.371,scale:spec.scale*(.96+(index%3)*.04),
+      position:new THREE.Vector3(),heading:0,rootMatrix:new THREE.Matrix4()};
+    birds.push(item);spec.birds.push(item);
+  }
+  const flightTypes=['crow','dove','blue-jay','robin','cardinal','sparrow'];
+  CAMPUS_BIRD_ROUTES.forEach((route,i)=>[0,1].forEach(member=>bird(flightTypes[(i*2+member)%6],i<4?'high-flight':'low-flight',
+    {route,routeIndex:i,member,direction:i%2?-1:1})));
+  CAMPUS_BIRD_HABITATS.ground.forEach((habitat,i)=>bird(['robin','sparrow','dove','blue-jay'][i%4],'ground', {habitat}));
+  CAMPUS_BIRD_HABITATS.tree.forEach(habitat=>bird(habitat.species,'tree-perch',{habitat}));
+  CAMPUS_BIRD_HABITATS.roof.forEach((habitat,i)=>bird(i%2?'dove':'crow','roof-perch',{habitat}));
+  let triangles=0,meshCount=0;
+  for(const spec of species)for(const [part,geometry] of Object.entries(spec.parts)) {
+    const count=spec.birds.length*(part==='legs'?2:1);
+    const mesh=new THREE.InstancedMesh(geometry,material,count);
+    mesh.name=spec.name+' • '+part;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow=false;mesh.receiveShadow=false;mesh.raycast=NO_RAYCAST;
+    // One conservative bound contains every route, toe, and wing pose. This
+    // avoids rescanning all instance bounds every frame or stale-pose culling.
+    mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),400);
+    flock.add(mesh);spec.batches[part]=mesh;triangles+=geometry.index.count/3*count;meshCount++;
+  }
+  const positionsMeters=birds.map(()=>[0,0,0]);
+  const individuals=birds.map(b=>({id:b.id,species:b.spec.id,behavior:b.behavior,positionMeters:positionsMeters[b.index],
+    support:b.habitat?.support||null,supportFeet:b.habitat?.at||null,headingRadians:0,walking:false,pecking:false,wingSpanMeters:1.26*b.scale}));
+  const counts=key=>Object.fromEntries([...new Set(individuals.map(b=>b[key]))].map(k=>[k,individuals.filter(b=>b[key]===k).length]));
+  const state={active:false,visible:false,daylight:false,paused:true,flightSeconds:0,laps:0,
+    birdCount:birds.length,routeCount:CAMPUS_BIRD_ROUTES.length,speciesCount:species.length,
+    species:counts('species'),behaviors:counts('behavior'),individuals,
+    triangles,meshCount,uniqueGeometries:species.reduce((n,s)=>n+s.geometries.length,0),materialCount:1,
+    positionMeters:positionsMeters[0],positionsMeters,wingSpanMeters:1.26*species[0].scale};
+  let enabled=true,disposed=false,lastElapsed=null,flightTime=0,previousRunning=false;
+  const q=new THREE.Quaternion(),rotation=new THREE.Euler(0,0,0,'YXZ');
+  const v=new THREE.Vector3(),scale=new THREE.Vector3(),unit=new THREE.Vector3(1,1,1);
+  const local=new THREE.Matrix4(),body=new THREE.Matrix4(),joint=new THREE.Matrix4(),partMatrix=new THREE.Matrix4();
+  function compose(target,x,y,z,pitch=0,yaw=0,roll=0) {
+    v.set(x,y,z);q.setFromEuler(rotation.set(pitch,yaw,roll,'YXZ'));return target.compose(v,q,unit);
+  }
+  function write(bird,part,matrix,slot=bird.slot) {bird.spec.batches[part].setMatrixAt(slot,matrix);}
+  function pose(bird,now,dt) {
+    const {spec,phase,behavior}=bird;
+    const flying=behavior.endsWith('flight');
+    let pitch=0,roll=0,walking=false,peck=0,hop=0,legCycle=0;
+    if(flying) {
+      const {route,direction,member,routeIndex}=bird;
+      const a=now*TAU/route.lapSeconds*direction+.72+routeIndex*.87+member*Math.PI;
+      const [rx,ry]=route.radiusFeet,amp=(route.altitudeFeet[1]-route.altitudeFeet[0])*.5;
+      const height=(route.altitudeFeet[1]+route.altitudeFeet[0])*.5+amp*Math.sin(2*a+.35)+(routeIndex<4?(member?.6:-.6):0);
+      bird.position.set((route.centerFeet[0]+rx*Math.cos(a))*FT,height*FT,-(route.centerFeet[1]+ry*Math.sin(a))*FT);
+      pitch=Math.atan2(2*amp*Math.cos(2*a+.35)*direction,Math.hypot(rx*Math.sin(a),ry*Math.cos(a)));
+      bird.heading=Math.atan2(rx*Math.sin(a)*direction,ry*Math.cos(a)*direction);roll=.10*direction;
+    }else {
+      const {at,radiusFeet=0,heading=0,groundSlope=[0,0]}=bird.habitat;
+      let x=at[0],north=at[1];
+      if(behavior==='ground') {
+        // Walk for four seconds, pause to forage for five. Smooth starts and
+        // stops avoid skating; each bird follows a small, independently phased oval.
+        const t=now+phase*3,cycle=t%9,lap=Math.floor(t/9);
+        walking=cycle<4;
+        const progress=walking?(cycle-Math.sin(TAU*cycle/4)*4/TAU)/4:1;
+        const a=phase+(lap+progress)*.72;
+        x+=radiusFeet*Math.cos(a);north+=radiusFeet*.65*Math.sin(a);
+        bird.heading=Math.atan2(radiusFeet*Math.sin(a),radiusFeet*.65*Math.cos(a));
+        const stride=Math.sin(Math.PI*cycle/4)**2;
+        legCycle=walking?Math.sin(cycle*TAU*3.7)*stride:0;
+        hop=walking?Math.abs(legCycle)*.008:0;
+        peck=walking?0:Math.max(0,Math.sin((cycle-4)*TAU*.64))**8*Math.sin(Math.PI*(cycle-4)/5)**2;
+      }else bird.heading=heading;
+      const height=at[2]+groundSlope[0]*(x-at[0])+groundSlope[1]*(north-at[1]);
+      bird.position.set(x*FT,height*FT,-north*FT);
+      // Branch/ridge coordinates mark the middle of the toes. Keep feet fixed
+      // on that support while the head looks around independently.
+      if(behavior!=='ground') {
+        bird.position.x-=Math.sin(bird.heading)*.045*bird.scale;
+        bird.position.z-=Math.cos(bird.heading)*.045*bird.scale;
       }
-      const position = positionsMeters[index];
-      position[0] = root.position.x; position[1] = root.position.y; position[2] = root.position.z;
+      pitch=-peck*.33;
     }
-    state.flightSeconds = flightTime; state.laps = flightTime / CAMPUS_BIRD_ROUTE.lapSeconds;
-    return state;
+    scale.setScalar(bird.scale);q.setFromEuler(rotation.set(0,bird.heading,0,'YXZ'));
+    bird.rootMatrix.compose(bird.position,q,scale);
+    compose(local,0,.165+hop,0,pitch,0,roll);body.multiplyMatrices(bird.rootMatrix,local);
+    write(bird,'body',body);
+    compose(local,0,.055-peck*.013,-.195,-peck*.55, flying?.02*Math.sin(now+phase):.25*Math.sin(now*.75+phase));
+    partMatrix.multiplyMatrices(body,local);write(bird,'head',partMatrix);
+    const period=spec.id==='crow'?8.4:spec.id==='sparrow'?2.7:4.2;
+    const flapping=spec.id==='crow'?3:period*.76;
+    const cycle=(now+phase)%period,env=cycle<flapping?Math.sin(Math.PI*cycle/flapping)**2:0;
+    const speed=spec.id==='crow'?2.1:spec.id==='dove'?5:spec.id==='sparrow'?6.5:4.8;
+    const flap=Math.sin((now+phase)*TAU*speed)*.60*env;
+    const fold=Math.max(0,Math.cos((now+phase)*TAU*speed))*.23*env;
+    for(const sign of [-1,1]) {
+      compose(local,sign*.075,.020,-.025,0,flying?0:-sign*1.29,sign*(flying?.055+flap:-.32));
+      joint.multiplyMatrices(body,local);write(bird,'inner'+sign,joint);
+      compose(local,sign*.30,0,.042,0,flying?-sign*(.04+fold*.6):-sign*.65,sign*(flying?-.04-flap*.34+fold:.25));
+      partMatrix.multiplyMatrices(joint,local);write(bird,'outer'+sign,partMatrix);
+      compose(local,sign*.036,flying?.128:.118+Math.max(0,legCycle*sign)*.018,flying?.10:.045+legCycle*sign*.018,flying?1.15:legCycle*sign*.12);
+      partMatrix.multiplyMatrices(bird.rootMatrix,local);write(bird,'legs',partMatrix,bird.slot*2+(sign>0?1:0));
+    }
+    const info=individuals[bird.index],p=info.positionMeters;
+    p[0]=bird.position.x;p[1]=bird.position.y;p[2]=bird.position.z;
+    info.headingRadians=bird.heading;info.walking=walking;info.pecking=peck>.15;
+  }
+  function update(elapsedSeconds,options) {
+    if(disposed)return state;
+    const elapsed=Number.isFinite(elapsedSeconds)?elapsedSeconds:0;
+    const active=options?.active!==false;
+    const minutes=Number.isFinite(options?.minutes)?((options.minutes%1440)+1440)%1440:840;
+    const daylight=minutes>=390&&minutes<1140,running=enabled&&active&&daylight;
+    const dt=lastElapsed===null?0:Math.max(0,Math.min(.1,elapsed-lastElapsed));lastElapsed=elapsed;
+    if(running&&previousRunning)flightTime+=dt;previousRunning=running;
+    state.active=enabled&&active;state.daylight=daylight;state.visible=flock.visible=running;state.paused=!running;
+    if(!running)return state;
+    for(const bird of birds)pose(bird,flightTime,dt);
+    for(const spec of species)for(const mesh of Object.values(spec.batches))mesh.instanceMatrix.needsUpdate=true;
+    state.flightSeconds=flightTime;state.laps=flightTime/CAMPUS_BIRD_ROUTE.lapSeconds;return state;
   }
   function setActive(value) {
-    enabled = !!value;
-    if (!enabled) { flock.visible = false; previousRunning = false; state.visible = false; state.paused = true; state.active = false; }
+    enabled=!!value;
+    if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
   }
   function dispose() {
-    if (disposed) return;
-    disposed = true; scene.remove(flock);
-    // Clones share these resources; each is released exactly once.
-    for (const geometry of geometries) geometry.dispose();
-    material.dispose(); flock.clear(); state.active = false; state.visible = false; state.paused = true;
+    if(disposed)return;disposed=true;scene.remove(flock);
+    for(const spec of species) {
+      for(const mesh of Object.values(spec.batches))mesh.dispose();
+      for(const geometry of spec.geometries)geometry.dispose();
+    }
+    material.dispose();flock.clear();state.active=false;state.visible=false;state.paused=true;
   }
-  return { update, setActive, state, dispose };
+  return {update,setActive,state,dispose};
 }
