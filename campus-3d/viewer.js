@@ -21,7 +21,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '92602ea39a2c0aa7';
+const ASSET_REVISION = '92af2dd50b8276c9';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
