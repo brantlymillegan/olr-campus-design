@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "model_sha256": "b865d75814306881df46edddb7f2adfd6cfa77831fd2189f8531189b566e352a",
+  "chapel_room_id": "bell-tower-adoration-chapel",
+  "interior_rect_site_ft": [
+    253.4,
+    96.4,
+    269.6,
+    112.6
+  ],
+  "floor_site_z_ft": -3.7,
+  "bell": {
+    "nodes": [
+      "03R \u2022 Chapel bell / bronze bell",
+      "03R \u2022 Chapel bell / oak headstock"
+    ],
+    "pivot_world": [
+      79.7052,
+      21.03882,
+      -31.8516
+    ],
+    "pivot_site_ft": [
+      261.5,
+      104.5,
+      69.025
+    ],
+    "axis": [
+      1,
+      0,
+      0
+    ],
+    "acoustic_world": [
+      79.7052,
+      19.38528,
+      -31.8516
+    ],
+    "max_swing_radians": 0.55
+  },
+  "clapper": {
+    "nodes": [
+      "03R \u2022 Chapel bell / clapper shaft",
+      "03R \u2022 Chapel bell / clapper ball"
+    ],
+    "pivot_world": [
+      79.7052,
+      20.787360000000003,
+      -31.8516
+    ],
+    "pivot_site_ft": [
+      261.5,
+      104.5,
+      68.2
+    ],
+    "axis": [
+      1,
+      0,
+      0
+    ]
+  },
+  "rope": {
+    "pull_nodes": [
+      "03R \u2022 Chapel bell / lower rope and tail",
+      "03R \u2022 Chapel bell / burgundy sally",
+      "03R \u2022 Chapel bell / cream sally bands"
+    ],
+    "fixed_nodes": [
+      "03R \u2022 Chapel bell / upper braided rope",
+      "03R \u2022 Chapel bell / ceiling guide"
+    ],
+    "grip_world": [
+      77.84592,
+      0.27431999999999984,
+      -29.961840000000002
+    ],
+    "grip_site_ft": [
+      255.4,
+      98.3,
+      0.8999999999999995
+    ],
+    "pull_distance_m": 0.3,
+    "direction_world": [
+      0,
+      -1,
+      0
+    ],
+    "concealed_overlap_ft": 1.2,
+    "rest_tail_bottom_above_floor_ft": 1.45,
+    "mount_world": [
+      77.84592,
+      15.937186479697047,
+      -29.961840000000002
+    ],
+    "interaction_radius_m": 1.35
+  },
+  "acoustic_center_world": [
+    79.7052,
+    19.38528,
+    -31.8516
+  ],
+  "acoustic_center_site_ft": [
+    261.5,
+    104.5,
+    63.6
+  ],
+  "node_name_matching": "GLTFLoader sanitizes spaces and slashes to underscores; match sanitized or original names.",
+  "walkThrough": true
+}

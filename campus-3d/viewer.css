@@ -66,3 +66,14 @@ canvas:focus-visible { outline-offset: -4px; }
   .campus-driving-pad { left:auto; right:14px; transform:none; }
   .campus-driving-help { display:none; }
 }
+
+/* Chapel rope interaction: stays clear of the walking controls. */
+.campus-bell-hud { position: absolute; z-index: 5; left: 50%; bottom: max(140px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 18px; border: 1px solid #dcc7938c; border-radius: 12px; background: #1d2528eb; color: #fff9ea; box-shadow: 0 5px 24px #0004; font: 13px/1.35 Arial, Helvetica, sans-serif; }
+.campus-bell-hud[hidden] { display: none !important; }
+.campus-bell-hud button { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid #dec88b; border-radius: 7px; background: #fffaf0; color: #243034; font: 600 14px Arial, Helvetica, sans-serif; cursor: pointer; touch-action: manipulation; }
+.campus-bell-hud button:hover { background: white; }
+.campus-bell-hud button:focus-visible { outline: 3px solid #e6b54e; outline-offset: 3px; }
+.campus-bell-hud kbd { display: inline-grid; place-items: center; width: 25px; height: 27px; border: 1px solid #a7aca5; border-bottom-width: 3px; border-radius: 4px; background: #fff; font: 600 14px Arial, sans-serif; }
+.campus-bell-hint { white-space: nowrap; color: #e3d9c4; font-size: 11px; }
+@media (max-width: 760px), (pointer: coarse) { .campus-bell-hud { bottom: 235px; padding: 9px 12px; } }
+@media (max-height: 500px) { .campus-bell-hud { bottom: auto; top: 16px; } }

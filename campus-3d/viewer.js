@@ -4,10 +4,11 @@ import { createCampusWalk } from './campus-walk.js?v=659b85a748e0ac3b';
 import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
 import * as THREE from 'three';
+import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=4d98594a604831c8';
 // BEGIN campus world ambience imports
 import { createCampusBird } from './campus-bird.js?v=28f68412e3284087';
-import { createCampusAmbience } from './campus-ambience.js?v=c5704debfe0748b9';
+import { createCampusAmbience } from './campus-ambience.js?v=9754eb96fa6b25d0';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
@@ -26,7 +27,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = 'f872bc54c130caf6';
+const ASSET_REVISION = '451b9118cc5cd08b';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -43,6 +44,7 @@ let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d'
 let driving = null, vehicleModel = null, parkedVehicle = null, vehicleConfig = null, vehicleSha256 = null;
 let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
 let flatBounds = null;
+let campusBell = null;
 let resetAerialInput = () => {};
 let target = new THREE.Vector3();
 
@@ -110,6 +112,7 @@ function updateWorldAmbience(now = performance.now() / 1000) {
   const visible = active && walkPresentation === '3d' && !document.hidden;
   campusBird?.update(now, { active: visible, minutes: timeOfDay });
   campusWeather?.update(now, { camera: worldCamera(), active: visible });
+  if (!visible) campusBell?.update(now);
   campusAmbience?.update(now, { active: visible, minutes: timeOfDay,
     interior: campusInteriorLighting?.state.active ? 1 : 0, position: worldCamera()?.position });
 }
@@ -167,6 +170,7 @@ function draw(timestamp) {
   const showingPlan = !showingModel && Boolean(walk?.camera);
   campusInteriorLighting?.update(driving?.camera || walk?.camera || camera, showingModel && Boolean(walk?.camera) && !driving?.camera);
   updateWorldAmbience(timestamp / 1000); // campus world ambience
+  campusBell?.update(timestamp / 1000);
   planGround?.setEnabled(showingPlan);
   // First person uses the exact same camera in both presentations. The flat
   // plan has its own unlit scene, so no model geometry or shadow can appear.
@@ -181,7 +185,7 @@ function draw(timestamp) {
     renderedFrames++;
   }
   lastDrawTime = walk?.needsAnimation || driving?.needsAnimation ? timestamp : null;
-  if (walk?.needsAnimation || driving?.needsAnimation || campusBird?.state.visible || campusWeather?.state.visible) requestDraw(true);
+  if (walk?.needsAnimation || driving?.needsAnimation || campusBird?.state.visible || campusWeather?.state.visible || campusBell?.needsAnimation) requestDraw(true);
 }
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
 function requestDraw(ambientFrame = false) {
@@ -555,6 +559,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get bird() { return campusBird?.state ?? null; },
   get ambience() { return campusAmbience?.state ?? null; },
   get weather() { return campusWeather?.state ?? { enabled: rainEnabled, active: false }; },
+  get bell() { return campusBell?.state ?? { ready: false }; },
   unlockAmbience,
   // END campus world ambience API
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
@@ -650,6 +655,17 @@ async function loadVehicle() {
   return {config, ...loaded};
 }
 
+async function loadBellConfig() {
+  const url = './bell-config.json?v=7acdbe53f16d1d0a';
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Bell configuration HTTP ${response.status}`);
+  const bytes = await response.arrayBuffer();
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), n => n.toString(16).padStart(2, '0')).join('');
+  const expected = new URL(url, location.href).searchParams.get('v');
+  if (expected && !digest.startsWith(expected)) throw new Error('Bell configuration changed. Please reload.');
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 async function init() {
   // Native depth testing rejects hidden room fragments before shading them.
   // Logarithmic depth writes gl_FragDepth and disables that optimization on
@@ -696,9 +712,9 @@ async function init() {
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const [loadedModel, loadedVehicle] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+  const [loadedModel, loadedVehicle, bellConfig] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
-  }), loadVehicle()]);
+  }), loadVehicle(), loadBellConfig()]);
   const { gltf } = loadedModel;
   modelSha256 = loadedModel.sha256;
   model = gltf.scene;
@@ -754,6 +770,13 @@ async function init() {
   campusLighting.setTime(timeOfDay);
   campusAtmosphere.setTime(campusLighting.state);
   lightingDirty = false;
+  if (bellConfig.model_sha256 !== modelSha256) throw new Error('Bell configuration does not match the campus model. Please reload.');
+  campusBell = createCampusBell({
+    model, config: bellConfig, canvas: renderer.domElement,
+    getWalk: () => walk, getDriving: () => driving, getCamera: worldCamera,
+    isActive: () => active, getPresentation: () => walkPresentation,
+    ambience: campusAmbience, requestDraw
+  });
   walk = createCampusWalk({
     model, canvas: renderer.domElement,
     getAerialCamera: () => camera,

@@ -12,6 +12,9 @@ const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t *
 export function createCampusAmbience({ camera } = {}) {
   let context, master, lowpass, birdGain, childrenGain, childPan, windGain, windFilter;
   let rainGain, rainFilter, thunderGain, thunderFilter, rainSource = null;
+  let bellGain, bellFilter, bellPan, bellLimiter, bellStrikes = 0, lastBellStrike = -Infinity;
+  let bellPosition = { x: 261.5 * FEET, y: 63.6 * FEET, z: -104.5 * FEET };
+  let bellMix = { gain: 0, distanceFeet: 0, pan: 0, cutoff: 7800 };
   let weatherEnabled = false;
   let enabled = true, volume = .25, unlocked = false, disposed = false, ready = false;
   let running = false, loading = null, resumePending = null, timer = null, error = null;
@@ -87,6 +90,69 @@ export function createCampusAmbience({ camera } = {}) {
     buffers.thunder = thunder;
   }
 
+  function bellGraph() {
+    if (bellGain || !context || disposed) return;
+    // The tower bell shares the context and sound controls. Its bus bypasses
+    // outdoor ambience muffling: a bell overhead must remain audible in chapel.
+    bellGain = context.createGain(); bellGain.gain.value = 0;
+    bellFilter = context.createBiquadFilter(); bellFilter.type = 'lowpass';
+    bellFilter.frequency.value = 7800; bellFilter.Q.value = .45;
+    bellPan = context.createStereoPanner();
+    bellLimiter = context.createDynamicsCompressor();
+    bellLimiter.threshold.value = -8; bellLimiter.knee.value = 8;
+    bellLimiter.ratio.value = 3; bellLimiter.attack.value = .008; bellLimiter.release.value = .25;
+    bellFilter.connect(bellPan); bellPan.connect(bellLimiter);
+    bellLimiter.connect(bellGain); bellGain.connect(context.destination);
+    // Cast bronze modes: hum, prime, minor-third tierce, quint and nominal,
+    // followed by short-lived inharmonic overtones. Close pairs create beating.
+    // Recurrence avoids a costly sine call per sample. This buffer is made once,
+    // on the first clapper strike, after the gesture has already resumed audio.
+    const seconds = 12, rate = context.sampleRate;
+    const buffer = context.createBuffer(1, Math.round(rate * seconds), rate);
+    const data = buffer.getChannelData(0);
+    const modes = [[.5,.24,6.8],[1,.27,5.8],[1.194,.21,4.4],[1.506,.12,3.8],
+      [2,.37,3.5],[2.514,.10,2.6],[2.99,.11,2.1],[3.54,.075,1.7],
+      [4.07,.06,1.25],[4.82,.04,.9],[5.62,.03,.65],[6.29,.025,.45]];
+    for (const [ratio, amplitude, decay] of modes) {
+      for (const detune of [-.0008, .0008]) {
+        const step = 2 * Math.PI * 220 * ratio * (1 + detune) / rate;
+        const cs = Math.cos(step), sn = Math.sin(step), loss = Math.exp(-1 / (rate * decay));
+        let sine = 0, cosine = 1, level = amplitude * .5;
+        for (let i = 0; i < data.length; i++) {
+          data[i] += sine * level;
+          const next = sine * cs + cosine * sn;
+          cosine = cosine * cs - sine * sn; sine = next; level *= loss;
+        }
+      }
+    }
+    let peak = 0, seed = 1987, soft = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / rate;
+      // A brief felt/metal contact transient, not a cartoon chime or a click.
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      soft = .76 * soft + .24 * (seed / 2147483648 - 1);
+      const attack = Math.min(1, t / .003), tail = Math.min(1, (seconds - t) / 1.6);
+      data[i] = (data[i] + soft * .13 * Math.exp(-t * 35)) * attack * tail;
+      peak = Math.max(peak, Math.abs(data[i]));
+    }
+    if (peak) for (let i = 0; i < data.length; i++) data[i] *= .82 / peak;
+    buffers.bell = buffer;
+  }
+
+  function mixBell() {
+    if (!bellGain) return;
+    const position = view.position || camera?.position || bellPosition;
+    const dx = bellPosition.x - position.x, dy = bellPosition.y - (position.y || 0), dz = bellPosition.z - position.z;
+    const distance = Math.hypot(dx, dy, dz), indoors = typeof view.interior === 'number' ? clamp(view.interior) : view.interior ? 1 : 0;
+    const matrix = camera?.matrixWorld?.elements;
+    const pan = matrix ? clamp((dx * matrix[0] + dz * matrix[2]) / Math.max(1, Math.hypot(dx, dz)), -.9, .9) : 0;
+    const rolloff = (1 - smooth(180, 430, distance)) / Math.sqrt(1 + (distance / 28) ** 2);
+    bellMix = { gain: wanted() ? volume * rolloff * (1 - indoors * .3) : 0,
+      distanceFeet: distance / FEET, pan, cutoff: Math.max(900, (7800 - indoors * 4800) / (1 + distance / 240)) };
+    param(bellGain.gain, bellMix.gain, .18); param(bellPan.pan, pan, .12);
+    param(bellFilter.frequency, bellMix.cutoff, .2);
+  }
+
   async function load() {
     if (ready || loading || !context || disposed) return loading;
     loading = Promise.all(Object.entries(ASSETS).map(async ([id, url]) => {
@@ -151,6 +217,8 @@ export function createCampusAmbience({ camera } = {}) {
     running = false;
     master.gain.cancelScheduledValues(context.currentTime);
     master.gain.setValueAtTime(0, context.currentTime);
+    if (bellGain) { bellGain.gain.cancelScheduledValues(context.currentTime); bellGain.gain.setValueAtTime(0, context.currentTime); }
+    bellMix.gain = 0;
     for (const record of [...sources]) {
       stopSource(record);
     }
@@ -181,6 +249,7 @@ export function createCampusAmbience({ camera } = {}) {
     param(childrenGain.gain, targets.children, 1.2); param(windGain.gain, targets.wind, 2);
     param(lowpass.frequency, targets.cutoff, .6); param(childPan.pan, pan, .3);
     if (rainGain) { param(rainGain.gain, targets.rain, .3); param(thunderGain.gain, targets.thunder, .2); }
+    mixBell();
   }
 
   function schedule() {
@@ -246,7 +315,30 @@ export function createCampusAmbience({ camera } = {}) {
       enabled = Boolean(value);
       sync();
     },
-    setVolume(value) { volume = clamp(Number.isFinite(Number(value)) ? Number(value) : .25); sync(); if (running) mix(); },
+    setVolume(value) { volume = clamp(Number.isFinite(Number(value)) ? Number(value) : .25); sync(); if (running) mix(); else mixBell(); },
+    setBellPosition(position) {
+      if (position && ['x','y','z'].every(key => Number.isFinite(position[key]))) bellPosition = { x: position.x, y: position.y, z: position.z };
+      mixBell();
+    },
+    strikeBell(strength = 1, { position } = {}) {
+      // No downloads and no second AudioContext. The selecting gesture must
+      // already call unlock(); a slow or failed bird recording is irrelevant.
+      if (!wanted() || context?.state !== 'running') return false;
+      const level = clamp(Number.isFinite(Number(strength)) ? Number(strength) : 1);
+      if (level <= 0 || context.currentTime - lastBellStrike < .12) return false;
+      if (position && ['x','y','z'].every(key => Number.isFinite(position[key]))) bellPosition = { x: position.x, y: position.y, z: position.z };
+      bellGraph(); mixBell();
+      const voices = [...sources].filter(record => record.kind === 'bell');
+      if (voices.length >= 6) {
+        // Keep six ringing tails and at most one brief, smoothly retiring tail.
+        for (const record of [...sources]) if (record.kind === 'bell-retiring') stopSource(record);
+        const oldest = voices[0]; oldest.kind = 'bell-retiring';
+        param(oldest.gain.gain, 0, .02); oldest.node.stop(context.currentTime + .08);
+      }
+      source(buffers.bell, bellFilter, { duration: buffers.bell.duration, fade: .003, level: .8 * Math.sqrt(level), kind: 'bell' });
+      lastBellStrike = context.currentTime; bellStrikes++;
+      return true;
+    },
     setWeather(value) {
       if (disposed) return;
       weatherEnabled = Boolean(value);
@@ -267,7 +359,7 @@ export function createCampusAmbience({ camera } = {}) {
     update(time, state = {}) {
       elapsed = Number.isFinite(time) ? time : elapsed;
       view = { ...view, ...state }; sync();
-      if (running && context.currentTime - lastMix >= .12) { lastMix = context.currentTime; mix(); }
+      if ((running || bellGain) && context.currentTime - lastMix >= .12) { lastMix = context.currentTime; if (running) mix(); else mixBell(); }
     },
     get state() { return {
       enabled, volume, unlocked, ready: ready || Boolean(weatherEnabled && buffers.rain), loading: Boolean(loading), active: Boolean(view.active),
@@ -275,6 +367,8 @@ export function createCampusAmbience({ camera } = {}) {
       sourceCount: sources.size, error: weatherEnabled && running ? null : error, interior: view.interior,
       weatherEnabled, rainPlaying: Boolean(rainSource && !rainSource.stopping && running && context?.state === 'running'),
       thunderSourceCount: [...sources].filter(record => record.kind === 'thunder').length,
+      bell: { strikeCount: bellStrikes, activeVoices: [...sources].filter(record => record.kind.startsWith('bell')).length,
+        enabled: enabled && volume > 0, ready: Boolean(buffers.bell), position: { ...bellPosition }, ...bellMix },
       gains: { ...targets }, assets: Object.keys(ASSETS)
     }; },
     dispose() {
