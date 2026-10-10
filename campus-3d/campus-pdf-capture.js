@@ -16,6 +16,8 @@ export const PDF_PERSPECTIVES = Object.freeze([
     position: [-800, -720, 750], target: [10, 80, 4], lens: 40, shiftX: 0, shiftY: 0 },
   { id: 'school-walkway', title: 'New campus: landscaped school walkway and glass bridge', filename: 'school-walkway.jpg', width: 3072, height: 2745,
     position: [34.76145123692276, 212.91899534056725, 6.16], target: [35.2335822229558, 153.1518777144578, 11.420108648956443], lens: 25.248920767504053, shiftX: -.018028846153846152, shiftY: -.0009014423076923077 },
+  { id: 'school-entrance', title: "New campus: school entrance and Our Lady of the Rosary shrine", filename: 'school-entrance.jpg', width: 3072, height: 2375,
+    position: [60.55218874111797, 239.22310213689184, 14.342909533308847], target: [6.328173969816433, 214.07853095876254, 9.098220567348882], lens: 21.587585914514698, shiftX: -0.056741573033707866, shiftY: -0.015730337078651686 },
   { id: 'playground-gardens', title: 'New campus: 3D playground and Guardian Angel garden', filename: 'playground-gardens.jpg', width: 3072, height: 2098,
     position: [-167.57064655521947, -73.21889425522475, 41.3084195067391], target: [154.29633742522594, 163.54001268431819, 22.684117959444393], lens: 26.84434019653985, shiftX: -.15158583245140705, shiftY: -.03922722973372845 }
 ]);

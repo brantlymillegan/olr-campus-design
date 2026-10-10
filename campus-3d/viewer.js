@@ -10,7 +10,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=704c16929b52e977';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
-import { createCampusPdfCapture, loadHashedCampusModel, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=a6886cf26f23b65c';
+import { createCampusPdfCapture, loadHashedCampusModel, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=deac4af484104cf0';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
