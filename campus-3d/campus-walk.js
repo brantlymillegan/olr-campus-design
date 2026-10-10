@@ -210,7 +210,7 @@ function closestSegments(p, q, a, b, resultP, resultQ) {
   resultQ.set(ex * t + a.x, ey * t + a.y, ez * t + a.z);
 }
 
-export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, requestDraw, onChange = () => {}, onPose = () => {}, canFocus = () => true }) {
+export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, onExitCamera = () => {}, requestDraw, onChange = () => {}, onPose = () => {}, canFocus = () => true }) {
   let surfaces = makeSurfaceIndex(model);
   const camera = new THREE.PerspectiveCamera(65, 1, .08, 2000);
   camera.rotation.order = 'YXZ';
@@ -334,6 +334,12 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (mode === 'flying' && roll !== 0) requestDraw();
   }
   function exit() {
+    // Hand off the actual rendered pose before pause/reset can discard flight
+    // roll. Cancelling placement and the car's internal takeover keep Normal
+    // untouched: neither represents the visitor leaving an explorer camera.
+    if (navigating() && !transferringMouseLook && !externalControl) {
+      onExitCamera(camera.clone(), { presentation, flatGroundY });
+    }
     pause(false); mode = 'aerial'; marker.visible = false; feedback = ''; velocityY = 0; jumpCount = 0;
     grounded = true; runningToggle = false; roll = 0; syncCamera(); announce(); requestDraw();
   }

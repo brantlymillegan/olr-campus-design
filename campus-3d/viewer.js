@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
-import { createCampusWalk } from './campus-walk.js?v=8fafcc9abd0bd706';
+import { createCampusWalk } from './campus-walk.js?v=0f0ef5bd65504899';
 import { createCampusDriving } from './campus-driving.js?v=6fb7ca4b999094b6';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=dd2ab117442a0d37';
 import * as THREE from 'three';
@@ -49,6 +49,8 @@ let flatBounds = null;
 let campusBell = null;
 let resetAerialInput = () => {};
 let target = new THREE.Vector3();
+let normalOrbit = false, normalPlanGroundY = 0;
+const normalTarget = new THREE.Vector3();
 
 document.getElementById('retry').addEventListener('click', () => location.reload());
 // Messages belong only to this same-origin parent, never another frame.
@@ -169,16 +171,17 @@ function draw(timestamp) {
     lightingDirty = false;
     updateOutlineColor();
   }
-  const showingPlan = !showingModel && Boolean(walk?.camera);
-  campusInteriorLighting?.update(driving?.camera || walk?.camera || camera, showingModel && Boolean(walk?.camera) && !driving?.camera);
+  const showingPlan = !showingModel && Boolean(walk?.camera || normalOrbit);
+  campusInteriorLighting?.update(driving?.camera || walk?.camera || camera, showingModel && Boolean(walk?.camera || normalOrbit) && !driving?.camera);
   updateWorldAmbience(timestamp / 1000); // campus world ambience
   campusBell?.update(timestamp / 1000);
   planGround?.setEnabled(showingPlan);
   // First person uses the exact same camera in both presentations. The flat
   // plan has its own unlit scene, so no model geometry or shadow can appear.
   if (showingPlan) {
-    planGround.update(walk.camera, walk.state.flatGroundY);
-    renderer.render(planGround.scene, walk.camera);
+    const planCamera = walk?.camera || camera;
+    planGround.update(planCamera, walk?.camera ? walk.state.flatGroundY : normalPlanGroundY);
+    renderer.render(planGround.scene, planCamera);
     renderedFrames++;
   } else if (showingModel) {
     const activeCamera = driving?.camera || walk?.camera || camera;
@@ -214,8 +217,101 @@ function publishCamera() {
   if (!model) return;
   post({ type: 'olr-3d-state', camera: structuredClone(embeddedCamera), dragMode });
 }
+// Normal keeps a first-person exit as a full 3D orbit, including bank and
+// projection. Its target is in front of the eye, never projected onto ground.
+// The serializable pose round-trips through parent toolbar/list updates.
+function normalPose() {
+  return {
+    position: camera.position.toArray(), quaternion: camera.quaternion.toArray(),
+    target: normalTarget.toArray(), fov: camera.fov, aspect: camera.aspect,
+    zoom: camera.zoom, near: camera.near, far: camera.far,
+    filmGauge: camera.filmGauge, filmOffset: camera.filmOffset, focus: camera.focus,
+    view: camera.view ? { ...camera.view } : null, flatGroundY: normalPlanGroundY
+  };
+}
+function syncNormalState() {
+  const distance = Math.max(.001, camera.position.distanceTo(normalTarget));
+  const backwards = camera.position.clone().sub(normalTarget).divideScalar(distance);
+  const horizontal = Math.hypot(backwards.x, backwards.z);
+  const height = Math.max(1, wrap.getBoundingClientRect().height);
+  aerialDistance = distance;
+  embeddedCamera.center = { x: normalTarget.x / FEET, y: -normalTarget.z / FEET };
+  if (horizontal > 1e-8) embeddedCamera.bearing = ((THREE.MathUtils.radToDeg(Math.atan2(backwards.x, backwards.z)) + CAMPUS_BEARING + 540) % 360) - 180;
+  embeddedCamera.tilt = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(backwards.y, -1, 1)));
+  embeddedCamera.scale = height * FEET / (2 * distance * Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV() / 2)));
+  embeddedCamera.normalPose = normalPose();
+}
+function applyNormalCamera(announce = false) {
+  const { width, height } = wrap.getBoundingClientRect();
+  if (width <= 0 || height <= 0) return;
+  embeddedCamera.width = width; embeddedCamera.height = height;
+  camera.aspect = width / height;
+  camera.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  syncNormalState(); requestDraw();
+  if (announce) publishCamera();
+}
+function adoptNormalCamera(explorer, { flatGroundY = 0 } = {}) {
+  camera.copy(explorer, false);
+  normalTarget.copy(camera.position).addScaledVector(camera.getWorldDirection(new THREE.Vector3()), 12);
+  normalOrbit = true; normalPlanGroundY = flatGroundY;
+  embeddedCamera.zoom = 1;
+  applyNormalCamera(true);
+}
+function restoreNormalPose(pose) {
+  const vector = (v, n) => Array.isArray(v) && v.length === n && v.every(Number.isFinite);
+  if (!pose || !vector(pose.position, 3) || !vector(pose.quaternion, 4) || !vector(pose.target, 3)
+    || ![pose.fov, pose.zoom, pose.near, pose.far].every(Number.isFinite)
+    || pose.fov <= 0 || pose.fov >= 180 || pose.zoom <= 0 || pose.near <= 0 || pose.far <= pose.near) return false;
+  const quaternion = new THREE.Quaternion().fromArray(pose.quaternion);
+  if (Math.abs(quaternion.lengthSq() - 1) > 1e-5) return false;
+  const position = new THREE.Vector3().fromArray(pose.position), focus = new THREE.Vector3().fromArray(pose.target);
+  if (position.distanceToSquared(focus) < 1e-8) return false;
+  camera.position.copy(position); camera.quaternion.copy(quaternion); normalTarget.copy(focus);
+  for (const key of ['fov', 'zoom', 'near', 'far', 'filmGauge', 'filmOffset', 'focus']) {
+    if (Number.isFinite(pose[key])) camera[key] = pose[key];
+  }
+  camera.view = pose.view && ['fullWidth', 'fullHeight', 'offsetX', 'offsetY', 'width', 'height'].every(key => Number.isFinite(pose.view[key])) ? { ...pose.view } : null;
+  normalPlanGroundY = Number.isFinite(pose.flatGroundY) ? pose.flatGroundY : 0;
+  normalOrbit = true; return true;
+}
+function normalUnitsPerPixel() {
+  return 2 * camera.position.distanceTo(normalTarget) * Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV() / 2)) / Math.max(1, wrap.getBoundingClientRect().height);
+}
+function panNormal(dx, dy, announce) {
+  const units = normalUnitsPerPixel();
+  const shift = new THREE.Vector3(-dx * units, dy * units, 0).applyQuaternion(camera.quaternion);
+  camera.position.add(shift); normalTarget.add(shift); applyNormalCamera(announce);
+}
+function zoomNormal(factor, point, announce) {
+  if (!Number.isFinite(factor) || factor <= 0) return;
+  const { width, height } = wrap.getBoundingClientRect();
+  const before = normalUnitsPerPixel(), offset = camera.position.clone().sub(normalTarget);
+  const oldDistance = offset.length(), distance = THREE.MathUtils.clamp(oldDistance / factor, .15, 10000);
+  camera.position.copy(normalTarget).addScaledVector(offset, distance / oldDistance);
+  const after = normalUnitsPerPixel();
+  const cursor = point || { x: width / 2, y: height / 2 };
+  const shift = new THREE.Vector3((cursor.x - width / 2) * (before - after), (height / 2 - cursor.y) * (before - after), 0).applyQuaternion(camera.quaternion);
+  camera.position.add(shift); normalTarget.add(shift);
+  embeddedCamera.zoom *= oldDistance / distance;
+  applyNormalCamera(announce);
+}
+function orbitNormal(yaw, tilt, announce) {
+  const turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(yaw));
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).applyQuaternion(turn);
+  const pitch = new THREE.Quaternion().setFromAxisAngle(right, THREE.MathUtils.degToRad(tilt));
+  const rotation = pitch.multiply(turn);
+  camera.position.sub(normalTarget).applyQuaternion(rotation).add(normalTarget);
+  camera.quaternion.premultiply(rotation).normalize();
+  applyNormalCamera(announce);
+}
+function orientNormalBearing(bearing) {
+  const delta = ((bearing - embeddedCamera.bearing + 540) % 360) - 180;
+  orbitNormal(delta, 0, true);
+}
 function applyEmbeddedCamera(announce = false) {
   if (!camera) return;
+  if (normalOrbit) { applyNormalCamera(announce); return; }
   const rect = wrap.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
   const width = Math.max(1, rect.width), height = Math.max(1, rect.height);
@@ -267,6 +363,7 @@ function centerGroundOffset(dx, dy) {
   return { x: (c * dx + s * dy / foreshortening) / scale, y: (s * dx - c * dy / foreshortening) / scale };
 }
 function panEmbedded(dx, dy, announce = true, point) {
+  if (normalOrbit) { panNormal(dx, dy, announce); return; }
   const rect = wrap.getBoundingClientRect();
   const end = point || { x: rect.width / 2, y: rect.height / 2 };
   const from = groundAt({ x: end.x - dx, y: end.y - dy }), to = groundAt(end);
@@ -280,6 +377,7 @@ function panEmbedded(dx, dy, announce = true, point) {
   applyEmbeddedCamera(announce);
 }
 function zoomEmbedded(factor, point, announce = true) {
+  if (normalOrbit) { zoomNormal(factor, point, announce); return; }
   const nextZoom = THREE.MathUtils.clamp(embeddedCamera.zoom * factor, 1, 32);
   const actual = nextZoom / embeddedCamera.zoom;
   const rect = wrap.getBoundingClientRect();
@@ -296,6 +394,7 @@ function zoomEmbedded(factor, point, announce = true) {
   applyEmbeddedCamera(announce);
 }
 function orbitEmbedded(yaw, tilt = 0, announce = true) {
+  if (normalOrbit) { orbitNormal(yaw, tilt, announce); return; }
   embeddedCamera.bearing = ((embeddedCamera.bearing + yaw) % 360 + 540) % 360 - 180;
   embeddedCamera.tilt = THREE.MathUtils.clamp(embeddedCamera.tilt + tilt, MIN_TILT, MAX_TILT);
   applyEmbeddedCamera(announce);
@@ -544,11 +643,13 @@ window.addEventListener('message', event => {
   if ((driving?.state.driving || (walk && walk.mode !== 'aerial')) && ['camera', 'drag-mode', 'zoom', 'rotate', 'north', 'compass', 'fit'].includes(command)) return;
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
-    const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
-    embeddedCamera = { ...embeddedCamera, ...value, dragMode, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? THREE.MathUtils.clamp(value.tilt, MIN_TILT, MAX_TILT) : DEFAULT_TILT, zoom };
+    const restored = restoreNormalPose(value.normalPose);
+    const zoom = restored ? incomingZoom : THREE.MathUtils.clamp(incomingZoom, 1, 32);
+    embeddedCamera = { ...embeddedCamera, ...value, dragMode, center: { ...value.center }, scale: value.scale * zoom / incomingZoom, bearing: Number.isFinite(value.bearing) ? value.bearing : CAMPUS_BEARING, tilt: Number.isFinite(value.tilt) ? value.tilt : DEFAULT_TILT, zoom };
+    if (!restored) { normalOrbit = false; delete embeddedCamera.normalPose; embeddedCamera.tilt = THREE.MathUtils.clamp(embeddedCamera.tilt, MIN_TILT, MAX_TILT); }
     if (typeof value.oldBuildings === 'boolean') setOldOutlines(value.oldBuildings);
     applyEmbeddedCamera();
-    savedEmbeddedCamera = structuredClone(embeddedCamera);
+    if (!restored) savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
     updateWorldAmbience(); // campus world ambience
@@ -565,9 +666,9 @@ window.addEventListener('message', event => {
   else if (command === 'drag-mode') setDragMode(value);
   else if (command === 'zoom') zoomEmbedded(value === 'in' ? 1.25 : 0.8);
   else if (command === 'rotate' && Number.isFinite(value)) rotateEmbedded(value);
-  else if (command === 'north') { embeddedCamera.bearing = 0; applyEmbeddedCamera(true); }
-  else if (command === 'compass') { embeddedCamera.bearing = Math.abs(embeddedCamera.bearing) < 0.001 ? CAMPUS_BEARING : 0; applyEmbeddedCamera(true); }
-  else if (command === 'fit' && savedEmbeddedCamera) { embeddedCamera = structuredClone(savedEmbeddedCamera); applyEmbeddedCamera(true); }
+  else if (command === 'north') { if (normalOrbit) orientNormalBearing(0); else { embeddedCamera.bearing = 0; applyEmbeddedCamera(true); } }
+  else if (command === 'compass') { const bearing = Math.abs(embeddedCamera.bearing) < 0.001 ? CAMPUS_BEARING : 0; if (normalOrbit) orientNormalBearing(bearing); else { embeddedCamera.bearing = bearing; applyEmbeddedCamera(true); } }
+  else if (command === 'fit' && savedEmbeddedCamera) { normalOrbit = false; embeddedCamera = structuredClone(savedEmbeddedCamera); delete embeddedCamera.normalPose; applyEmbeddedCamera(true); }
 });
 let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
@@ -596,7 +697,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get driving() { return {...(driving?.state ?? {available:false,driving:false,near:false}), modelSha256:vehicleSha256}; },
   get walkPresentation() { return walkPresentation; },
   get plan() { return planGround?.state ?? { ready: false, flat: true, ...planOptions }; },
-  get renderState() { const view=driving?.camera||walk?.camera; return { presentation: walkPresentation, firstPerson: Boolean(view), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', depthBuffer: renderer?.capabilities.reversedDepthBuffer ? 'reversed' : 'standard', logarithmicDepthBuffer: renderer?.capabilities.logarithmicDepthBuffer ?? false, drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: view ? { position: view.position.toArray(), quaternion: view.quaternion.toArray(), fov: view.fov } : null }; },
+  get renderState() { const firstPerson=driving?.camera||walk?.camera, view=firstPerson||camera; return { presentation: walkPresentation, firstPerson: Boolean(firstPerson), retainedNormalPose: normalOrbit, scene: walkPresentation === '2d' && (walk?.camera || normalOrbit) ? 'flat-plan' : 'campus-model', depthBuffer: renderer?.capabilities.reversedDepthBuffer ? 'reversed' : 'standard', logarithmicDepthBuffer: renderer?.capabilities.logarithmicDepthBuffer ?? false, drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: view ? { position: view.position.toArray(), quaternion: view.quaternion.toArray(), fov: view.fov, zoom: view.zoom, aspect: view.aspect, near: view.near, far: view.far, projectionMatrix: view.projectionMatrix.toArray() } : null }; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
     const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(driving?.camera || walk?.camera || camera);
@@ -816,6 +917,7 @@ async function init() {
     model, canvas: renderer.domElement,
     getAerialCamera: () => camera,
     getAerialPose: () => structuredClone(embeddedCamera),
+    onExitCamera: adoptNormalCamera,
     requestDraw,
     canFocus: () => active,
     onPose: pose => { if (walkPresentation === '2d') post({type:'olr-3d-walk-pose', ...pose}); },
@@ -828,7 +930,7 @@ async function init() {
         const movement = state.mode === 'flying' ? 'WASD or arrows move; Space or E rises; Q descends; Shift speeds up.' : 'WASD or arrows move; Space jumps; Shift runs.';
         renderer.domElement.setAttribute('aria-label', state.mode === 'placing'
           ? `Choose a starting point on ${flat ? 'the campus plan' : 'a path, lawn, or roof'}.`
-          : `First-person ${flat ? 'campus floor plan on a flat ground surface' : 'campus model'} at ${state.mode === 'flying' ? 'your flight altitude' : 'six-foot eye height'}. ${movement} Click to capture the mouse or drag to look; Escape releases the mouse; Normal returns to the aerial view.`);
+          : `First-person ${flat ? 'campus floor plan on a flat ground surface' : 'campus model'} at ${state.mode === 'flying' ? 'your flight altitude' : 'six-foot eye height'}. ${movement} Click to capture the mouse or drag to look; Escape releases the mouse; Normal keeps this view and changes the controls.`);
       }
       post({ type: 'olr-3d-walk', ...state });
       requestDraw();
