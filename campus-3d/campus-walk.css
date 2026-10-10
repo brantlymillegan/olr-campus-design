@@ -10,7 +10,6 @@
 .campus-walk-hud button:hover { background: #fff; }
 .campus-walk-hud button:focus-visible { outline: 3px solid #efb63f; outline-offset: 3px; }
 .campus-walk-hud button[aria-pressed=true], .campus-walk-hud button[data-held] { color: #fff; background: #285239; border-color: #c1dcc5; }
-#campus-walk-exit { width: 100%; }
 .campus-fly-vertical { display: none; }
 .campus-walk-hud[data-mode=flying] .campus-fly-vertical { display: block; }
 .campus-walk-hud[data-mode=flying] #campus-walk-jump { display: none; }
@@ -22,7 +21,7 @@
 .campus-walk-pad [data-walk-move=left] { grid-column: 1; grid-row: 2; }
 .campus-walk-pad [data-walk-move=backward] { grid-column: 2; grid-row: 2; }
 .campus-walk-pad [data-walk-move=right] { grid-column: 3; grid-row: 2; }
-.campus-walk-hud[data-mode=placing] .campus-walk-pad, .campus-walk-hud[data-mode=placing] .campus-walk-reticle, .campus-walk-hud[data-mode=placing] #campus-walk-jump, .campus-walk-hud[data-mode=placing] #campus-walk-run, .campus-walk-hud[data-mode=placing] .campus-walk-help { display: none; }
+.campus-walk-hud[data-mode=placing] .campus-walk-actions, .campus-walk-hud[data-mode=placing] .campus-walk-pad, .campus-walk-hud[data-mode=placing] .campus-walk-reticle, .campus-walk-hud[data-mode=placing] #campus-walk-jump, .campus-walk-hud[data-mode=placing] #campus-walk-run, .campus-walk-hud[data-mode=placing] .campus-walk-help { display: none; }
 canvas[data-walk-mode=placing] { cursor: crosshair !important; }
 canvas[data-walk-mode=walking] { cursor: grab !important; }
 canvas[data-walk-mode=walking]:active { cursor: grabbing !important; }
@@ -33,7 +32,6 @@ canvas[data-pointer-locked=true] { cursor: none !important; }
   .campus-walk-pad { display: grid; }
   .campus-walk-actions { width: 152px; bottom: max(14px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); gap: 4px; }
   .campus-walk-actions button { flex: 1; padding: 10px 8px; }
-  #campus-walk-exit { flex-basis: 100%; }
   .campus-walk-pad { bottom: max(14px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); }
   .campus-walk-banner { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(120px + env(safe-area-inset-bottom)); width: auto; padding: 9px 12px; font-size: 11px; }
   .campus-walk-banner strong { font-size: 12px; }

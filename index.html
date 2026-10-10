@@ -1305,16 +1305,14 @@ html>body { padding:0; }
 .campus-walk-panel { grid-area:walk; display:grid; gap:6px; min-width:0; padding:8px; border:1px solid var(--border); border-radius:8px; }
 .campus-walk-panel h2 { display:flex; align-items:center; justify-content:space-between; gap:6px; margin:0; font-size:12px; line-height:1.4; font-weight:600; }
 .campus-walk-panel h2 span { font-size:10px; font-weight:400; color:var(--muted-foreground); white-space:nowrap; }
-.campus-navigation-choice { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+.campus-navigation-choice { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
 .campus-tool-panel .campus-navigation-choice .btn { width:100%; min-width:0; padding:6px 8px; font-size:11px; }
-.campus-walk-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
-#campus-walk-start-actions { grid-template-columns:1fr; }
+.campus-walk-actions { display:grid; grid-template-columns:1fr; gap:5px; }
 .campus-tool-panel .campus-walk-actions .btn { min-width:0; padding:4px; font-size:11px; }
 #campus-walk-status, .campus-walk-help { margin:0; font-size:10px; line-height:1.45; }
 .campus-walk-help { color:var(--muted-foreground); }
 .campus-walk-touch { display:none; }
-.campus-walk-return { grid-area:return; }
-.campus-walk-panel button:focus-visible, .campus-walk-return:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+.campus-walk-panel button:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .campus-lighting-panel { grid-area:lighting; min-width:0; border:1px solid var(--border); border-radius:8px; }
 .campus-lighting-panel summary { display:flex; align-items:center; gap:6px; min-height:34px; padding:4px 8px; box-sizing:border-box; cursor:pointer; font-size:12px; font-weight:600; list-style:none; }
 .campus-lighting-panel summary::-webkit-details-marker { display:none; }
@@ -1386,7 +1384,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     width:auto; padding:6px; gap:4px; border-radius:12px;
     max-width:calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
     max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:auto;
-    grid-template-columns:auto auto 40px; grid-template-areas:"first second toggle";
+    grid-template-columns:auto auto 40px; grid-template-areas:"first second toggle" "walk walk walk";
   }
   .campus-tool-panel .campus-tools-title { display:none; }
   .campus-tool-panel .campus-map-switch { gap:2px; }
@@ -1403,7 +1401,6 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-display-tools,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-view-3d,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-3d-navigation,
-  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-lighting-panel,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-model-downloads,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-download-pdf,
@@ -1412,7 +1409,10 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
     width:244px; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;
     grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "walk walk walk" "lighting lighting lighting" "models models models" "download download download" "status status status";
   }
-  .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) { grid-template-areas:"three three toggle" "return return return"; }
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel { padding:0; border:0; }
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel > :not(.campus-navigation-choice) { display:none; }
+  .campus-tool-panel .campus-navigation-choice .btn { min-height:40px; padding:4px 8px; font-size:12px; }
+  .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) { grid-template-areas:"three three toggle" "walk walk walk"; }
   .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) .campus-view-3d { display:flex; }
   .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) .campus-view-3d .btn { padding:4px 8px; font-size:12px; }
   .campus-tool-panel[data-walk-active="true"]:not([data-mobile-expanded="true"]) .campus-new-floors .btn { display:none; }
@@ -1673,7 +1673,6 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
   <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-walk-panel campus-lighting-panel campus-model-downloads campus-download-pdf">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
   </button>
-  <button type="button" class="btn campus-walk-return" id="campus-walk-return" hidden>End</button>
   <button type="button" class="campus-compass" id="campus-compass" aria-label="North is up. Click to align Building 1 with the screen.">
     <svg id="campus-compass-needle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><text x="24" y="12" text-anchor="middle">N</text><path d="M24 16 L32 36 L24 31 L16 36 Z" fill="currentColor"/></svg>
   </button>
@@ -1700,20 +1699,17 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <span id="campus-3d-help">Drag to turn and tilt · Pinch to zoom</span>
   </div>
   <section class="campus-walk-panel" id="campus-walk-panel" aria-labelledby="campus-walk-title" hidden>
-    <h2 id="campus-walk-title">Explore campus <span id="campus-navigation-caption">6 ft eye height</span></h2>
+    <h2 id="campus-walk-title">Explore campus <span id="campus-navigation-caption" hidden></span></h2>
     <div class="campus-navigation-choice" id="campus-navigation-mode" role="group" aria-label="Exploration mode">
-      <button type="button" class="btn" data-campus-navigation-mode="walking" aria-pressed="true">Walking</button>
+      <button type="button" class="btn" data-campus-navigation-mode="normal" aria-pressed="true">Normal</button>
+      <button type="button" class="btn" data-campus-navigation-mode="walking" aria-pressed="false">Walking</button>
       <button type="button" class="btn" data-campus-navigation-mode="flying" aria-pressed="false">Flying</button>
-    </div>
-    <div class="campus-walk-actions" id="campus-walk-start-actions">
-      <button type="button" class="btn" id="campus-walk-place" aria-label="Start a walkthrough by choosing a spot" disabled>Start</button>
     </div>
     <div class="campus-walk-actions" id="campus-walk-active-actions" hidden>
       <button type="button" class="btn" id="campus-walk-run" aria-pressed="false" disabled>Run</button>
-      <button type="button" class="btn" id="campus-walk-exit" aria-label="End walkthrough" disabled>End</button>
     </div>
-    <p id="campus-walk-status" role="status" aria-live="polite" aria-atomic="true">Loading walkthrough…</p>
-    <p class="campus-walk-help"><span class="campus-walk-keyboard">WASD / arrows move · Shift runs · Space jumps · Drag to turn.</span><span class="campus-walk-touch">Use the on-screen movement controls. Drag to look.</span></p>
+    <p id="campus-walk-status" role="status" aria-live="polite" aria-atomic="true">Choose Walking or Flying, then click where you want to start.</p>
+    <p class="campus-walk-help" hidden><span class="campus-walk-keyboard">WASD / arrows move · Shift runs · Space jumps · Drag to turn.</span><span class="campus-walk-touch">Use the on-screen movement controls. Drag to look.</span></p>
   </section>
   <details class="campus-lighting-panel" id="campus-lighting-panel" hidden>
     <summary>
@@ -5426,22 +5422,19 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   style.textContent = `
     #olr-plan-walk-hud[hidden]{display:none!important}
     #olr-plan-walk-hud{position:fixed;bottom:max(24px,env(safe-area-inset-bottom));left:16px;right:16px;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:16px;pointer-events:none;font:13px/1.4 system-ui,sans-serif;color:var(--foreground,#222)}
-    #olr-plan-walk-hud .olr-plan-walk-banner,#olr-plan-walk-hud button{border:1px solid var(--border,#999);border-radius:10px;background:var(--background,#fff);padding:9px 12px;box-shadow:0 2px 8px #0002}
+    #olr-plan-walk-hud .olr-plan-walk-banner{border:1px solid var(--border,#999);border-radius:10px;background:var(--background,#fff);padding:9px 12px;box-shadow:0 2px 8px #0002}
     #olr-plan-walk-hud strong{display:block}#olr-plan-walk-hud p{margin:3px 0 0}
-    #olr-plan-walk-hud button{pointer-events:auto;min-width:44px;min-height:44px;color:inherit;font:inherit;cursor:pointer}
-    #olr-plan-walk-hud button:focus-visible{outline:3px solid #3284e3;outline-offset:2px}
     .olr-canvas-viewport[data-plan-walk=&quot;placing&quot;]{cursor:crosshair;touch-action:none}
     @media(max-width:700px){#olr-plan-walk-hud{font-size:12px;bottom:84px;left:12px;right:12px}}
   `;
   document.head.appendChild(style);
   const hud=document.createElement(&#x27;div&#x27;);hud.id=&#x27;olr-plan-walk-hud&#x27;;hud.hidden=true;
-  hud.innerHTML=&#x27;&lt;div class=&quot;olr-plan-walk-banner&quot;&gt;&lt;strong&gt;Choose a starting point&lt;/strong&gt;&lt;p id=&quot;olr-plan-walk-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; aria-label=&quot;End placement&quot;&gt;End&lt;/button&gt;&#x27;;
+  hud.innerHTML=&#x27;&lt;div class=&quot;olr-plan-walk-banner&quot;&gt;&lt;strong&gt;Choose a starting point&lt;/strong&gt;&lt;p id=&quot;olr-plan-walk-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;&lt;/div&gt;&#x27;;
   document.body.appendChild(hud);
-  hud.querySelector(&#x27;button&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;send(&#x27;walk-exit&#x27;));
   function clearPointers(){for(const [id,p] of pointers){try{p.stage.releasePointerCapture(id);}catch{}}pointers.clear();}
   function setState(next){
     if(!next||typeof next!==&#x27;object&#x27;)return;
-    const previous=state.mode,wasEnabled=enabled();
+    const previous=state.mode,previousNavigation=state.navigationMode,wasEnabled=enabled();
     if(previous===&#x27;aerial&#x27;&amp;&amp;next.mode&amp;&amp;next.mode!==&#x27;aerial&#x27;){
       const saved=next.aerialCamera;
       aerialCamera=saved?.center&amp;&amp;[saved.center.x,saved.center.y,saved.scale,saved.bearing].every(Number.isFinite)
@@ -5450,13 +5443,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     state={...state,...next};
     const picking=enabled();hud.hidden=!picking;
-    if(wasEnabled&amp;&amp;!picking)clearPointers();
+    if(wasEnabled&amp;&amp;(!picking||previousNavigation!==state.navigationMode))clearPointers();
     for(const stage of stages){
-      if(picking){stage.dataset.planWalk=&#x27;placing&#x27;;stage.setAttribute(&#x27;aria-label&#x27;,&#x27;Choose a point on the plan to start a first-person walkthrough. Click or tap; Escape cancels.&#x27;);}
+      if(picking){stage.dataset.planWalk=&#x27;placing&#x27;;stage.setAttribute(&#x27;aria-label&#x27;,&#x27;Choose a point on the plan to start a first-person walkthrough. Click or tap; choose Normal or press Escape to cancel.&#x27;);}
       else{delete stage.dataset.planWalk;const label=labels.get(stage);if(label!==null)stage.setAttribute(&#x27;aria-label&#x27;,label);else stage.removeAttribute(&#x27;aria-label&#x27;);}
     }
     hud.querySelector(&#x27;strong&#x27;).textContent=state.navigationMode===&#x27;flying&#x27;?&#x27;Choose a launch point&#x27;:&#x27;Choose a starting point&#x27;;
-    hud.querySelector(&#x27;p&#x27;).textContent=state.feedback||&#x27;Click or tap anywhere on the campus plan.&#x27;;
+    hud.querySelector(&#x27;p&#x27;).textContent=state.feedback||&#x27;Click or tap anywhere on the campus plan. Choose Normal to cancel placement.&#x27;;
     if(state.mode===&#x27;aerial&#x27;&amp;&amp;previous!==&#x27;aerial&#x27;){if(aerialCamera)window.olrMapCamera.setPose(aerialCamera);aerialCamera=null;}
     if(picking&amp;&amp;!wasEnabled)focus();
   }
@@ -6771,14 +6764,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const walkPanel = document.getElementById('campus-walk-panel');
   const navigationChoices = [...panel.querySelectorAll('[data-campus-navigation-mode]')];
   const navigationCaption = document.getElementById('campus-navigation-caption');
-  const walkPlace = document.getElementById('campus-walk-place');
-  const walkExit = document.getElementById('campus-walk-exit');
-  const walkReturn = document.getElementById('campus-walk-return');
+  const normalMode = panel.querySelector('[data-campus-navigation-mode="normal"]');
   const walkRun = document.getElementById('campus-walk-run');
   const walkStatus = document.getElementById('campus-walk-status');
   const walkKeyboardHelp = panel.querySelector('.campus-walk-keyboard');
   const walkTouchHelp = panel.querySelector('.campus-walk-touch');
-  const walkStartActions = document.getElementById('campus-walk-start-actions');
   const walkActiveActions = document.getElementById('campus-walk-active-actions');
   const lightingPanel = document.getElementById('campus-lighting-panel');
   const timeSlider = document.getElementById('campus-time-of-day');
@@ -6795,7 +6785,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let oldBuildingPolygons = [];
   const dragMode = 'rotate';
   let walkState = {mode:'aerial',running:false,eyeHeightFeet:6};
-  let navigationMode = 'walking';
+  let navigationMode = 'normal';
   let walkPending = null, queuedWalk = null, walkAerialCamera = null, focusAfterWalkExit = false;
   let initial3d = new URL(location.href).searchParams.get('view') === '3d';
   const normalizeTime = value => Number.isFinite(Number(value)) ? Math.max(0,Math.min(1439,Math.round(Number(value)))) : 840;
@@ -6838,7 +6828,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=71f4ca8dfa8ca6c8';
+      modelFrame.src='./campus-3d/?embedded=1&v=3d543a6392672d7c';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -6866,52 +6856,53 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     walkPanel.hidden=dimension==='list';
     navigationChoices.forEach(button=>{
       button.setAttribute('aria-pressed',String(button.dataset.campusNavigationMode===navigationMode));
-      button.disabled=active;
+      button.disabled=button!==normalMode&&!mapState?.camera;
     });
+    navigationCaption.hidden=navigationMode==='normal';
     navigationCaption.textContent=flying?'Free flight':'6 ft eye height';
-    walkPlace.setAttribute('aria-label',flying?'Start flying by choosing a launch point':'Start walking by choosing a starting point');
-    walkPlace.disabled=active||!mapState?.camera;
-    walkStartActions.hidden=active;
-    walkActiveActions.hidden=!active;
+    walkActiveActions.hidden=!navigating()||placing||walkPending==='exit';
     walkRun.disabled=!ready||!navigating();
-    walkRun.hidden=placing;
     walkRun.textContent=flying?'Fast':'Run';
     walkRun.setAttribute('aria-pressed',String(walkState.running));
-    walkExit.disabled=false;
-    walkExit.textContent=walkReturn.textContent='End';
-    for(const button of [walkExit,walkReturn])button.setAttribute('aria-label',placing?'End placement':flying?'End flight':'End walkthrough');
-    walkReturn.hidden=!(active&&mobile?.matches&&!expanded);
     navigation.hidden=cameraTools.hidden=compass.hidden=active;
     compass.disabled=active;
     const activity=flying?'flight':'walkthrough';
     const placeHint=dimension==='2d'?'a point on the plan':'a path, lawn, or roof';
-    const status=queuedWalk&&!modelReady?`Loading ${activity}…`:walkPending==='exit'?`Ending ${activity}…`:walkPending&&!placing?`Starting ${activity}…`:placing?`Click or tap ${placeHint} to ${flying?'launch':'start walking'}.`:navigating()?(flying?(walkState.running?'Flying fast.':'Flying.'):(walkState.running?'Running · 6 ft eye height.':'Walking · 6 ft eye height.')):`Select Start, then choose ${placeHint}.`;
+    const status=queuedWalk&&!modelReady?`Loading ${activity}…`:walkPending==='exit'?'Returning to Normal…':placing?`Click or tap ${placeHint} to ${flying?'launch':'start walking'}. Choose Normal to cancel.`:navigating()?(flying?(walkState.running?'Flying fast.':'Flying.'):(walkState.running?'Running · 6 ft eye height.':'Walking · 6 ft eye height.')):'Choose Walking or Flying, then click where you want to start.';
     walkStatus.textContent=walkPending?status:(walkState.feedback||status);
+    if(walkKeyboardHelp)walkKeyboardHelp.parentElement.hidden=!navigating()||placing||walkPending==='exit';
     const movementHelp=flying?'WASD / arrows move · Space or E rises · Q descends · Shift flies faster.':'WASD / arrows move · Shift runs · Space jumps; press again in midair to reach rooftops.';
     if(walkKeyboardHelp)walkKeyboardHelp.textContent=(dimension==='3d'||navigating())
       ? `${movementHelp} ${walkState.pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
       : `${movementHelp} Drag to turn.`;
     if(walkTouchHelp)walkTouchHelp.textContent=flying?'Hold arrows to move. Hold Up or Down to change height. Drag to look.':'Use the on-screen movement controls. Tap Jump twice to reach rooftops. Drag to look.';
-    if(focusAfterWalkExit&&!active&&dimension!=='list'){focusAfterWalkExit=false;(mobile?.matches?toggle:walkPlace)?.focus();}
+    if(focusAfterWalkExit&&!active&&dimension!=='list'){focusAfterWalkExit=false;normalMode?.focus({preventScroll:true});}
   }
   function requestWalk(command) {
-    if(command==='walk-exit'&&queuedWalk){
-      queuedWalk=null;walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6};
-      sendPlanWalk();syncModel();renderWalk();return;
-    }
-    if(command!=='walk-exit'&&walkActive())return;
-    walkPending=['walk-place','fly-place'].includes(command)?'placing':'exit';
-    if(command!=='walk-exit'){
+    const wasActive=walkActive();
+    if(command==='walk-exit'){
+      navigationMode='normal';queuedWalk=null;
+      if(modelReady&&wasActive){walkPending='exit';sendModel(command);}
+      else{
+        walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6};
+        sendPlanWalk();syncModel();
+      }
+    }else{
+      walkPending='placing';
       navigationMode=command==='fly-place'?'flying':'walking';
-      walkState={...walkState,navigationMode};
+      walkState={...walkState,navigationMode,feedback:''};
       if(mapState?.view==='existing')sendMap('map','shifted');
-      try { if(dimension==='3d'&&modelReady)modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
-      walkAerialCamera=dimension==='3d'?modelCamera:mapState?.camera;
+      // Changing exploration mode picks a new spot using the original Normal
+      // view, rather than replacing that view with the first-person camera.
+      if(!wasActive){
+        try { if(dimension==='3d'&&modelReady)modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
+        walkAerialCamera=dimension==='3d'?modelCamera:mapState?.camera;
+      }
       queuedWalk=command;
       ensureModel();
-      if(dimension==='2d'||!modelCamera)requestMapCamera();
-      syncModel();
-    }else sendModel(command);
+      if(!wasActive&&(dimension==='2d'||!modelCamera))requestMapCamera();
+      if(wasActive)startQueuedWalk();else syncModel();
+    }
     if(mobile?.matches)expand(false);else renderWalk();
   }
   function escapeWalk() {
@@ -6921,12 +6912,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     else {focusAfterWalkExit=true;requestWalk('walk-exit');}
   }
   navigationChoices.forEach(button=>button.addEventListener('click',()=>{
-    if(walkActive())return;
-    navigationMode=button.dataset.campusNavigationMode==='flying'?'flying':'walking';
-    renderWalk();
+    const next=button.dataset.campusNavigationMode;
+    focusAfterWalkExit=next==='normal';
+    requestWalk(next==='normal'?'walk-exit':next==='flying'?'fly-place':'walk-place');
   }));
-  walkPlace.addEventListener('click',()=>requestWalk(navigationMode==='flying'?'fly-place':'walk-place'));
-  for(const button of [walkExit,walkReturn])button.addEventListener('click',()=>{focusAfterWalkExit=true;requestWalk('walk-exit');});
   walkRun.addEventListener('click',()=>{if(navigating()&&modelReady){sendModel('walk-run',!walkState.running);focusWalk();}});
   function renderTime(phase='') {
     const hour=Math.floor(timeOfDay/60), minute=timeOfDay%60;
@@ -7129,19 +7118,22 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(s?.type==='olr-3d-ready'){modelReady=true;delete modelFrame.dataset.preloading;renderWalk();syncModel();}
       else if(s?.type==='olr-3d-error'){
         modelReady=false;delete modelFrame.dataset.preloading;
-        queuedWalk=null;walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6,feedback:'The walkthrough could not load. Switch to 3D to retry.'};
+        navigationMode='normal';queuedWalk=null;walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6,feedback:'The walkthrough could not load. Switch to 3D to retry.'};
         sendPlanWalk();renderWalk();
       }
       else if(s?.type==='olr-3d-walk-pose'&&navigating()&&s.siteFeet&&[s.siteFeet.x,s.siteFeet.y,s.siteFeet.elevation,s.yawRadians,s.pitchRadians].every(Number.isFinite)){
         walkState={...walkState,siteFeet:s.siteFeet,yawRadians:s.yawRadians,pitchRadians:s.pitchRadians,grounded:s.grounded,jumping:s.jumping};
       }
       else if(s?.type==='olr-3d-walk'&&['aerial','placing','walking','flying'].includes(s.mode)&&typeof s.running==='boolean'&&s.eyeHeightFeet===6){
-        // The viewer announces its initial aerial state immediately after ready,
-        // before it processes a queued start from a 2D page.
-        if(s.mode==='aerial'&&['placing','walking'].includes(walkPending)&&!s.feedback)return;
+        // Keep the latest button choice while older iframe replies are still
+        // in flight, including cancellation before the model has loaded.
+        const incomingMode=s.navigationMode==='flying'||s.mode==='flying'?'flying':'walking';
+        if(s.mode==='aerial'&&walkPending==='placing'&&!s.feedback)return;
+        if(s.mode!=='aerial'&&(navigationMode==='normal'||incomingMode!==navigationMode))return;
+        if(walkPending==='placing'&&['walking','flying'].includes(s.mode))return;
         const wasActive=walkActive();
         const feedback=typeof s.feedback==='string'?s.feedback:typeof s.message==='string'?s.message:'';
-        if(s.mode!=='aerial')navigationMode=s.navigationMode==='flying'||s.mode==='flying'?'flying':'walking';
+        navigationMode=s.mode==='aerial'?'normal':incomingMode;
         walkState={...s,feedback:feedback.trim().slice(0,300)};walkPending=null;
         sendPlanWalk();
         if(!wasActive&&s.mode!=='aerial'&&mobile?.matches)expand(false);else renderWalk();
