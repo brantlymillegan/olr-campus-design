@@ -1,13 +1,34 @@
 // Default-on 3D ambience. Audio starts only when browser playback policy allows it.
-// Recordings and CC0 credits: ./audio/ASSET-CREDITS.txt.
+// Recording licenses and attribution: ./audio/ASSET-CREDITS.txt.
 const FEET = .3048;
 const PLAYGROUND = Object.freeze({ x: 100.962893 * FEET, y: 1.2, z: -48.753048 * FEET });
+// Clear interior from the tower model, including its 24-segment barrel vault.
+// Site coordinates are feet; renderer coordinates are metres with north = -Z.
+const CHAPEL_VAULT = Array.from({ length: 25 }, (_, i) => [
+  104.5 - 8.1 * Math.cos(i * Math.PI / 24), 48.7 + 5.6 * Math.sin(i * Math.PI / 24)
+]);
+const CHANT_URL = new URL('./audio/chapel-gregorian-chant-4c1e2723cd272a32.mp3', import.meta.url).href;
 const ASSETS = Object.freeze({
   birds: new URL('./audio/birds-93f2bd591900db6a.mp3', import.meta.url).href,
   playground: new URL('./audio/playground-1f312e3f6a13b00b.mp3', import.meta.url).href
 });
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+export function chapelPresence(position) {
+  if (!position || !['x', 'y', 'z'].every(key => Number.isFinite(position[key]))) return 0;
+  const x = position.x / FEET, y = -position.z / FEET, height = position.y / FEET;
+  if (x <= 253.4 || x >= 269.6 || y <= 96.4 || y >= 112.6 || height < -3.7) return 0;
+  let ceiling = 48.7;
+  for (let i = 1; i < CHAPEL_VAULT.length; i++) {
+    const [a, low] = CHAPEL_VAULT[i - 1], [b, high] = CHAPEL_VAULT[i];
+    if (y <= b) { ceiling = low + (high - low) * (y - a) / (b - a); break; }
+  }
+  if (height >= ceiling) return 0;
+  // Fade within the west entrance, reaching silence at the threshold. Also
+  // taper immediately under the vault for visitors flying out through it.
+  return smooth(0, 2, x - 253.4) * smooth(0, 1, ceiling - height);
+}
 
 export function createCampusAmbience({ camera } = {}) {
   let context, master, lowpass, birdGain, childrenGain, childPan, windGain, windFilter;
@@ -16,6 +37,8 @@ export function createCampusAmbience({ camera } = {}) {
   let bellPosition = { x: 261.5 * FEET, y: 63.6 * FEET, z: -104.5 * FEET };
   let bellMix = { gain: 0, distanceFeet: 0, pan: 0, cutoff: 7800 };
   let weatherEnabled = false;
+  let chantGain, chantSource = null, chantLoading = null, chantError = null;
+  let chantOffset = 0, chantStartedAt = 0, chantTarget = 0, chantPresence = 0;
   let enabled = true, volume = .25, unlocked = false, disposed = false, ready = false;
   let running = false, loading = null, resumePending = null, timer = null, error = null;
   let nextBird = 0, nextChildren = 0, lastMix = -1, elapsed = 0;
@@ -153,6 +176,52 @@ export function createCampusAmbience({ camera } = {}) {
     param(bellFilter.frequency, bellMix.cutoff, .2);
   }
 
+  async function loadChant() {
+    if (buffers.chant || chantLoading || !context || disposed) return chantLoading;
+    chantLoading = (async () => {
+      const response = await fetch(CHANT_URL, { signal: abort.signal, credentials: 'same-origin' });
+      if (!response.ok) throw new Error(`Chapel chant HTTP ${response.status}`);
+      const bytes = await response.arrayBuffer();
+      if (disposed) return;
+      const buffer = await context.decodeAudioData(bytes);
+      if (!disposed) { buffers.chant = buffer; chantError = null; sync(); }
+    })().catch(e => {
+      if (!disposed && e.name !== 'AbortError') chantError = 'Chapel chant could not load. Toggle sound to retry.';
+    }).finally(() => { chantLoading = null; });
+    return chantLoading;
+  }
+
+  function stopChant() {
+    if (chantGain) {
+      chantGain.gain.cancelScheduledValues(context.currentTime);
+      chantGain.gain.setValueAtTime(0, context.currentTime);
+    }
+    chantTarget = 0;
+    if (chantSource) {
+      chantOffset = (chantOffset + Math.max(0, context.currentTime - chantStartedAt)) % buffers.chant.duration;
+      stopSource(chantSource);
+    }
+  }
+
+  function mixChant() {
+    chantPresence = chapelPresence(view.position || camera?.position);
+    if (!wanted() || !chantPresence) { stopChant(); return; }
+    // Independent loading/bus: neither failed outdoor recordings nor their
+    // interior low-pass filter may silence or muffle the chapel recording.
+    if (!buffers.chant) { if (!chantLoading && !chantError) void loadChant(); return; }
+    if (context.state !== 'running') return;
+    if (!chantGain) {
+      chantGain = context.createGain(); chantGain.gain.value = 0;
+      chantGain.connect(context.destination);
+    }
+    if (!chantSource) {
+      chantStartedAt = context.currentTime;
+      chantSource = source(buffers.chant, chantGain, { loop: true, offset: chantOffset, fade: .7, kind: 'chant' });
+    }
+    const target = volume * .8 * chantPresence;
+    if (Math.abs(target - chantTarget) > .00001) { chantTarget = target; param(chantGain.gain, target, .1); }
+  }
+
   async function load() {
     if (ready || loading || !context || disposed) return loading;
     loading = Promise.all(Object.entries(ASSETS).map(async ([id, url]) => {
@@ -192,6 +261,7 @@ export function createCampusAmbience({ camera } = {}) {
     sources.delete(record); record.node.onended = null;
     record.node.disconnect(); record.gain.disconnect(); record.panner?.disconnect();
     if (rainSource === record) rainSource = null;
+    if (chantSource === record) chantSource = null;
   }
 
   function stopSource(record) {
@@ -215,6 +285,7 @@ export function createCampusAmbience({ camera } = {}) {
     if (!context) return;
     if (timer != null) { clearInterval(timer); timer = null; }
     running = false;
+    stopChant();
     master.gain.cancelScheduledValues(context.currentTime);
     master.gain.setValueAtTime(0, context.currentTime);
     if (bellGain) { bellGain.gain.cancelScheduledValues(context.currentTime); bellGain.gain.setValueAtTime(0, context.currentTime); }
@@ -250,6 +321,7 @@ export function createCampusAmbience({ camera } = {}) {
     param(lowpass.frequency, targets.cutoff, .6); param(childPan.pan, pan, .3);
     if (rainGain) { param(rainGain.gain, targets.rain, .3); param(thunderGain.gain, targets.thunder, .2); }
     mixBell();
+    mixChant();
   }
 
   function schedule() {
@@ -283,12 +355,13 @@ export function createCampusAmbience({ camera } = {}) {
   function sync() {
     if (!wanted()) { stop(); return; }
     if (!context) return;
+    mixChant();
     // An unlock can finish before the asynchronous 3D activation message.
     // Complete that pending intent when the view becomes active, once only.
-    if (!ready && !weatherEnabled) { if (!loading && !error) void load(); return; }
+    if (!ready && !weatherEnabled && !loading && !error) void load();
     if (context.state === 'running') { start(); return; }
     if (!resumePending) {
-      resumePending = context.resume().then(() => { if (wanted()) start(); else stop(); })
+      resumePending = context.resume().then(() => { if (wanted()) { start(); mixChant(); } else stop(); })
         .catch(() => { error = 'Tap the scene to enable sound.'; })
         .finally(() => { resumePending = null; });
     }
@@ -300,6 +373,7 @@ export function createCampusAmbience({ camera } = {}) {
     async unlock() {
       if (disposed || !enabled || volume <= 0) return false;
       error = null;
+      chantError = null;
       graph(); if (!context) return false;
       unlocked = true;
       // Invoke resume immediately in the user gesture, before awaiting downloads.
@@ -313,6 +387,7 @@ export function createCampusAmbience({ camera } = {}) {
     },
     setEnabled(value) {
       enabled = Boolean(value);
+      if (enabled) chantError = null;
       sync();
     },
     setVolume(value) { volume = clamp(Number.isFinite(Number(value)) ? Number(value) : .25); sync(); if (running) mix(); else mixBell(); },
@@ -364,12 +439,16 @@ export function createCampusAmbience({ camera } = {}) {
     get state() { return {
       enabled, volume, unlocked, ready: ready || Boolean(weatherEnabled && buffers.rain), loading: Boolean(loading), active: Boolean(view.active),
       playing: running && context?.state === 'running', contextState: context?.state || 'locked',
-      sourceCount: sources.size, error: weatherEnabled && running ? null : error, interior: view.interior,
+      sourceCount: sources.size, error: chantPresence > 0 && chantError ? chantError : weatherEnabled && running ? null : error, interior: view.interior,
       weatherEnabled, rainPlaying: Boolean(rainSource && !rainSource.stopping && running && context?.state === 'running'),
       thunderSourceCount: [...sources].filter(record => record.kind === 'thunder').length,
       bell: { strikeCount: bellStrikes, activeVoices: [...sources].filter(record => record.kind.startsWith('bell')).length,
         enabled: enabled && volume > 0, ready: Boolean(buffers.bell), position: { ...bellPosition }, ...bellMix },
-      gains: { ...targets }, assets: Object.keys(ASSETS)
+      chant: { inside: chantPresence > 0, presence: chantPresence, ready: Boolean(buffers.chant),
+        loading: Boolean(chantLoading), playing: Boolean(chantSource && wanted() && context?.state === 'running'),
+        gain: chantTarget, error: chantError, sourceCount: [...sources].filter(record => record.kind === 'chant').length,
+        url: CHANT_URL },
+      gains: { ...targets }, assets: [...Object.keys(ASSETS), 'chant']
     }; },
     dispose() {
       if (disposed) return;

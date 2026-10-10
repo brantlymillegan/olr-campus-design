@@ -209,3 +209,30 @@ Campus adaptation: mono, gentle high/low-pass filtering, loudness adjustment,
 
 Wind: original low-volume filtered procedural noise, generated locally.
 No microphone access, tracking, third-party streaming, or audio uploads.
+
+
+BELL TOWER CHAPEL — GREGORIAN CHANT
+
+Antiphona et Magnificat (Antiphon and Magnificat)
+From Vesperae de Confessore non Pontifice, Gregorian Vespers in honor of
+Saint Vincent Pallotti. Recorded June 8, 2007.
+Performed by Schola Gregoriana, Pallottine Seminary, Ołtarzew, Poland.
+Conducted by Fr. Dariusz Smolarek.
+Recording source: Fundacja Caecilianum and WSD SAC.
+https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Antiphona_et_Magnificat.ogg
+Recording permission confirmed by Wikimedia VRT ticket 2008031210015414.
+
+Original recording and this campus audio adaptation:
+Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+https://creativecommons.org/licenses/by-sa/3.0/
+Legal code: https://creativecommons.org/licenses/by-sa/3.0/legalcode
+You may share and adapt this audio, including commercially, with attribution
+and the same or a compatible license for adaptations. No endorsement by the
+performers, conductor, recording providers, or Wikimedia is implied.
+
+Campus adaptation: equal stereo-to-mono mix, fixed loudness adjustment,
+24 kHz / 80 kbps MP3, a short onset fade, and a gentle fade of the original
+reverberation tail. Six seconds of trailing digital silence were removed;
+the entire sung performance is retained, without mid-phrase edits.
+No synthetic voices or added accompaniment. The adapted audio is distributed
+under CC BY-SA 3.0, as is the original recording.
