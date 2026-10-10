@@ -467,12 +467,25 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       return startAt(value.x * FT, -value.y * FT, placementYaw());
     }
     if (name === 'walk-place' || name === 'fly-place') {
-      // Mode buttons can request a new placement while already navigating.
-      // Clear the prior input without publishing an intermediate old mode.
+      const nextMode = name === 'fly-place' ? 'flying' : 'walking';
+      if (navigating()) {
+        // An active explorer already has a position and view. Change movement
+        // abilities in place; placement belongs only to leaving Normal mode.
+        if (mode !== nextMode) {
+          mode = navigationMode = nextMode;
+          velocityY = 0; jumpCount = 0; velocity.set(0, 0, 0); movedSpeed = 0;
+          pendingBankYaw = 0; bankTurnRate = 0;
+          const support = mode === 'walking' ? walkingSurface(feet.x, feet.z) : null;
+          grounded = Boolean(support && Math.abs(feet.y - support.y) <= .025);
+          if (support) { groundY = support.y; groundSurface = support.name; }
+          suspended = false;
+        }
+        feedback = ''; syncCamera(); announce(true); focusCanvas(); requestDraw(); return true;
+      }
       pause(false); mode = 'placing'; roll = 0; suspended = false; marker.visible = false;
       runningToggle = false; velocityY = 0; jumpCount = 0;
       if (presentation === '2d') flatGroundY = 0;
-      navigationMode = name === 'fly-place' ? 'flying' : 'walking';
+      navigationMode = nextMode;
       feedback = presentation === '2d' ? 'Click or tap a starting point on the plan. Choose Normal to cancel placement.' : 'Click or tap a lawn, path, or roof. Choose Normal to cancel placement.';
       announce(); focusCanvas(); requestDraw(); return true;
     }
@@ -528,10 +541,17 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     return { x: (-Math.sin(yaw) * forward + Math.cos(yaw) * side) / length, y: up / length, z: (-Math.cos(yaw) * forward - Math.sin(yaw) * side) / length };
   }
   function bankNeedsAnimation() {
-    return mode === 'flying' && (pendingBankYaw !== 0 || bankTurnRate !== 0 || roll !== 0);
+    return roll !== 0 || (mode === 'flying' && (pendingBankYaw !== 0 || bankTurnRate !== 0));
   }
   function updateBank(elapsed) {
-    if (mode !== 'flying') { roll = 0; pendingBankYaw = 0; bankTurnRate = 0; return; }
+    if (mode !== 'flying') {
+      // A banked flight can become a walk without a camera snap. Settle the
+      // residual tilt smoothly while preserving the facing direction.
+      pendingBankYaw = 0; bankTurnRate = 0;
+      roll *= Math.exp(-elapsed / BANK_EASE_SECONDS);
+      if (Math.abs(roll) < .00001) roll = 0;
+      return;
+    }
     if (elapsed === 0) return; // An idle-loop wake must not consume its input.
     const turnBlend = -Math.expm1(-elapsed / BANK_TURN_SECONDS);
     bankTurnRate += (pendingBankYaw / elapsed - bankTurnRate) * turnBlend;

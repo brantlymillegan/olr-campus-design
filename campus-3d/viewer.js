@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=ab771f06d6ec9c9a';
-import { createCampusWalk } from './campus-walk.js?v=07851a43718a2323';
+import { createCampusWalk } from './campus-walk.js?v=659b85a748e0ac3b';
 import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
 import * as THREE from 'three';
