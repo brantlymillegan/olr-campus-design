@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "id": "model3",
+  "park": {
+    "x": 43.5,
+    "y": 230,
+    "heading": 0
+  },
+  "dimensions_ft": {
+    "length": 15.641892050194928,
+    "width": 6.856955098980681,
+    "height": 4.724409636550062
+  },
+  "driver_eye_m": [
+    -0.385,
+    1.14,
+    0.12
+  ],
+  "wheel_nodes": [
+    {
+      "id": "FL",
+      "steer_node": "Steer_FL",
+      "spin_node": "Wheel_FL",
+      "front": true,
+      "center_m": [
+        -0.792,
+        0.3375,
+        -1.4375
+      ],
+      "radius_m": 0.3375,
+      "steer_axis": [
+        0,
+        1,
+        0
+      ],
+      "spin_axis": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "FR",
+      "steer_node": "Steer_FR",
+      "spin_node": "Wheel_FR",
+      "front": true,
+      "center_m": [
+        0.792,
+        0.3375,
+        -1.4375
+      ],
+      "radius_m": 0.3375,
+      "steer_axis": [
+        0,
+        1,
+        0
+      ],
+      "spin_axis": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "RL",
+      "steer_node": "Steer_RL",
+      "spin_node": "Wheel_RL",
+      "front": false,
+      "center_m": [
+        -0.792,
+        0.3375,
+        1.4375
+      ],
+      "radius_m": 0.3375,
+      "steer_axis": [
+        0,
+        1,
+        0
+      ],
+      "spin_axis": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "RR",
+      "steer_node": "Steer_RR",
+      "spin_node": "Wheel_RR",
+      "front": false,
+      "center_m": [
+        0.792,
+        0.3375,
+        1.4375
+      ],
+      "radius_m": 0.3375,
+      "steer_axis": [
+        0,
+        1,
+        0
+      ],
+      "spin_axis": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "model": {
+    "url": "./vehicles/model3-3f7843367608185fe7baaa4f93186c238b00dc1b02749985b7371573a58342ba.glb",
+    "sha256": "3f7843367608185fe7baaa4f93186c238b00dc1b02749985b7371573a58342ba",
+    "bytes": 3539676
+  },
+  "native": {
+    "url": "./vehicles/model3-e493727174c68bf1c6c002b3c8503070a00dd13ccbc1071a7dfdeaef3b31c0c3.blend",
+    "sha256": "e493727174c68bf1c6c002b3c8503070a00dd13ccbc1071a7dfdeaef3b31c0c3",
+    "bytes": 807471
+  }
+}

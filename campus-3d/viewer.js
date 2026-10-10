@@ -1,6 +1,7 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=108eaf6149a30146';
-import { createCampusWalk } from './campus-walk.js?v=c46c970003eac9d8';
+import { createCampusWalk } from './campus-walk.js?v=07851a43718a2323';
+import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=0823de4c0c642c04';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -34,6 +35,7 @@ let model, modelReady = false, frame = null, frameHost = null;
 let modelSha256 = null, campusPdfCapture = null;
 let preparedTextures = 0, preparationRenders = 0;
 let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d';
+let driving = null, vehicleModel = null, parkedVehicle = null, vehicleConfig = null, vehicleSha256 = null;
 let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
 let flatBounds = null;
 let resetAerialInput = () => {};
@@ -60,7 +62,14 @@ function handlePdfCommand(command, value) {
     return;
   }
   campusPdfCapture ||= createCampusPdfCapture({
-    getModel: () => model, getSourceScene: () => scene,
+    getModel: () => {
+      // Printing uses the parked car, independent of the visitor's driving
+      // position. Shared geometry is cloned by the existing capture pipeline.
+      const campus = new THREE.Group();
+      campus.add(model.clone(true));
+      if (parkedVehicle) campus.add(parkedVehicle.clone(true));
+      return campus;
+    }, getSourceScene: () => scene,
     getModelSha256: () => modelSha256, getAssetRevision: () => ASSET_REVISION,
     createAtmosphere: createCampusAtmosphere, daylight: lightingAtTime(720), daylightStyle: CAMPUS_DAYLIGHT
   });
@@ -83,6 +92,7 @@ function draw(timestamp) {
   if (!modelReady || !active || document.hidden) return;
   const dt = lastDrawTime === null ? 0 : Math.max(0, (timestamp - lastDrawTime) / 1000);
   walk?.update(dt);
+  driving?.update(dt);
   const showingModel = walkPresentation === '3d';
   if (showingModel && lightingDirty && campusLighting) {
     campusLighting.setTime(timeOfDay);
@@ -91,7 +101,7 @@ function draw(timestamp) {
     updateOutlineColor();
   }
   const showingPlan = !showingModel && Boolean(walk?.camera);
-  campusInteriorLighting?.update(walk?.camera || camera, showingModel && Boolean(walk?.camera));
+  campusInteriorLighting?.update(driving?.camera || walk?.camera || camera, showingModel && Boolean(walk?.camera) && !driving?.camera);
   planGround?.setEnabled(showingPlan);
   // First person uses the exact same camera in both presentations. The flat
   // plan has its own unlit scene, so no model geometry or shadow can appear.
@@ -100,13 +110,13 @@ function draw(timestamp) {
     renderer.render(planGround.scene, walk.camera);
     renderedFrames++;
   } else if (showingModel) {
-    const activeCamera = walk?.camera || camera;
+    const activeCamera = driving?.camera || walk?.camera || camera;
     campusAtmosphere?.updateCamera(activeCamera);
     renderer.render(scene, activeCamera);
     renderedFrames++;
   }
-  lastDrawTime = walk?.needsAnimation ? timestamp : null;
-  if (walk?.needsAnimation) requestDraw();
+  lastDrawTime = walk?.needsAnimation || driving?.needsAnimation ? timestamp : null;
+  if (walk?.needsAnimation || driving?.needsAnimation) requestDraw();
 }
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
 function requestDraw() {
@@ -325,7 +335,7 @@ function installEmbeddedNavigation() {
   }
   canvas.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('pointerdown', event => {
-    if (!active || (walk && walk.mode !== 'aerial') || (event.pointerType === 'mouse' && ![0, 2].includes(event.button))) return;
+    if (!active || driving?.state.driving || (walk && walk.mode !== 'aerial') || (event.pointerType === 'mouse' && ![0, 2].includes(event.button))) return;
     event.preventDefault(); canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId);
     const rect = canvas.getBoundingClientRect();
@@ -333,7 +343,7 @@ function installEmbeddedNavigation() {
     gesture = snapshot();
   });
   canvas.addEventListener('pointermove', event => {
-    if (!pointers.has(event.pointerId) || !active || safariGesture || (walk && walk.mode !== 'aerial')) return;
+    if (!pointers.has(event.pointerId) || !active || safariGesture || driving?.state.driving || (walk && walk.mode !== 'aerial')) return;
     const rect = canvas.getBoundingClientRect();
     const pointer = pointers.get(event.pointerId);
     pointers.set(event.pointerId, { ...pointer, x: event.clientX - rect.left, y: event.clientY - rect.top });
@@ -357,7 +367,7 @@ function installEmbeddedNavigation() {
   });
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
-    if (!active || safariGesture || (walk && walk.mode !== 'aerial')) return;
+    if (!active || safariGesture || driving?.state.driving || (walk && walk.mode !== 'aerial')) return;
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? embeddedCamera.height : 1;
     if (event.ctrlKey || event.metaKey) {
       const rect = canvas.getBoundingClientRect();
@@ -370,11 +380,11 @@ function installEmbeddedNavigation() {
   // Safari reports an actual trackpad pinch/twist separately from a two-finger
   // scroll. Wheel deltas alone must never change the compass bearing.
   canvas.addEventListener('gesturestart', event => {
-    if (!active || (walk && walk.mode !== 'aerial')) return;
+    if (!active || driving?.state.driving || (walk && walk.mode !== 'aerial')) return;
     event.preventDefault(); safariGesture = { scale: event.scale || 1, rotation: event.rotation || 0 };
   }, { passive: false });
   canvas.addEventListener('gesturechange', event => {
-    if (!active || (walk && walk.mode !== 'aerial')) return;
+    if (!active || driving?.state.driving || (walk && walk.mode !== 'aerial')) return;
     event.preventDefault(); if (!safariGesture) return;
     zoomEmbedded((event.scale || 1) / safariGesture.scale, undefined, false);
     rotateEmbedded((event.rotation || 0) - safariGesture.rotation, false);
@@ -385,6 +395,8 @@ function installEmbeddedNavigation() {
   canvas.addEventListener('keydown', event => {
     if (!active) return;
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, textarea, select, [contenteditable=true]')) return;
+    // F belongs to the car only when the visitor is near it or seated inside.
+    if (driving?.state.driving || (event.code === 'KeyF' && driving?.state.near)) return;
     if (walk && walk.mode !== 'aerial') {
       // Movement is owned by the walker; plan/layer shortcuts still belong to
       // the common toolbar when the first-person canvas has keyboard focus.
@@ -411,6 +423,10 @@ window.addEventListener('message', event => {
   const { command, value } = event.data;
   if (['pdf-info', 'pdf-capture', 'pdf-cancel'].includes(command)) { handlePdfCommand(command, value); return; }
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
+    if (value === '2d' && driving?.state.driving && !driving.command('drive-exit')) {
+      post({type:'olr-3d-drive',...driving.state,presentationBlocked:true});
+      return;
+    }
     if (walkPresentation !== value) cancelDraw();
     walkPresentation = value;
     if (value === '2d') planGround?.preload();
@@ -427,10 +443,19 @@ window.addEventListener('message', event => {
     requestDraw(); return;
   }
   if (['walk-place', 'fly-place', 'walk-place-at', 'walk-start', 'walk-exit', 'walk-run', 'walk-input', 'walk-release-pointer'].includes(command)) {
+    if (driving?.state.driving) {
+      if (['walk-place', 'fly-place', 'walk-start', 'walk-exit'].includes(command)) driving.command('drive-exit', {resumeWalking:false});
+      else if (command === 'walk-release-pointer') { driving.command('drive-release-pointer'); return; }
+      else return;
+    }
     if (active) walk?.command(command, value);
     return;
   }
-  if (walk && walk.mode !== 'aerial' && ['camera', 'drag-mode', 'zoom', 'rotate', 'north', 'compass', 'fit'].includes(command)) return;
+  if (['drive-toggle', 'drive-exit', 'drive-input', 'drive-release-pointer'].includes(command)) {
+    if (active) driving?.command(command, value);
+    return;
+  }
+  if ((driving?.state.driving || (walk && walk.mode !== 'aerial')) && ['camera', 'drag-mode', 'zoom', 'rotate', 'north', 'compass', 'fit'].includes(command)) return;
   if (command === 'camera' && value && Number.isFinite(value.center?.x) && Number.isFinite(value.center?.y) && Number.isFinite(value.scale) && value.scale > 0) {
     const incomingZoom = Number.isFinite(value.zoom) && value.zoom > 0 ? value.zoom : 1;
     const zoom = THREE.MathUtils.clamp(incomingZoom, 1, 32);
@@ -440,7 +465,7 @@ window.addEventListener('message', event => {
     savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
-    if (!active) { walk?.pause(); resetAerialInput(); lastDrawTime = null; }
+    if (!active) { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     if (!active) cancelDraw();
     requestDraw();
   } else if (command === 'theme') {
@@ -470,12 +495,13 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
+  get driving() { return {...(driving?.state ?? {available:false,driving:false,near:false}), modelSha256:vehicleSha256}; },
   get walkPresentation() { return walkPresentation; },
   get plan() { return planGround?.state ?? { ready: false, flat: true, ...planOptions }; },
-  get renderState() { return { presentation: walkPresentation, firstPerson: Boolean(walk?.camera), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', depthBuffer: renderer?.capabilities.reversedDepthBuffer ? 'reversed' : 'standard', logarithmicDepthBuffer: renderer?.capabilities.logarithmicDepthBuffer ?? false, drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: walk?.camera ? { position: walk.camera.position.toArray(), quaternion: walk.camera.quaternion.toArray(), fov: walk.camera.fov } : null }; },
+  get renderState() { const view=driving?.camera||walk?.camera; return { presentation: walkPresentation, firstPerson: Boolean(view), scene: walkPresentation === '2d' && walk?.camera ? 'flat-plan' : 'campus-model', depthBuffer: renderer?.capabilities.reversedDepthBuffer ? 'reversed' : 'standard', logarithmicDepthBuffer: renderer?.capabilities.logarithmicDepthBuffer ?? false, drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0, camera: view ? { position: view.position.toArray(), quaternion: view.quaternion.toArray(), fov: view.fov } : null }; },
   project(x, y, elevationFeet = 0) {
     if (!camera) return null;
-    const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(walk?.camera || camera);
+    const point = new THREE.Vector3(x * FEET, elevationFeet * FEET, -y * FEET).project(driving?.camera || walk?.camera || camera);
     const rect = wrap.getBoundingClientRect();
     return { x: (point.x + 1) * rect.width / 2, y: (1 - point.y) * rect.height / 2 };
   }
@@ -539,6 +565,24 @@ async function warmModel() {
   }
 }
 
+async function loadVehicle() {
+  const url = './vehicle-config.json?v=b3c85f5b4ae43393';
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Vehicle metadata HTTP ${response.status}`);
+  const bytes = await response.arrayBuffer();
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), value => value.toString(16).padStart(2, '0')).join('');
+  const expected = new URL(url, location.href).searchParams.get('v');
+  if (expected && !digest.startsWith(expected)) throw new Error('The vehicle metadata changed while loading. Please reload.');
+  const config = JSON.parse(new TextDecoder().decode(bytes));
+  if (config.version !== 1 || !/^[a-f0-9]{64}$/.test(config.model?.sha256 || '') || !Number.isSafeInteger(config.model?.bytes) || config.model.bytes <= 0) throw new Error('Invalid vehicle metadata.');
+  const asset = new URL(config.model.url, location.href);
+  if (asset.origin !== location.origin || !asset.pathname.includes('/vehicles/')) throw new Error('Invalid vehicle asset URL.');
+  let count = 0;
+  const loaded = await loadHashedCampusModel(new GLTFLoader(), asset.href, progress => { count = progress.loaded; });
+  if (loaded.sha256 !== config.model.sha256 || count !== config.model.bytes) throw new Error('Vehicle model verification failed. Please reload.');
+  return {config, ...loaded};
+}
+
 async function init() {
   // Native depth testing rejects hidden room fragments before shading them.
   // Logarithmic depth writes gl_FragDepth and disables that optimization on
@@ -581,12 +625,13 @@ async function init() {
     embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
     applyEmbeddedCamera(Boolean(model && active));
     walk?.resize(Math.max(1, width), Math.max(1, height));
+    driving?.resize(Math.max(1, width), Math.max(1, height));
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const loadedModel = await loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+  const [loadedModel, loadedVehicle] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
-  });
+  }), loadVehicle()]);
   const { gltf } = loadedModel;
   modelSha256 = loadedModel.sha256;
   model = gltf.scene;
@@ -651,7 +696,7 @@ async function init() {
         const movement = state.mode === 'flying' ? 'WASD or arrows move; Space or E rises; Q descends; Shift speeds up.' : 'WASD or arrows move; Space jumps; Shift runs.';
         renderer.domElement.setAttribute('aria-label', state.mode === 'placing'
           ? `Choose a starting point on ${flat ? 'the campus plan' : 'a path, lawn, or roof'}.`
-          : `First-person ${flat ? 'campus floor plan on a flat ground surface' : 'campus model'} at ${state.mode === 'flying' ? 'your flight altitude' : 'six-foot eye height'}. ${movement} Click to capture the mouse or drag to look; Escape releases the mouse; End returns to the aerial view.`);
+          : `First-person ${flat ? 'campus floor plan on a flat ground surface' : 'campus model'} at ${state.mode === 'flying' ? 'your flight altitude' : 'six-foot eye height'}. ${movement} Click to capture the mouse or drag to look; Escape releases the mouse; Normal returns to the aerial view.`);
       }
       post({ type: 'olr-3d-walk', ...state });
       requestDraw();
@@ -660,6 +705,26 @@ async function init() {
   walk.command('walk-presentation', walkPresentation);
   if (flatBounds) walk.setFlatBounds(flatBounds);
   walk.resize(wrap.clientWidth, wrap.clientHeight);
+  driving = createCampusDriving({
+    THREE, scene, canvas:renderer.domElement, getWalk:()=>walk, requestDraw,
+    canFocus:()=>active&&!document.hidden, getPresentation:()=>walkPresentation,
+    onChange:state=>{
+      resetAerialInput();
+      if(state.driving)renderer.domElement.setAttribute('aria-label','Driving the red Tesla Model 3. W or up accelerates; S or down brakes and reverses; A and D steer; Space brakes. Mouse or drag looks around. F or Exit car returns to Walking.');
+      post({type:'olr-3d-drive',...state});
+      requestDraw();
+    }
+  });
+  vehicleModel = loadedVehicle.gltf.scene;
+  vehicleConfig = loadedVehicle.config;
+  vehicleSha256 = loadedVehicle.sha256;
+  driving.setVehicle(vehicleModel, vehicleConfig);
+  parkedVehicle = vehicleModel.clone(true);
+  parkedVehicle.name = 'Parked red Model 3';
+  // The isolated print clone may cast a conventional static shadow, while the
+  // live car uses a moving contact shadow without re-rendering campus shadows.
+  parkedVehicle.traverse(object=>{if(object.isMesh)object.castShadow=!object.material?.transparent;});
+  driving.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
   await warmModel();
@@ -678,10 +743,10 @@ if (EMBEDDED) {
   setupTheme();
   setupTimeOfDay();
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { walk?.pause(); resetAerialInput(); lastDrawTime = null; }
+    if (document.hidden) { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     requestDraw();
   });
-  window.addEventListener('blur', () => { walk?.pause(); resetAerialInput(); lastDrawTime = null; });
+  window.addEventListener('blur', () => { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; });
   init().catch(fail);
 } else {
   location.replace(new URL('../?view=3d', location.href).href);

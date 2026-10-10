@@ -137,9 +137,9 @@ function makeSurfaceIndex(model) {
   // each physics substep does not allocate and populate another large Set.
   function neighbors(index) {
     const cache = new Map(), empty = [];
-    return (x, z) => {
-      const minX = Math.floor((x - RADIUS) / CELL), maxX = Math.floor((x + RADIUS) / CELL);
-      const minZ = Math.floor((z - RADIUS) / CELL), maxZ = Math.floor((z + RADIUS) / CELL);
+    return (x, z, radius = RADIUS) => {
+      const minX = Math.floor((x - radius) / CELL), maxX = Math.floor((x + radius) / CELL);
+      const minZ = Math.floor((z - radius) / CELL), maxZ = Math.floor((z + radius) / CELL);
       if (minX === maxX && minZ === maxZ) return index.get(`${minX},${minZ}`) || empty;
       const key = `${minX},${maxX},${minZ},${maxZ}`;
       let records = cache.get(key);
@@ -209,6 +209,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const surfaces = makeSurfaceIndex(model);
   const camera = new THREE.PerspectiveCamera(65, 1, .08, 2000);
   camera.rotation.order = 'YXZ';
+  let externalControl = false, transferringMouseLook = false;
   let mode = 'aerial', navigationMode = 'walking', runningToggle = false, grounded = true, suspended = false;
   let yaw = Math.PI / 2, pitch = 0, velocityY = 0, groundY = 0, groundSurface = '';
   let roll = 0, pendingBankYaw = 0, bankTurnRate = 0;
@@ -295,7 +296,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   function focusCanvas() { if (!document.hidden && canFocus()) canvas.focus({ preventScroll: true }); }
   function releaseMouseLook() {
     wantsMouseLook = false;
-    if (pointerLocked()) document.exitPointerLock();
+    if (pointerLocked() && !transferringMouseLook) document.exitPointerLock();
   }
   function mouseLookError() {
     mouseLookPending = false;
@@ -315,6 +316,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   }
   function wake() { suspended = false; requestDraw(); }
   function pause(announceState = true) {
+    if (externalControl) return;
     releaseMouseLook();
     // A presentation toggle can blur the canvas: keep its exact banked pose,
     // discard old turn input, and finish leveling without resuming movement.
@@ -330,12 +332,12 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     pause(false); mode = 'aerial'; marker.visible = false; feedback = ''; velocityY = 0; jumpCount = 0;
     grounded = true; runningToggle = false; roll = 0; syncCamera(); announce(); requestDraw();
   }
-  function collisionAt(x, z, footY) {
-    if (presentation === '2d') return null;
-    capsuleA.set(x, footY + RADIUS, z); capsuleB.set(x, footY + HEIGHT - RADIUS, z);
+  function collisionAt(x, z, footY, radius = RADIUS, height = HEIGHT, physical = false) {
+    if (!physical && presentation === '2d') return null;
+    capsuleA.set(x, footY + radius, z); capsuleB.set(x, footY + height - radius, z);
     let deepest = null;
-    for (const record of surfaces.nearSolids(x, z)) {
-      if (record.maxY < footY + EPS || record.minY > footY + HEIGHT || x < record.minX - RADIUS || x > record.maxX + RADIUS || z < record.minZ - RADIUS || z > record.maxZ + RADIUS) continue;
+    for (const record of surfaces.nearSolids(x, z, radius)) {
+      if (record.maxY < footY + EPS || record.minY > footY + height || x < record.minX - radius || x > record.maxX + radius || z < record.minZ - radius || z > record.maxZ + radius) continue;
       // A walkable slope under the feet is support, not a wall intersecting the
       // bottom of the capsule. Roof undersides and surfaces above still collide.
       if (record.canSupport && record.normal.y >= SLOPE_COS) {
@@ -355,7 +357,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
         const t = (record.normal.x * (tri.a.x - capsuleA.x) + record.normal.y * (tri.a.y - capsuleA.y) + record.normal.z * (tri.a.z - capsuleA.z)) / denom;
         if (t >= 0 && t <= 1) { testPoint.lerpVectors(capsuleA, capsuleB, t); if (tri.containsPoint(testPoint)) { best = 0; closestA.copy(testPoint); closestB.copy(testPoint); } }
       }
-      if (best < (RADIUS - EPS) ** 2 && (!deepest || best < deepest.distanceSq)) {
+      if (best < (radius - EPS) ** 2 && (!deepest || best < deepest.distanceSq)) {
         collisionNormal.subVectors(closestA, closestB); collisionNormal.y = 0;
         if (collisionNormal.lengthSq() < 1e-10) collisionNormal.set(record.normal.x, 0, record.normal.z);
         if (collisionNormal.lengthSq() > 0) collisionNormal.normalize();
@@ -644,6 +646,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     stop(event); look(event.movementX, event.movementY, false);
   }, { capture: true });
   document.addEventListener('pointerlockchange', () => {
+    if (externalControl) return;
     const locked = pointerLocked();
     mouseLookPending = false;
     if (locked && (!wantsMouseLook || !navigating() || !canFocus())) { releaseMouseLook(); return; }
@@ -700,6 +703,25 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     get mode() { return mode; }, get camera() { return navigating() ? camera : null; }, get state() { return snapshot(); },
     get needsAnimation() { const input = movement(); return navigating() && (bankNeedsAnimation() || (!suspended && (Boolean(input.x || input.y || input.z) || (mode === 'walking' && !grounded)))); },
     clearanceHeight: surfaces.clearanceHeight,
+    // Read-only collision queries share the existing static triangle grid.
+    // Vehicle queries always inspect the real campus, regardless of the plan presentation.
+    vehicleWorld: Object.freeze({
+      groundAt: (x, z) => surfaces.groundAt(x, z, false),
+      blockedAt: (x, z, y, radius, height) => collisionAt(x, z, y, radius, height, true),
+      standingAt(x, z) {
+        const surface = surfaces.groundAt(x, z);
+        if (!surface || surface.normal.y < SLOPE_COS || collisionAt(x, z, surface.y, RADIUS, HEIGHT, true)) return null;
+        return { y: surface.y, name: surface.name };
+      }
+    }),
+    setExternalControl(active) {
+      if (active) { transferringMouseLook = true; exit(); externalControl = true; transferringMouseLook = false; }
+      else externalControl = false;
+    },
+    resumeFromVehicle({ x, z, elevation, yaw: facing }) {
+      externalControl = false; presentation = '3d'; navigationMode = 'walking';
+      return startAt(x, z, facing, elevation);
+    },
     setFlatBounds(bounds) { if (Array.isArray(bounds) && bounds.length === 4 && bounds.every(Number.isFinite)) flatBounds = [...bounds]; },
     command, update, resize, pause, exit
   });

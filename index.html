@@ -6823,6 +6823,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let oldBuildingPolygons = [];
   const dragMode = 'rotate';
   let walkState = {mode:'aerial',running:false,eyeHeightFeet:6};
+  let driveState = {available:false,driving:false,near:false};
   let navigationMode = 'normal';
   let walkPending = null, queuedWalk = null, walkAerialCamera = null, focusAfterWalkExit = false;
   let initial3d = new URL(location.href).searchParams.get('view') === '3d';
@@ -6831,7 +6832,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   try { const saved=localStorage.getItem(timeStorageKey); if(saved!==null)timeOfDay=normalizeTime(saved); } catch {}
   const sendMap = (command, value) => frame.contentWindow?.postMessage({type:'olr-tools-command', command, value}, '*');
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
-  const walkActive = () => walkState.mode!=='aerial'||walkPending!==null;
+  const walkActive = () => driveState.driving||walkState.mode!=='aerial'||walkPending!==null;
   const navigating = () => ['walking','flying'].includes(walkState.mode);
   const firstPersonPlan = () => dimension==='2d'&&navigating();
   const sendPlanOptions = () => sendModel('plan-options',{floor:mapState?.floor??1,theme:window.olrThemeState?.().resolved||'light',oldBuildings:mapState?.oldBuildings!==false});
@@ -6866,7 +6867,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=2babc25082d1ed0f';
+      modelFrame.src='./campus-3d/?embedded=1&v=1d847322128ce5db';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -6888,17 +6889,18 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     renderSurfaces();
     const active=walkActive(), placing=walkState.mode==='placing'||walkPending==='placing';
     const flying=navigationMode==='flying';
+    const driving=driveState.driving;
     const ready=modelReady&&!modelNeedsMapCamera;
     panel.dataset.walkActive=String(active&&dimension!=='list');
     document.body.dataset.campusWalk=walkState.mode;
     walkPanel.hidden=dimension==='list';
     navigationChoices.forEach(button=>{
-      button.setAttribute('aria-pressed',String(button.dataset.campusNavigationMode===navigationMode));
+      button.setAttribute('aria-pressed',String(!driving&&button.dataset.campusNavigationMode===navigationMode));
       button.disabled=button!==normalMode&&!mapState?.camera;
     });
-    navigationCaption.hidden=navigationMode==='normal';
-    navigationCaption.textContent=flying?'Free flight':'6 ft eye height';
-    walkActiveActions.hidden=!navigating()||placing||walkPending==='exit';
+    navigationCaption.hidden=navigationMode==='normal'&&!driving;
+    navigationCaption.textContent=driving?'Driving':flying?'Free flight':'6 ft eye height';
+    walkActiveActions.hidden=driving||!navigating()||placing||walkPending==='exit';
     walkRun.disabled=!ready||!navigating();
     walkRun.textContent=flying?'Fast':'Run';
     walkRun.setAttribute('aria-pressed',String(walkState.running));
@@ -6907,13 +6909,14 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const activity=flying?'flight':'walkthrough';
     const placeHint=dimension==='2d'?'a point on the plan':'a path, lawn, or roof';
     const status=queuedWalk&&!modelReady?`Loading ${activity}…`:walkPending==='exit'?'Returning to Normal…':placing?`Click or tap ${placeHint} to ${flying?'launch':'start walking'}. Choose Normal to cancel.`:navigating()?(flying?(walkState.running?'Flying fast.':'Flying.'):(walkState.running?'Running · 6 ft eye height.':'Walking · 6 ft eye height.')):'Choose Walking or Flying, then click where you want to start.';
-    walkStatus.textContent=walkPending?status:(walkState.feedback||status);
-    if(walkKeyboardHelp)walkKeyboardHelp.parentElement.hidden=!navigating()||placing||walkPending==='exit';
-    const movementHelp=flying?'WASD / arrows move · Space or E rises · Q descends · Shift flies faster.':'WASD / arrows move · Shift runs · Space jumps; press again in midair to reach rooftops.';
+    walkStatus.textContent=driving?'Driving the red Model 3. Choose Exit car to walk beside it.':walkPending?status:(walkState.feedback||status);
+    if(walkKeyboardHelp)walkKeyboardHelp.parentElement.hidden=(!navigating()&&!driving)||placing||walkPending==='exit';
+    const movementHelp=driving?'W / ↑ accelerates · S / ↓ brakes or reverses · A / D steers · Space brakes · F exits.':flying?'WASD / arrows move · Space or E rises · Q descends · Shift flies faster.':'WASD / arrows move · Shift runs · Space jumps; press again in midair to reach rooftops.';
+    const pointerLocked=driving?driveState.pointerLocked:walkState.pointerLocked;
     if(walkKeyboardHelp)walkKeyboardHelp.textContent=(dimension==='3d'||navigating())
-      ? `${movementHelp} ${walkState.pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
+      ? `${movementHelp} ${pointerLocked?'Move the mouse to look.':'Click the scene to capture the mouse, then move it to look.'} Esc releases the mouse.`
       : `${movementHelp} Drag to turn.`;
-    if(walkTouchHelp)walkTouchHelp.textContent=flying?'Hold arrows to move. Hold Up or Down to change height. Drag to look.':'Use the on-screen movement controls. Tap Jump twice to reach rooftops. Drag to look.';
+    if(walkTouchHelp)walkTouchHelp.textContent=driving?'Hold the driving controls to accelerate, steer, reverse or brake. Drag to look.':flying?'Hold arrows to move. Hold Up or Down to change height. Drag to look.':'Use the on-screen movement controls. Tap Jump twice to reach rooftops. Drag to look.';
     if(focusAfterWalkExit&&!active&&dimension!=='list'){focusAfterWalkExit=false;normalMode?.focus({preventScroll:true});}
   }
   function requestWalk(command) {
@@ -6946,7 +6949,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   function escapeWalk() {
     // Browsers can announce pointer-lock release before the Escape key reaches
     // this shell, so use walking mode rather than a possibly stale lock flag.
-    if(navigating())sendModel('walk-release-pointer');
+    if(navigating()||driveState.driving)sendModel('walk-release-pointer');
     else {focusAfterWalkExit=true;requestWalk('walk-exit');}
   }
   navigationChoices.forEach(button=>button.addEventListener('click',()=>{
@@ -7156,8 +7159,15 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(s?.type==='olr-3d-ready'){modelReady=true;delete modelFrame.dataset.preloading;renderWalk();syncModel();}
       else if(s?.type==='olr-3d-error'){
         modelReady=false;delete modelFrame.dataset.preloading;
+        driveState={available:false,driving:false,near:false};
         navigationMode='normal';queuedWalk=null;walkPending=null;walkState={mode:'aerial',running:false,eyeHeightFeet:6,feedback:'The walkthrough could not load. Switch to 3D to retry.'};
         sendPlanWalk();renderWalk();
+      }
+      else if(s?.type==='olr-3d-drive'&&typeof s.driving==='boolean'&&typeof s.near==='boolean'){
+        if(s.driving&&!driveState.driving)navigationMode='walking';
+        driveState={...s};
+        if(s.presentationBlocked&&dimension==='2d')setDimension('3d');
+        renderWalk();
       }
       else if(s?.type==='olr-3d-walk-pose'&&navigating()&&s.siteFeet&&[s.siteFeet.x,s.siteFeet.y,s.siteFeet.elevation,s.yawRadians,s.pitchRadians].every(Number.isFinite)){
         walkState={...walkState,siteFeet:s.siteFeet,yawRadians:s.yawRadians,pitchRadians:s.pitchRadians,grounded:s.grounded,jumping:s.jumping};
@@ -7222,10 +7232,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   });
   window.olrCampusView={
     get dimension(){return dimension;},get camera(){return dimension==='3d'?modelCamera:mapState?.camera;},get walk(){return {...walkState,pending:walkPending};},setDimension,
+    get driving(){return {...driveState};},
     handleKey(key){
       if(dimension==='list')return true;
       if(key==='Escape'&&walkActive()){escapeWalk();return true;}
       if(dimension!=='3d'&&!firstPersonPlan())return false;
+      if(key==='f'&&(driveState.driving||driveState.near)){sendModel('drive-toggle');return true;}
       if(key==='o'){oldBuildings.click();return true;}
       if(key==='t'){setDimension('2d');sendMap('map','existing');return true;}
       if(key==='b'||key==='f'){setDimension('2d');sendMap('floor',key==='b'?0:mapState?.floor===1?2:1);return true;}
