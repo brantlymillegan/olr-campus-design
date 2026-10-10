@@ -10,7 +10,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=704c16929b52e977';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
-import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=24cf28b4a2228ec2';
+import { createCampusPdfCapture, loadHashedCampusModel, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=a6886cf26f23b65c';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -546,7 +546,7 @@ let renderedFrames = 0;
 Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return modelReady; }, get embedded() { return EMBEDDED; }, get active() { return active; },
   get modelSha256() { return modelSha256; }, get assetRevision() { return ASSET_REVISION; },
-  get pdfCapture() { return campusPdfCapture?.state ?? { busy: false, requestId: null, completed: 0, views: 4 }; },
+  get pdfCapture() { return campusPdfCapture?.state ?? { busy: false, requestId: null, completed: 0, views: PDF_PERSPECTIVES.length }; },
   get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders }; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },

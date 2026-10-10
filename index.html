@@ -6894,7 +6894,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=a7f65975cef1e916';
+      modelFrame.src='./campus-3d/?embedded=1&v=424ed402a35cc977';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7386,7 +7386,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const response = await fetch(url, {cache: 'no-store', signal});
     if (!response.ok) throw new Error('Could not check the current campus.');
     const value = await response.json();
-    if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || value.perspective_count !== 4 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
+    if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || !Number.isSafeInteger(value.perspective_count) || value.perspective_count < 1 || value.perspective_count > 8 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
     for (const item of [value.inputs, value.generator, value.libraries?.jspdf, value.libraries?.svg2pdf]) descriptor(item);
     descriptor(value.model, MAX_MODEL_BYTES);
     assetUrl(value.viewer?.url); return value;
@@ -7423,7 +7423,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   async function inputs(manifest, signal) {
     const data = JSON.parse(new TextDecoder().decode(await verifiedBytes(manifest.inputs, signal)));
-    if (data.version !== 2 || data.maps?.length !== 4 || data.perspectives?.length !== 4 || data.specs?.rooms?.length !== manifest.specifications_room_count || data.model?.sha256 !== manifest.model.sha256) throw new Error('Campus PDF inputs do not match.');
+    if (data.version !== 2 || data.maps?.length !== 4 || data.perspectives?.length !== manifest.perspective_count || new Set(data.perspectives.map(view => view.id)).size !== manifest.perspective_count || data.specs?.rooms?.length !== manifest.specifications_room_count || data.model?.sha256 !== manifest.model.sha256) throw new Error('Campus PDF inputs do not match.');
     const results = await Promise.all([verifiedBytes(data.cover.logo, signal), ...data.maps.map(map => verifiedBytes(map, signal))]);
     return {data, logo: new Uint8Array(results[0]), maps: new Map(data.maps.map((map, i) => [map.id, new TextDecoder().decode(results[i + 1])]))};
   }
@@ -7445,7 +7445,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       // older open tab gets one isolated current viewer only after the click.
       if (frame) {
         const state = await waitReady(frame, signal);
-        if (!state.pdfCapture || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision || new URL(frame.src).searchParams.get('v') !== manifest.viewer.revision) frame = null;
+        if (!state.pdfCapture || state.pdfCapture.views !== views.length || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision || new URL(frame.src).searchParams.get('v') !== manifest.viewer.revision) frame = null;
       }
       if (!frame) {
         owned = document.createElement('iframe'); frame = owned;
@@ -7456,7 +7456,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         owned.src = url.href; document.body.appendChild(owned);
       }
       const state = await waitReady(frame, signal);
-      if (!state.pdfCapture || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision) throw new Error('The 3D model changed during PDF generation.');
+      if (!state.pdfCapture || state.pdfCapture.views !== views.length || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision) throw new Error('The 3D model changed during PDF generation.');
       const requestId = crypto.randomUUID();
       return await new Promise((resolve, reject) => {
         const cleanup = () => { window.removeEventListener('message', receive); signal.removeEventListener('abort', stop); };
@@ -7469,7 +7469,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
           if (value.type === 'olr-3d-pdf-error') { cleanup(); reject(new Error(value.message || 'Could not render the current campus.')); return; }
           if (value.type !== 'olr-3d-pdf-result') return;
           cleanup();
-          if (value.modelSha256 !== manifest.model.sha256 || value.views?.length !== 4 || !views.every(view => value.views.some(item => item.id === view.id))) return reject(new Error('The captured views do not match the current model.'));
+          if (value.modelSha256 !== manifest.model.sha256 || value.views?.length !== views.length || !views.every(view => value.views.some(item => item.id === view.id))) return reject(new Error('The captured views do not match the current model.'));
           resolve(value.views.map(view => ({...view, bytes: new Uint8Array(view.buffer)})));
         };
         window.addEventListener('message', receive); signal.addEventListener('abort', stop, {once: true});

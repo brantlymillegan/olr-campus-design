@@ -14,8 +14,10 @@ export const PDF_PERSPECTIVES = Object.freeze([
     position: [-80, -290, 180], target: [100, 95, 10], lens: 28, shiftX: 0, shiftY: -.07 },
   { id: 'campus-overview', title: 'New campus: 3D campus overview', filename: 'campus-overview.jpg', width: 3072, height: 1860,
     position: [-800, -720, 750], target: [10, 80, 4], lens: 40, shiftX: 0, shiftY: 0 },
-  { id: 'playground-gardens', title: 'New campus: 3D playground and Guardian Angel garden', filename: 'playground-gardens.jpg', width: 3072, height: 2049,
-    position: [-239.35553444751628, -92.18081199482522, 129.37224389533966], target: [114.9943334568776, 100.32696279248414, 0], lens: 29.313100363978613, shiftX: -.09913678799598277, shiftY: -.054870317650571494 }
+  { id: 'school-walkway', title: 'New campus: landscaped school walkway and glass bridge', filename: 'school-walkway.jpg', width: 3072, height: 2745,
+    position: [34.76145123692276, 212.91899534056725, 6.16], target: [35.2335822229558, 153.1518777144578, 11.420108648956443], lens: 25.248920767504053, shiftX: -.018028846153846152, shiftY: -.0009014423076923077 },
+  { id: 'playground-gardens', title: 'New campus: 3D playground and Guardian Angel garden', filename: 'playground-gardens.jpg', width: 3072, height: 2098,
+    position: [-167.57064655521947, -73.21889425522475, 41.3084195067391], target: [154.29633742522594, 163.54001268431819, 22.684117959444393], lens: 26.84434019653985, shiftX: -.15158583245140705, shiftY: -.03922722973372845 }
 ]);
 
 export function normalizePdfViews(input) {
@@ -25,7 +27,7 @@ export function normalizePdfViews(input) {
   const sizeValid = size => Array.isArray(size) && size.length === 2 && size.every(n => Number.isInteger(n) && n >= 512 && n <= 4096);
   const vectorValid = point => Array.isArray(point) && point.length === 3 && point.every(n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000);
   const numberValid = (number, low, high) => typeof number === 'number' && Number.isFinite(number) && number >= low && number <= high;
-  if (!Array.isArray(list) || list.length !== 4 || !sizeValid(resolution)) throw failure('INVALID_CAMERAS', 'Exactly four valid PDF camera views are required.');
+  if (!Array.isArray(list) || list.length !== PDF_PERSPECTIVES.length || !sizeValid(resolution)) throw failure('INVALID_CAMERAS', `Exactly ${PDF_PERSPECTIVES.length} valid PDF camera views are required.`);
   return PDF_PERSPECTIVES.map(expected => {
     const matches = list.filter(view => view?.id === expected.id);
     const view = matches[0], camera = view?.camera, size = view?.resolution ?? resolution;
