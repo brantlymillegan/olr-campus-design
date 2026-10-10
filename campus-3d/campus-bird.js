@@ -147,163 +147,316 @@ function makeSpecies(spec) {
   return {parts,geometries};
 }
 
-/** Scene sibling, separate from the model and its collision/picking tree.
- * Forty individuals are drawn in seven instanced batches per species. Each
- * keeps its own pose and timing, with no per-frame geometry or material work.
+// These additional airborne corridors include the full formation envelope.
+// Courtyard flocks stay west of the tower and above the school-flight band.
+export const CAMPUS_FLOCK_ROUTES = freeze([
+  freeze({centerFeet:[112,210],radiusFeet:[62,62],altitudeFeet:[82,102],lapSeconds:43}),
+  freeze({centerFeet:[85,35],radiusFeet:[60,48],altitudeFeet:[76,96],lapSeconds:41}),
+  freeze({centerFeet:[201,158],radiusFeet:[22,34],altitudeFeet:[120,140],lapSeconds:31}),
+  freeze({centerFeet:[-210,50],radiusFeet:[60,50],altitudeFeet:[78,98],lapSeconds:46}),
+]);
+const DETAIL_LIMIT=48, DETAIL_ENTER_METERS=18, DETAIL_EXIT_METERS=22;
+
+// Distant birds need a readable body/tail and articulated wing silhouette,
+// rather than hundreds of individual feather/eye vertices. One matrix moves
+// each bird; their independent wing strokes run on the GPU in the same batch.
+function makeDistantSpecies(spec) {
+  const positions=[],colors=[],sides=[],indices=[];
+  const tint=new THREE.Color(),point=new THREE.Vector3();
+  function add(geometry,at,size,color,side=0,breast=false) {
+    const start=positions.length/3,attr=geometry.attributes.position;
+    for(let i=0;i<attr.count;i++) {
+      point.fromBufferAttribute(attr,i);
+      tint.set(breast&&point.y<-.1?spec.breast:color);
+      positions.push(point.x*size[0]+at[0],point.y*size[1]+at[1],point.z*size[2]+at[2]);
+      colors.push(tint.r,tint.g,tint.b);sides.push(side);
+    }
+    if(geometry.index)for(let i=0;i<geometry.index.count;i++)indices.push(start+geometry.index.getX(i));
+    else for(let i=0;i<attr.count;i++)indices.push(start+i);
+    geometry.dispose();
+  }
+  function shape(points,index,color,side=0) {
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(points.flat(),3));geometry.setIndex(index);
+    add(geometry,[0,0,0],[1,1,1],color,side);
+  }
+  add(new THREE.SphereGeometry(1,8,5),[0,.01,.015],[.105,.09,.235],spec.back,0,true);
+  add(new THREE.SphereGeometry(1,6,4),[0,.055,-.195],[.071,.068,.080],spec.head);
+  shape([[0,.037,-.340],[-.024,.035,-.259],[.024,.035,-.259],[0,.073,-.259]], [0,1,2,0,2,3,0,3,1,1,3,2],spec.beak);
+  const tail=spec.id==='dove'?.44:spec.id==='blue-jay'?.43:.38;
+  shape([[-.033,.005,.14],[.033,.005,.14],[.067,-.022,tail],[-.067,-.022,tail]], [0,1,2,0,2,3],spec.tail);
+  if(spec.crest)shape([[0,.096,-.175],[0,.128+spec.crest,-.150],[-.023,.093,-.157],[.023,.093,-.157]],[0,1,2,0,3,1],spec.head);
+  for(const sign of [-1,1]) {
+    // Swept primaries and a tapered trailing edge, with the same shoulder
+    // origin and full span as the close model. Material is double-sided.
+    const pts=[[.075,.020,-.025],[.24,.022,-.085],[.48,.009,-.05],[.59,-.009,.035],[.53,-.010,.094],[.41,-.010,.18],[.23,.01,.16],[.075,.02,.095]].map(([x,y,z])=>[x*sign,y,z]);
+    const order=sign>0?[0,1,2,0,2,3,0,3,4,0,4,5,0,5,6,0,6,7]:[0,2,1,0,3,2,0,4,3,0,5,4,0,6,5,0,7,6];
+    shape(pts,order,spec.wing,sign);
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  geometry.setAttribute('birdWingSide',new THREE.Float32BufferAttribute(sides,1));
+  geometry.setIndex(indices);geometry.computeVertexNormals();geometry.computeBoundingSphere();return geometry;
+}
+function makeDistantMaterial(clock) {
+  const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.82,metalness:0,side:THREE.DoubleSide});
+  material.name='Campus birds • distant natural silhouettes';
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.campusBirdTime=clock;
+    shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
+uniform float campusBirdTime;
+attribute float birdWingSide;
+attribute float birdFlying;
+attribute vec4 birdMotion;
+vec3 campusBirdWing(vec3 point, bool normalOnly) {
+  if(abs(birdWingSide)<0.5) return point;
+  float cycle=mod(campusBirdTime+birdMotion.x,birdMotion.z);
+  float envelope=cycle<birdMotion.w?pow(sin(3.14159265359*cycle/birdMotion.w),2.0):0.0;
+  float flap=sin((campusBirdTime+birdMotion.x)*6.28318530718*birdMotion.y)*0.60*envelope;
+  float angle=birdWingSide*mix(-0.32,0.055+flap,birdFlying);
+  float fold=-birdWingSide*1.29*(1.0-birdFlying);
+  vec3 hinge=vec3(birdWingSide*0.075,0.020,-0.025);
+  if(!normalOnly)point-=hinge;
+  point=vec3(cos(angle)*point.x-sin(angle)*point.y,sin(angle)*point.x+cos(angle)*point.y,point.z);
+  point=vec3(cos(fold)*point.x+sin(fold)*point.z,point.y,-sin(fold)*point.x+cos(fold)*point.z);
+  return normalOnly?point:point+hinge;
+}`);
+    shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\nobjectNormal=campusBirdWing(objectNormal,true);');
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed=campusBirdWing(transformed,false);');
+  };
+  material.customProgramCacheKey=()=> 'campus-bird-distant-wing-v1';return material;
+}
+
+/** Ambient scene sibling: exactly800 birds, with48 close-detail birds at most.
+ * All original40 routes/habitats remain;720 new birds form24 cohesive flocks,
+ * and40 additional independent fliers use separate, higher flight bands.
  */
 export function createCampusBird({scene}) {
   if(!scene?.isScene)throw new TypeError('createCampusBird requires a THREE.Scene');
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.82,metalness:0});
   material.name='Campus birds • natural plumage';
+  const clock={value:0},distantMaterial=makeDistantMaterial(clock);
   const flock=new THREE.Group();flock.name='Campus ambience • bird flock';
   flock.userData.campusAmbient=true;flock.userData.excludeFromCollision=true;
   scene.add(flock);flock.visible=false;
-  const species=CAMPUS_BIRD_SPECIES.map(spec=>({...spec,...makeSpecies(spec),birds:[],batches:{}}));
-  const birds=[];
+  const species=CAMPUS_BIRD_SPECIES.map(spec=>({...spec,...makeSpecies(spec),birds:[],batches:{},distantGeometry:makeDistantSpecies(spec)}));
+  const birds=[],flocks=[];
   function bird(type,behavior,data) {
     const spec=species.find(s=>s.id===type),index=birds.length;
     const item={index,id:'campus-bird-'+(index+1),spec,behavior,...data,originalHabitat:data.habitat,
       slot:spec.birds.length,phase:.72+index*1.371,scale:spec.scale*(.96+(index%3)*.04),
-      position:new THREE.Vector3(),heading:0,rootMatrix:new THREE.Matrix4()};
+      position:new THREE.Vector3(),heading:0,pitch:0,roll:0,hop:0,peck:0,legCycle:0,
+      detailed:false,detailSlot:0,distantSlot:0,rootMatrix:new THREE.Matrix4()};
     birds.push(item);spec.birds.push(item);
   }
   const flightTypes=['crow','dove','blue-jay','robin','cardinal','sparrow'];
   CAMPUS_BIRD_ROUTES.forEach((route,i)=>[0,1].forEach(member=>bird(flightTypes[(i*2+member)%6],i<4?'high-flight':'low-flight',
     {route,routeIndex:i,member,direction:i%2?-1:1})));
-  CAMPUS_BIRD_HABITATS.ground.forEach((habitat,i)=>bird(['robin','sparrow','dove','blue-jay'][i%4],'ground', {habitat}));
+  CAMPUS_BIRD_HABITATS.ground.forEach((habitat,i)=>bird(['robin','sparrow','dove','blue-jay'][i%4],'ground',{habitat}));
   CAMPUS_BIRD_HABITATS.tree.forEach(habitat=>bird(habitat.species,'tree-perch',{habitat}));
   CAMPUS_BIRD_HABITATS.roof.forEach((habitat,i)=>bird(i%2?'dove':'crow','roof-perch',{habitat}));
-  let triangles=0,meshCount=0;
-  for(const spec of species)for(const [part,geometry] of Object.entries(spec.parts)) {
-    const count=spec.birds.length*(part==='legs'?2:1);
-    const mesh=new THREE.InstancedMesh(geometry,material,count);
-    mesh.name=spec.name+' • '+part;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const flockTypes=['sparrow','dove','robin','crow','blue-jay','sparrow','dove','robin'];
+  for(let i=0;i<24;i++) {
+    const routeIndex=i%4,band=Math.floor(i/4),route=CAMPUS_FLOCK_ROUTES[routeIndex];
+    const group={id:'campus-flock-'+(i+1),species:flockTypes[i%flockTypes.length],count:30,routeIndex,route,
+      phase:band*TAU/6+.31+routeIndex*.67,direction:routeIndex%2?-1:1,altitudeOffsetFeet:band%2?6:-6,
+      position:new THREE.Vector3(),positionMeters:[0,0,0],heading:0,pitch:0,radiusFeet:routeIndex===2?15:20};
+    flocks.push(group);
+    for(let member=0;member<30;member++) {
+      const radius=(routeIndex===2?14:17.6)*Math.sqrt((member+.5)/30),angle=member*2.399963229728653;
+      bird(group.species,'flock-flight',{route,routeIndex,flock:group,flockId:group.id,member,
+        formationX:radius*Math.cos(angle),formationZ:radius*Math.sin(angle)});
+    }
+  }
+  for(let i=0;i<40;i++)bird(flightTypes[i%6],'high-flight',{route:CAMPUS_FLOCK_ROUTES[i%4],routeIndex:i%4,member:i,
+    extraSolo:true,direction:i%4%2?-1:1,soloPhase:Math.floor(i/4)*TAU/10+.31});
+  let meshCount=0;
+  function setupMesh(mesh,name) {
+    mesh.name=name;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.castShadow=false;mesh.receiveShadow=false;mesh.raycast=NO_RAYCAST;
-    // One conservative bound contains every route, toe, and wing pose. This
-    // avoids rescanning all instance bounds every frame or stale-pose culling.
-    mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),400);
-    flock.add(mesh);spec.batches[part]=mesh;triangles+=geometry.index.count/3*count;meshCount++;
+    mesh.boundingSphere=new THREE.Sphere(new THREE.Vector3(),400);mesh.count=0;flock.add(mesh);meshCount++;return mesh;
+  }
+  for(const spec of species) {
+    for(const [part,geometry] of Object.entries(spec.parts)) {
+      const capacity=Math.min(DETAIL_LIMIT,spec.birds.length)*(part==='legs'?2:1);
+      spec.batches[part]=setupMesh(new THREE.InstancedMesh(geometry,material,capacity),spec.name+' • '+part);
+    }
+    spec.motion=new THREE.InstancedBufferAttribute(new Float32Array(spec.birds.length*4),4);
+    spec.flying=new THREE.InstancedBufferAttribute(new Float32Array(spec.birds.length),1);
+    spec.motion.setUsage(THREE.DynamicDrawUsage);spec.flying.setUsage(THREE.DynamicDrawUsage);
+    spec.distantGeometry.setAttribute('birdMotion',spec.motion);spec.distantGeometry.setAttribute('birdFlying',spec.flying);
+    spec.distant=setupMesh(new THREE.InstancedMesh(spec.distantGeometry,distantMaterial,spec.birds.length),spec.name+' • distant flock');
   }
   const positionsMeters=birds.map(()=>[0,0,0]);
   const individuals=birds.map(b=>({id:b.id,species:b.spec.id,behavior:b.behavior,positionMeters:positionsMeters[b.index],
+    flockId:b.flockId||null,routeIndex:b.routeIndex??null,detailed:false,
     support:b.habitat?.support||null,supportFeet:b.habitat?.at||null,headingRadians:0,walking:false,pecking:false,wingSpanMeters:1.26*b.scale}));
   const counts=key=>Object.fromEntries([...new Set(individuals.map(b=>b[key]))].map(k=>[k,individuals.filter(b=>b[key]===k).length]));
   const state={active:false,visible:false,daylight:false,paused:true,flightSeconds:0,laps:0,constructionPhase:'new',
-    birdCount:birds.length,routeCount:CAMPUS_BIRD_ROUTES.length,speciesCount:species.length,
+    birdCount:birds.length,originalBirdCount:40,flockCount:flocks.length,flockBirdCount:720,routeCount:CAMPUS_BIRD_ROUTES.length+CAMPUS_FLOCK_ROUTES.length,speciesCount:species.length,
     species:counts('species'),behaviors:counts('behavior'),individuals,
-    triangles,meshCount,uniqueGeometries:species.reduce((n,s)=>n+s.geometries.length,0),materialCount:1,
+    flocks:flocks.map(f=>({id:f.id,species:f.species,count:f.count,routeIndex:f.routeIndex,positionMeters:f.positionMeters,radiusFeet:f.radiusFeet,verticalRadiusFeet:3})),
+    triangles:0,meshCount,visibleMeshes:0,detailedBirdCount:0,distantBirdCount:birds.length,detailLimit:DETAIL_LIMIT,instanceMatricesPerFrame:0,
+    uniqueGeometries:species.reduce((n,s)=>n+s.geometries.length+1,0),materialCount:2,
     positionMeters:positionsMeters[0],positionsMeters,wingSpanMeters:1.26*species[0].scale};
-  let enabled=true,disposed=false,lastElapsed=null,flightTime=0,previousRunning=false;
+  let enabled=true,disposed=false,lastElapsed=null,flightTime=0,previousRunning=false,lastLOD=-Infinity;
+  let cameraX=Infinity,cameraY=Infinity,cameraZ=Infinity;
+  const ranked=birds.slice();
   const q=new THREE.Quaternion(),rotation=new THREE.Euler(0,0,0,'YXZ');
   const v=new THREE.Vector3(),scale=new THREE.Vector3(),unit=new THREE.Vector3(1,1,1);
   const local=new THREE.Matrix4(),body=new THREE.Matrix4(),joint=new THREE.Matrix4(),partMatrix=new THREE.Matrix4();
   function compose(target,x,y,z,pitch=0,yaw=0,roll=0) {
     v.set(x,y,z);q.setFromEuler(rotation.set(pitch,yaw,roll,'YXZ'));return target.compose(v,q,unit);
   }
-  function write(bird,part,matrix,slot=bird.slot) {bird.spec.batches[part].setMatrixAt(slot,matrix);}
-  function pose(bird,now,dt) {
-    const {spec,phase,behavior}=bird;
-    const flying=behavior.endsWith('flight');
-    let pitch=0,roll=0,walking=false,peck=0,hop=0,legCycle=0;
-    if(flying) {
+  function updateFlocks(now) {
+    for(const group of flocks) {
+      const {route,direction}=group,[rx,ry]=route.radiusFeet;
+      const a=now*TAU/route.lapSeconds*direction+group.phase;
+      const height=(route.altitudeFeet[0]+route.altitudeFeet[1])*.5+group.altitudeOffsetFeet+1.5*Math.sin(2*a+.35);
+      group.position.set((route.centerFeet[0]+rx*Math.cos(a))*FT,height*FT,-(route.centerFeet[1]+ry*Math.sin(a))*FT);
+      group.heading=Math.atan2(rx*Math.sin(a)*direction,ry*Math.cos(a)*direction);
+      group.pitch=Math.atan2(3*Math.cos(2*a+.35)*direction,Math.hypot(rx*Math.sin(a),ry*Math.cos(a)));
+      group.position.toArray(group.positionMeters);
+    }
+  }
+  function locate(bird,now) {
+    const {phase,behavior}=bird;let pitch=0,roll=0,walking=false,peck=0,hop=0,legCycle=0;
+    if(bird.flock) {
+      const group=bird.flock;
+      // Small independent forward/lateral corrections breathe within a loose
+      // coherent formation; birds never orbit their flock leader mechanically.
+      const x=bird.formationX+.45*Math.sin(now*.57+phase),z=bird.formationZ+.40*Math.sin(now*.43+phase*1.7);
+      const y=(bird.member%5-2)*.65+.6*Math.sin(now*.63+phase);
+      const c=Math.cos(group.heading),s=Math.sin(group.heading);
+      bird.position.set(group.position.x+(c*x+s*z)*FT,group.position.y+y*FT,group.position.z+(-s*x+c*z)*FT);
+      bird.heading=group.heading+.035*Math.sin(now*.43+phase);pitch=group.pitch;roll=.10*group.direction+.025*Math.sin(now*.53+phase);
+    }else if(behavior.endsWith('flight')) {
       const {route,direction,member,routeIndex}=bird;
-      const a=now*TAU/route.lapSeconds*direction+.72+routeIndex*.87+member*Math.PI;
-      const [rx,ry]=route.radiusFeet,amp=(route.altitudeFeet[1]-route.altitudeFeet[0])*.5;
-      const height=(route.altitudeFeet[1]+route.altitudeFeet[0])*.5+amp*Math.sin(2*a+.35)+(routeIndex<4?(member?.6:-.6):0);
+      const a=now*TAU/route.lapSeconds*direction+(bird.extraSolo?bird.soloPhase:.72+routeIndex*.87+member*Math.PI);
+      const [rx,ry]=route.radiusFeet,amp=bird.extraSolo?2:(route.altitudeFeet[1]-route.altitudeFeet[0])*.5;
+      const height=bird.extraSolo?route.altitudeFeet[1]+20+amp*Math.sin(2*a+.35):(route.altitudeFeet[1]+route.altitudeFeet[0])*.5+amp*Math.sin(2*a+.35)+(routeIndex<4?(member?.6:-.6):0);
       bird.position.set((route.centerFeet[0]+rx*Math.cos(a))*FT,height*FT,-(route.centerFeet[1]+ry*Math.sin(a))*FT);
       pitch=Math.atan2(2*amp*Math.cos(2*a+.35)*direction,Math.hypot(rx*Math.sin(a),ry*Math.cos(a)));
       bird.heading=Math.atan2(rx*Math.sin(a)*direction,ry*Math.cos(a)*direction);roll=.10*direction;
     }else {
-      const {at,radiusFeet=0,heading=0,groundSlope=[0,0]}=bird.habitat;
-      let x=at[0],north=at[1];
+      const {at,radiusFeet=0,heading=0,groundSlope=[0,0]}=bird.habitat;let x=at[0],north=at[1];
       if(behavior==='ground') {
-        // Walk for four seconds, pause to forage for five. Smooth starts and
-        // stops avoid skating; each bird follows a small, independently phased oval.
-        const t=now+phase*3,cycle=t%9,lap=Math.floor(t/9);
-        walking=cycle<4;
-        const progress=walking?(cycle-Math.sin(TAU*cycle/4)*4/TAU)/4:1;
-        const a=phase+(lap+progress)*.72;
+        const t=now+phase*3,cycle=t%9,lap=Math.floor(t/9);walking=cycle<4;
+        const progress=walking?(cycle-Math.sin(TAU*cycle/4)*4/TAU)/4:1,a=phase+(lap+progress)*.72;
         x+=radiusFeet*Math.cos(a);north+=radiusFeet*.65*Math.sin(a);
         bird.heading=Math.atan2(radiusFeet*Math.sin(a),radiusFeet*.65*Math.cos(a));
-        const stride=Math.sin(Math.PI*cycle/4)**2;
-        legCycle=walking?Math.sin(cycle*TAU*3.7)*stride:0;
+        const stride=Math.sin(Math.PI*cycle/4)**2;legCycle=walking?Math.sin(cycle*TAU*3.7)*stride:0;
         hop=walking?Math.abs(legCycle)*.008:0;
         peck=walking?0:Math.max(0,Math.sin((cycle-4)*TAU*.64))**8*Math.sin(Math.PI*(cycle-4)/5)**2;
       }else bird.heading=heading;
-      const height=at[2]+groundSlope[0]*(x-at[0])+groundSlope[1]*(north-at[1]);
-      bird.position.set(x*FT,height*FT,-north*FT);
-      // Branch/ridge coordinates mark the middle of the toes. Keep feet fixed
-      // on that support while the head looks around independently.
-      if(behavior!=='ground') {
-        bird.position.x-=Math.sin(bird.heading)*.045*bird.scale;
-        bird.position.z-=Math.cos(bird.heading)*.045*bird.scale;
-      }
+      const height=at[2]+groundSlope[0]*(x-at[0])+groundSlope[1]*(north-at[1]);bird.position.set(x*FT,height*FT,-north*FT);
+      if(behavior!=='ground') {bird.position.x-=Math.sin(bird.heading)*.045*bird.scale;bird.position.z-=Math.cos(bird.heading)*.045*bird.scale;}
       pitch=-peck*.33;
     }
-    scale.setScalar(bird.scale);q.setFromEuler(rotation.set(0,bird.heading,0,'YXZ'));
-    bird.rootMatrix.compose(bird.position,q,scale);
+    bird.pitch=pitch;bird.roll=roll;bird.hop=hop;bird.peck=peck;bird.legCycle=legCycle;
+    const info=individuals[bird.index];bird.position.toArray(info.positionMeters);
+    info.headingRadians=bird.heading;info.walking=walking;info.pecking=peck>.15;
+  }
+  function selectLOD(camera,force=false) {
+    const p=camera?.position;
+    if(!force&&flightTime-lastLOD<.2&&p&&(p.x-cameraX)**2+(p.y-cameraY)**2+(p.z-cameraZ)**2<4)return;
+    lastLOD=flightTime;cameraX=p?.x??Infinity;cameraY=p?.y??Infinity;cameraZ=p?.z??Infinity;
+    for(const b of birds) {
+      b.distanceSq=p?b.position.distanceToSquared(p):b.index<40?0:Infinity;
+      b.eligible=b.distanceSq<(b.detailed?DETAIL_EXIT_METERS:DETAIL_ENTER_METERS)**2;
+    }
+    ranked.sort((a,b)=>(a.eligible?0:1)-(b.eligible?0:1)||a.distanceSq-b.distanceSq||a.index-b.index);
+    for(const b of birds)b.detailed=false;
+    for(let i=0;i<Math.min(DETAIL_LIMIT,ranked.length)&&ranked[i].eligible;i++)ranked[i].detailed=true;
+    let triangles=0,detailedCount=0,draws=0;
+    for(const spec of species) {
+      let close=0,far=0;
+      for(const b of spec.birds) {
+        individuals[b.index].detailed=b.detailed;
+        if(b.detailed){b.detailSlot=close++;continue;}
+        b.distantSlot=far;
+        const period=spec.id==='crow'?8.4:spec.id==='sparrow'?2.7:4.2;
+        const flapping=spec.id==='crow'?3:period*.76;
+        const speed=spec.id==='crow'?2.1:spec.id==='dove'?5:spec.id==='sparrow'?6.5:4.8;
+        spec.motion.setXYZW(far,b.phase,speed,period,flapping);spec.flying.setX(far,b.behavior.endsWith('flight')?1:0);far++;
+      }
+      for(const [part,mesh] of Object.entries(spec.batches)) {
+        mesh.count=close*(part==='legs'?2:1);mesh.visible=mesh.count>0;
+        triangles+=mesh.geometry.index.count/3*mesh.count;if(mesh.count)draws++;
+      }
+      spec.distant.count=far;spec.distant.visible=far>0;if(far)draws++;
+      triangles+=spec.distantGeometry.index.count/3*far;detailedCount+=close;
+      spec.motion.needsUpdate=true;spec.flying.needsUpdate=true;
+    }
+    state.detailedBirdCount=detailedCount;state.distantBirdCount=birds.length-detailedCount;
+    state.triangles=triangles;state.visibleMeshes=draws;state.instanceMatricesPerFrame=detailedCount*8+birds.length-detailedCount;
+  }
+  function write(bird,part,matrix,slot=bird.detailSlot) {bird.spec.batches[part].setMatrixAt(slot,matrix);}
+  function renderBird(bird,now) {
+    const {spec,phase,pitch,roll,hop,peck,legCycle}=bird,flying=bird.behavior.endsWith('flight');
+    scale.setScalar(bird.scale);q.setFromEuler(rotation.set(0,bird.heading,0,'YXZ'));bird.rootMatrix.compose(bird.position,q,scale);
     compose(local,0,.165+hop,0,pitch,0,roll);body.multiplyMatrices(bird.rootMatrix,local);
+    if(!bird.detailed){spec.distant.setMatrixAt(bird.distantSlot,body);return;}
     write(bird,'body',body);
-    compose(local,0,.055-peck*.013,-.195,-peck*.55, flying?.02*Math.sin(now+phase):.25*Math.sin(now*.75+phase));
+    compose(local,0,.055-peck*.013,-.195,-peck*.55,flying?.02*Math.sin(now+phase):.25*Math.sin(now*.75+phase));
     partMatrix.multiplyMatrices(body,local);write(bird,'head',partMatrix);
-    const period=spec.id==='crow'?8.4:spec.id==='sparrow'?2.7:4.2;
-    const flapping=spec.id==='crow'?3:period*.76;
+    const period=spec.id==='crow'?8.4:spec.id==='sparrow'?2.7:4.2,flapping=spec.id==='crow'?3:period*.76;
     const cycle=(now+phase)%period,env=cycle<flapping?Math.sin(Math.PI*cycle/flapping)**2:0;
     const speed=spec.id==='crow'?2.1:spec.id==='dove'?5:spec.id==='sparrow'?6.5:4.8;
-    const flap=Math.sin((now+phase)*TAU*speed)*.60*env;
-    const fold=Math.max(0,Math.cos((now+phase)*TAU*speed))*.23*env;
+    const flap=Math.sin((now+phase)*TAU*speed)*.60*env,fold=Math.max(0,Math.cos((now+phase)*TAU*speed))*.23*env;
     for(const sign of [-1,1]) {
       compose(local,sign*.075,.020,-.025,0,flying?0:-sign*1.29,sign*(flying?.055+flap:-.32));
       joint.multiplyMatrices(body,local);write(bird,'inner'+sign,joint);
       compose(local,sign*.30,0,.042,0,flying?-sign*(.04+fold*.6):-sign*.65,sign*(flying?-.04-flap*.34+fold:.25));
       partMatrix.multiplyMatrices(joint,local);write(bird,'outer'+sign,partMatrix);
       compose(local,sign*.036,flying?.128:.118+Math.max(0,legCycle*sign)*.018,flying?.10:.045+legCycle*sign*.018,flying?1.15:legCycle*sign*.12);
-      partMatrix.multiplyMatrices(bird.rootMatrix,local);write(bird,'legs',partMatrix,bird.slot*2+(sign>0?1:0));
+      partMatrix.multiplyMatrices(bird.rootMatrix,local);write(bird,'legs',partMatrix,bird.detailSlot*2+(sign>0?1:0));
     }
-    const info=individuals[bird.index],p=info.positionMeters;
-    p[0]=bird.position.x;p[1]=bird.position.y;p[2]=bird.position.z;
-    info.headingRadians=bird.heading;info.walking=walking;info.pecking=peck>.15;
+  }
+  function renderAll(camera,forceLOD=false) {
+    updateFlocks(flightTime);for(const bird of birds)locate(bird,flightTime);
+    selectLOD(camera,forceLOD);for(const bird of birds)renderBird(bird,flightTime);
+    for(const spec of species) {
+      for(const mesh of Object.values(spec.batches))if(mesh.count)mesh.instanceMatrix.needsUpdate=true;
+      if(spec.distant.count)spec.distant.instanceMatrix.needsUpdate=true;
+    }
+    clock.value=flightTime;
   }
   function update(elapsedSeconds,options) {
     if(disposed)return state;
-    const elapsed=Number.isFinite(elapsedSeconds)?elapsedSeconds:0;
-    const active=options?.active!==false;
+    const elapsed=Number.isFinite(elapsedSeconds)?elapsedSeconds:0,active=options?.active!==false;
     const minutes=Number.isFinite(options?.minutes)?((options.minutes%1440)+1440)%1440:840;
     const daylight=minutes>=390&&minutes<1140,running=enabled&&active&&daylight;
     const dt=lastElapsed===null?0:Math.max(0,Math.min(.1,elapsed-lastElapsed));lastElapsed=elapsed;
     if(running&&previousRunning)flightTime+=dt;previousRunning=running;
     state.active=enabled&&active;state.daylight=daylight;state.visible=flock.visible=running;state.paused=!running;
     if(!running)return state;
-    for(const bird of birds)pose(bird,flightTime,dt);
-    for(const spec of species)for(const mesh of Object.values(spec.batches))mesh.instanceMatrix.needsUpdate=true;
+    renderAll(options?.camera);
     state.flightSeconds=flightTime;state.laps=flightTime/CAMPUS_BIRD_ROUTE.lapSeconds;return state;
   }
   function setActive(value) {
-    enabled=!!value;
-    if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
+    enabled=!!value;if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
   }
   function setPhase(value) {
     if(disposed||!['new','phase1','phase2'].includes(value)||state.constructionPhase===value)return;
     state.constructionPhase=value;
-    // Building 2 has not been built in Phase 1. Its two ridge birds use
-    // separated, supported positions on Building 1 instead, keeping the flock
-    // and animation timing intact while construction views change.
     for(const bird of birds) {
-      const home=bird.originalHabitat;
-      if(bird.behavior!=='roof-perch'||!home||home.at[0]<42||home.at[0]>153)continue;
+      const home=bird.originalHabitat;if(bird.behavior!=='roof-perch'||!home||home.at[0]<42||home.at[0]>153)continue;
       bird.habitat=value==='phase1'?{...home,at:home.at[0]===95?[-16,160,36.5]:[-16,240,34.815943]}:home;
       individuals[bird.index].supportFeet=bird.habitat.at;
-      pose(bird,flightTime,0);
     }
-    for(const spec of species)for(const mesh of Object.values(spec.batches))mesh.instanceMatrix.needsUpdate=true;
+    // Repack/rewrite once after a habitat move; next visible frame selects LOD
+    // from its real camera. Phase changes never restart the flock clock.
+    renderAll(null,true);lastLOD=-Infinity;
   }
   function dispose() {
     if(disposed)return;disposed=true;scene.remove(flock);
     for(const spec of species) {
-      for(const mesh of Object.values(spec.batches))mesh.dispose();
-      for(const geometry of spec.geometries)geometry.dispose();
+      for(const mesh of Object.values(spec.batches))mesh.dispose();spec.distant.dispose();
+      for(const geometry of spec.geometries)geometry.dispose();spec.distantGeometry.dispose();
     }
-    material.dispose();flock.clear();state.active=false;state.visible=false;state.paused=true;
+    material.dispose();distantMaterial.dispose();flock.clear();state.active=false;state.visible=false;state.paused=true;
   }
   return {update,setActive,setPhase,state,dispose};
 }

@@ -8,7 +8,7 @@ import { createCampusPhases } from './campus-phases.js?v=9a924f12f019c9b9';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=80bf5a4e96e057f8';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=1abbbb3555ce0b7d';
+import { createCampusBird } from './campus-bird.js?v=2f0c0894e83e3c06';
 import { createCampusAmbience } from './campus-ambience.js?v=9ad31705727def26';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -114,7 +114,7 @@ document.addEventListener('pointerdown', () => { void unlockAmbience(); }, { pas
 document.addEventListener('keydown', () => { void unlockAmbience(); });
 function updateWorldAmbience(now = performance.now() / 1000) {
   const visible = active && walkPresentation === '3d' && !document.hidden;
-  campusBird?.update(now, { active: visible, minutes: timeOfDay });
+  campusBird?.update(now, { active: visible, minutes: timeOfDay, camera: worldCamera() });
   campusWeather?.update(now, { camera: worldCamera(), active: visible });
   if (!visible) campusBell?.update(now);
   campusAmbience?.update(now, { active: visible, minutes: timeOfDay,
