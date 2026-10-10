@@ -1,10 +1,10 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
-import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=38941b092e343fc4';
+import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=f367bd46970b1a3b';
 import { createCampusWalk } from './campus-walk.js?v=766d42beb01a3315';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=a4e5f5ef0d72a593';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createCampusAtmosphere } from './campus-atmosphere.js?v=b88dab530ecdd970';
+import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
 import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=24cf28b4a2228ec2';
 
 const EMBEDDED = window.parent !== window;
@@ -20,7 +20,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '79283839d32fba20';
+const ASSET_REVISION = '2bde1fd113cabd1e';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');

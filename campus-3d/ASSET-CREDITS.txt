@@ -150,3 +150,17 @@ Creator: Unknown Iranian workshop
 Source: https://www.metmuseum.org/art/collection/search/450716
 License: Public domain / The Metropolitan Museum of Art Open Access (CC0) — https://creativecommons.org/publicdomain/zero/1.0/
 Adaptation: Downsampled to 2048 pixels and used as a woven-rug texture, rotated in UV space with photographic margins excluded; artwork colors preserved.
+
+
+Campus PBR surface textures
+Photographed texture sources by Poly Haven, CC0 1.0.
+https://creativecommons.org/publicdomain/zero/1.0/
+Brushed Concrete 03 — https://polyhaven.com/a/brushed_concrete_03
+Clean Asphalt — https://polyhaven.com/a/clean_asphalt
+Fabric Pattern 07 — https://polyhaven.com/a/fabric_pattern_07
+Grass Ground — https://polyhaven.com/a/grass_ground
+Oak Veneer 01 — https://polyhaven.com/a/oak_veneer_01
+Red Brick — https://polyhaven.com/a/red_brick
+Roof Slates 02 — https://polyhaven.com/a/roof_slates_02
+Rubberized Track — https://polyhaven.com/a/rubberized_track
+Adapted: calibrated color and roughness, resized/compressed maps, physical-scale mapping.

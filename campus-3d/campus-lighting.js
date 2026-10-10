@@ -9,9 +9,9 @@ const mix = THREE.MathUtils.lerp;
 // Shared by the live explorer and its on-demand still captures. Keep night
 // exposure/lamps separate so a clearer daytime image does not wash out night.
 export const CAMPUS_DAYLIGHT = Object.freeze({
-  sunIntensity: 3.4, hemisphereIntensity: .82, environmentIntensity: .75,
+  sunIntensity: 3.4, hemisphereIntensity: .64, environmentIntensity: .70,
   exposure: 1.14, skyColor: '#c6dff6', groundColor: '#6c735f', sunColor: '#fff8ef',
-  lawnColor: Object.freeze([.102034 * .90, .160133 * 1.12, .045757 * .90])
+  lawnColor: Object.freeze([.1021480285 * .90, .1599647863 * 1.12, .0461954114 * .90])
 });
 
 export function applyCampusPalette(model) {
@@ -37,6 +37,21 @@ export function applyCampusPalette(model) {
           `);
         };
         material.customProgramCacheKey = () => 'neutral-acoustic-ceiling-v1';
+        material.needsUpdate = true;
+      }
+      if (/^Interior floor • contact shading/.test(material.name) && material.aoMap) {
+        // Fixed interior fixtures do not render dynamic shadow maps. Reuse the
+        // floor's baked contact sample to ground nearby furniture under their
+        // direct light too; indirect AO and the bright tile map stay intact.
+        material.onBeforeCompile = shader => {
+          shader.fragmentShader = shader.fragmentShader.replace('#include <aomap_fragment>', `
+            #include <aomap_fragment>
+            #ifdef USE_AOMAP
+              reflectedLight.directDiffuse *= mix(1.0, ambientOcclusion, 0.8);
+            #endif
+          `);
+        };
+        material.customProgramCacheKey = () => 'interior-floor-contact-direct-v1';
         material.needsUpdate = true;
       }
       let tint;
