@@ -1,10 +1,10 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "800207fb503ee611ccf6683e33726298c8e11ae7bbbadbc5e2bd140c1314e88b",
+  "revision": "3ef839665a3a0b034e82cd067a2d6ea7ef05bc41ab21c0a23f1ec8b21e741d00",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-b48d8ea2b5f9f0fd181dcb5ab1628ac0826aab982c8303c442eafdd1cd2e04fa.json",
-    "sha256": "b48d8ea2b5f9f0fd181dcb5ab1628ac0826aab982c8303c442eafdd1cd2e04fa",
+    "url": "./pdf-inputs/campus-pdf-inputs-526e9323d4ee7b9404df016b0feec0bb6f9acc2c9b88128cc0f297c5f80c6165.json",
+    "sha256": "526e9323d4ee7b9404df016b0feec0bb6f9acc2c9b88128cc0f297c5f80c6165",
     "bytes": 40292,
     "mime": "application/json"
   },
@@ -43,16 +43,16 @@
     }
   },
   "model": {
-    "url": "./campus-3d/OLR-New-Campus.glb?v=8720f9281c8f8a94",
-    "sha256": "2f7438564f81139f3660b99859c451336e76d3fa2fa675e56c6aacee0d123e4a",
+    "url": "./campus-3d/OLR-New-Campus.glb?v=ec2435c4ced5a795",
+    "sha256": "43bfce60937eed6e7d8f341093bddee9f0ef41cc0558b0a2331205e335fc54a1",
     "bytes": 104845496,
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=024f839269b16f59",
-    "revision": "024f839269b16f59",
-    "asset_revision": "8720f9281c8f8a94",
-    "files_sha256": "e8827410753cd7950897b622c8834107419d990cad5f349799f554813776526a",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=9af0888b4a3b6949",
+    "revision": "9af0888b4a3b6949",
+    "asset_revision": "ec2435c4ced5a795",
+    "files_sha256": "3e8e0e3f6b066f87a687d0467bb4930b1f7725cb7f077becb485bd2b704d32cc",
     "files": [
       {
         "url": "./campus-3d/campus-atmosphere.js",
@@ -104,7 +104,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "18381cb68c0ece0e094f683d40990f83646e38f43ec9fbd0fa3467bea10742af",
+        "sha256": "840ce2bae34616b8ddb2548b8e4abd649d77cac0990cdab5684bb44c6d3f5b9b",
         "bytes": 4343,
         "mime": "text/html"
       },
@@ -116,7 +116,7 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "8a7a81bc4a8c47d90327eac9e6529775480bc02f70e76b18c050937f7717dcd6",
+        "sha256": "b054a3bb0ee817b42ff0afaaecc3c6b306e5434468c04e277be7a3921eaa42b5",
         "bytes": 42560,
         "mime": "text/javascript"
       }
