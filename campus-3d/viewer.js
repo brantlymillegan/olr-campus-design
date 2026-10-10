@@ -485,7 +485,6 @@ function createInteriorLighting(data) {
   const polygonValid = p => Array.isArray(p) && p.length >= 3 && p.every(v => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite));
   const buildings = (data.buildings || []).filter(b => typeof b.id === 'string' && Number.isFinite(b.floor) && Number.isFinite(b.floorElevationFeet) && polygonValid(b.polygonWorldFeet));
   const rooms = (data.rooms || []).filter(r => typeof r.id === 'string' && polygonValid(r.polygonWorldFeet));
-  const panels = (data.lights || []).filter(p => typeof p.building === 'string' && Number.isFinite(p.floor) && Array.isArray(p.positionFeet) && p.positionFeet.length === 3 && p.positionFeet.every(Number.isFinite)).map((p, index) => ({ ...p, index }));
   const contains = (polygon, x, y) => {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -494,43 +493,21 @@ function createInteriorLighting(data) {
     }
     return inside;
   };
-  // Keep a fixed light count: entering a room updates only uniforms, never the
-  // material shader variants. Positions come from real ceiling panels, not the
-  // viewer's head. These soft fills stay on in daylight and at night.
-  const pool = Array.from({ length: 8 }, (_, i) => {
-    const light = new THREE.PointLight(0xffefd9, 0, 34 * FEET, 2);
-    light.name = `Interior ceiling fill ${i + 1}`;
-    light.castShadow = false;
-    scene.add(light);
-    return light;
-  });
-  let selected = [], location = null, signature = '';
+  // Fixture emission and the campus lighting stay independent of camera
+  // proximity. Keep location diagnostics, without moving extra lights between
+  // ceiling panels as the visitor walks or flies through the building.
+  let location = null;
   function update(activeCamera, firstPerson) {
     const x = activeCamera.position.x / FEET, y = -activeCamera.position.z / FEET, elevation = activeCamera.position.y / FEET;
     const building = firstPerson && buildings.find(b => elevation >= b.floorElevationFeet && elevation < b.floorElevationFeet + (b.floor === 1 ? 14.05 : 13.4) && contains(b.polygonWorldFeet, x, y));
     if (!building) {
-      if (signature !== 'outside') { pool.forEach(light => { light.intensity = 0; }); selected = []; location = null; signature = 'outside'; }
+      location = null;
       return;
     }
     const room = rooms.find(r => r.building === building.id && r.floor === building.floor && contains(r.polygonWorldFeet, x, y));
-    // A room's selection is stable everywhere within it; hallway selections
-    // change only across an eight-foot grid, where distant lights fade gently.
-    const anchor = room ? room.polygonWorldFeet.reduce((a, p) => [a[0] + p[0] / room.polygonWorldFeet.length, a[1] + p[1] / room.polygonWorldFeet.length], [0, 0]) : [Math.round(x / 8) * 8, Math.round(y / 8) * 8];
-    const nextSignature = `${building.id}|${building.floor}|${room?.id || anchor.join(',')}`;
-    if (signature === nextSignature) return;
-    signature = nextSignature;
     location = { building: building.id, floor: building.floor, roomId: room?.id || null };
-    selected = panels.filter(p => p.building === building.id && (p.floor === building.floor || room && p.servesRoomIds?.includes(room.id))).sort((a, b) => {
-      const ownA = room && (a.roomId === room.id || a.servesRoomIds?.includes(room.id)) ? 0 : 1, ownB = room && (b.roomId === room.id || b.servesRoomIds?.includes(room.id)) ? 0 : 1;
-      return ownA - ownB || Math.hypot(a.positionFeet[0] - anchor[0], a.positionFeet[1] - anchor[1]) - Math.hypot(b.positionFeet[0] - anchor[0], b.positionFeet[1] - anchor[1]);
-    }).slice(0, pool.length);
-    pool.forEach((light, i) => {
-      const panel = selected[i];
-      light.intensity = panel ? 12 : 0;
-      if (panel) light.position.set(panel.positionFeet[0] * FEET, panel.positionFeet[2] * FEET, -panel.positionFeet[1] * FEET);
-    });
   }
-  return Object.freeze({ update, get state() { return { ready: true, active: Boolean(location), ...location, poolSize: pool.length, shadowCasting: false, lights: selected.map((p, i) => ({ roomId: p.roomId, positionFeet: [...p.positionFeet], intensity: pool[i].intensity })) }; } });
+  return Object.freeze({ update, get state() { return { ready: true, active: Boolean(location), ...location, poolSize: 0, proximityEffects: false, shadowCasting: false, lights: [] }; } });
 }
 
 async function warmModel() {
