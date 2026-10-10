@@ -1,0 +1,9 @@
+Brotli WASM decoder
+
+Package: brotli-wasm 3.0.1
+Upstream: https://github.com/httptoolkit/brotli-wasm
+Pinned upstream commit: 9321f44f3df559b564fe08ce625bb51d70ac9ddc
+License: Apache-2.0 (see LICENSE).
+The JavaScript and WebAssembly files are unmodified files from the integrity-verified npm package. Dependency notices are preserved in THIRD-PARTY-NOTICES.txt.
+
+Upstream WebAssembly includes build-time /home/tim compiler diagnostic strings from the public published package; these do not refer to this campus project or its creator.

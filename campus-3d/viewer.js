@@ -1,4 +1,4 @@
-import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
+import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=0f0ef5bd65504899';
 import { createCampusDriving } from './campus-driving.js?v=6fb7ca4b999094b6';
@@ -13,7 +13,8 @@ import { createCampusAmbience } from './campus-ambience.js?v=9ad31705727def26';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
-import { createCampusPdfCapture, loadHashedCampusModel, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=deac4af484104cf0';
+import { loadHashedCampusModel } from './campus-model-loader.js?v=9fc39978cacb0221';
+import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=deac4af484104cf0';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -777,9 +778,8 @@ async function loadVehicle() {
   if (config.version !== 1 || !/^[a-f0-9]{64}$/.test(config.model?.sha256 || '') || !Number.isSafeInteger(config.model?.bytes) || config.model.bytes <= 0) throw new Error('Invalid vehicle metadata.');
   const asset = new URL(config.model.url, location.href);
   if (asset.origin !== location.origin || !asset.pathname.includes('/vehicles/')) throw new Error('Invalid vehicle asset URL.');
-  let count = 0;
-  const loaded = await loadHashedCampusModel(new GLTFLoader(), asset.href, progress => { count = progress.loaded; });
-  if (loaded.sha256 !== config.model.sha256 || count !== config.model.bytes) throw new Error('Vehicle model verification failed. Please reload.');
+  const loaded = await loadHashedCampusModel(new GLTFLoader(), asset.href);
+  if (loaded.sha256 !== config.model.sha256 || loaded.byteLength !== config.model.bytes) throw new Error('Vehicle model verification failed. Please reload.');
   return {config, ...loaded};
 }
 
@@ -797,6 +797,14 @@ async function loadBellConfig() {
   const expected = new URL(url, location.href).searchParams.get('v');
   if (expected && !digest.startsWith(expected)) throw new Error('Bell configuration changed. Please reload.');
   return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+async function loadCampusMetadata(url, description) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${description} HTTP ${response.status}`);
+    return await response.json();
+  } catch (error) { console.warn(error); return null; }
 }
 
 async function init() {
@@ -845,9 +853,11 @@ async function init() {
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const [loadedModel, loadedVehicle, bellConfig, phaseConfig] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+  const [loadedModel, loadedVehicle, bellConfig, phaseConfig, interiorData, boundaryData] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
-  }), loadVehicle(), loadBellConfig(), loadConstructionPhaseConfig()]);
+  }), loadVehicle(), loadBellConfig(), loadConstructionPhaseConfig(),
+    loadCampusMetadata(`./campus-interiors.json?v=${ASSET_REVISION}`, 'Interior lighting metadata'),
+    loadCampusMetadata(`./boundary-lines.json?v=${ASSET_REVISION}`, 'Campus boundary paths')]);
   const { gltf } = loadedModel;
   modelSha256 = loadedModel.sha256;
   model = gltf.scene;
@@ -886,11 +896,8 @@ async function init() {
   model.traverse(object => { if (object.isLight) importedLights.push(object); });
   importedLights.forEach(light => light.removeFromParent());
   scene.add(model);
-  await fetch(`./campus-interiors.json?v=${ASSET_REVISION}`).then(response => {
-    if (!response.ok) throw new Error(`Interior lighting metadata HTTP ${response.status}`);
-    return response.json();
-  }).then(data => { campusInteriorLighting = createInteriorLighting(data); }).catch(error => console.warn(error));
-  await loadCampusBoundary(scene, model, `./boundary-lines.json?v=${ASSET_REVISION}`).catch(error => console.warn(error));
+  if (interiorData) campusInteriorLighting = createInteriorLighting(interiorData);
+  if (boundaryData) await loadCampusBoundary(scene, model, null, boundaryData).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
   modelBounds = bounds;
   const size = bounds.getSize(new THREE.Vector3());

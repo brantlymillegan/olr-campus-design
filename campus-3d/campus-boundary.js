@@ -5,10 +5,13 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 // The paths come from the Blender ribbon. Screen-space widths keep this map
 // annotation readable at campus scale, including on narrow phone screens.
-export async function loadCampusBoundary(scene, model, url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Campus boundary paths could not load.');
-  const { paths } = await response.json();
+export async function loadCampusBoundary(scene, model, url, data = null) {
+  if (!data) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Campus boundary paths could not load.');
+    data = await response.json();
+  }
+  const { paths } = data;
   const group = new Group();
   group.name = 'Campus boundary annotation';
   for (const [index, path] of paths.entries()) {
