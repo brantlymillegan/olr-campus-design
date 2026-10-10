@@ -1,11 +1,11 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "c2282b10a01a7f437bd66b1238ffc9062ae85d8dd7f2c2625f2d211e5e274ee0",
+  "revision": "157f90f7b344b01ee5752c0d5bf963763d9525f3280bcee1e22544d14dd89ebd",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-3f5c19d7ae22d5e82a9afa29f99242293697ab3485fb641824c672bde28d88dc.json",
-    "sha256": "3f5c19d7ae22d5e82a9afa29f99242293697ab3485fb641824c672bde28d88dc",
-    "bytes": 41328,
+    "url": "./pdf-inputs/campus-pdf-inputs-86a70fe965df89dbff1ee7ef99fedfbc34c8b202c4c3d873190c2153a0a08e54.json",
+    "sha256": "86a70fe965df89dbff1ee7ef99fedfbc34c8b202c4c3d873190c2153a0a08e54",
+    "bytes": 41483,
     "mime": "application/json"
   },
   "generator": {
@@ -49,21 +49,21 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=483d1013ba900759",
-    "revision": "483d1013ba900759",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=eef22f6e74c40114",
+    "revision": "eef22f6e74c40114",
     "asset_revision": "08cc0ca907471a34",
-    "files_sha256": "6f2c4fbf794eb9d0386f922a325e5f562a5252b3d0a724ba4a7e7a4037528a04",
+    "files_sha256": "853e576f8cef4594859e16399ea96e944892809d374f97d72784f7f764cb4a0b",
     "files": [
       {
         "url": "./campus-3d/campus-ambience.js",
-        "sha256": "704c16929b52e9775dea0130016d99105a9fb5fe5d7f171f8513a9fb111a22a1",
-        "bytes": 10648,
+        "sha256": "c5704debfe0748b94922f4e07e5ba20fca51eb8b2681ac884fd2f6e3a9122ab4",
+        "bytes": 15262,
         "mime": "text/javascript"
       },
       {
         "url": "./campus-3d/campus-atmosphere.js",
-        "sha256": "cf320ecba907f5a55e9b5cbe06f16cddaed848ca0ea322b77be091b2288979cc",
-        "bytes": 26388,
+        "sha256": "c93c4e7db16e51a1c3e7dc033dcc49743c3b5965cecc3f8a301917e8d859a0c1",
+        "bytes": 28203,
         "mime": "text/javascript"
       },
       {
@@ -86,8 +86,8 @@
       },
       {
         "url": "./campus-3d/campus-lighting.js",
-        "sha256": "ab771f06d6ec9c9ab843d3e891b4c1bcdc6416b969fee82d425d604d2e1d6ec1",
-        "bytes": 15648,
+        "sha256": "cddd2d0a3866f33924db32e610015ff7320300f0db58e2a3ae5d06e6924d9f85",
+        "bytes": 16588,
         "mime": "text/javascript"
       },
       {
@@ -115,8 +115,14 @@
         "mime": "text/javascript"
       },
       {
+        "url": "./campus-3d/campus-weather.js",
+        "sha256": "4d98594a604831c86feae1c83f8c49361f6e8983db4e952a57d735df1c0a1c12",
+        "bytes": 14644,
+        "mime": "text/javascript"
+      },
+      {
         "url": "./campus-3d/index.html",
-        "sha256": "da5183f01970586a1a7be59b3209a8f1de2a778b19647dc43ba12f15c0421e2f",
+        "sha256": "75dacf69a2180a8c815c6bdfac1f8deea9cfe1502a1c877d92a74ec54e4a9f9d",
         "bytes": 4343,
         "mime": "text/html"
       },
@@ -128,8 +134,8 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "c8603915ea6de1257206f109a10d0aa73ec46e97e475ca51904a1e88a2fc2419",
-        "bytes": 46245,
+        "sha256": "fb135d0b40e2ba894a9d64f8dcd773043ad445bdc297edbdafb5edecaae80611",
+        "bytes": 47103,
         "mime": "text/javascript"
       }
     ]

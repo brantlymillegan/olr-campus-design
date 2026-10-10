@@ -1289,7 +1289,7 @@ html>body { padding:0; }
   border:1px solid color-mix(in srgb,var(--foreground) 20%,var(--background)); border-radius:14px;
   background:var(--background); color:var(--foreground); box-shadow:0 3px 18px #0002;
   grid-template-columns:minmax(0,1fr) 36px;
-  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "walk walk" "lighting lighting" "ambience ambience" "models models" "download download" "status status";
+  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "walk walk" "lighting lighting" "weather weather" "ambience ambience" "models models" "download download" "status status";
 }
 .campus-tools-title { grid-area:title; }
 .campus-map-switch { grid-area:maps; }
@@ -1402,13 +1402,14 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-view-3d,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-3d-navigation,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-lighting-panel,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-weather-panel,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-ambience-panel,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-model-downloads,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-download-pdf,
   .campus-tool-panel:not([data-mobile-expanded="true"]) #campus-fullscreen-status { display:none; }
   .campus-tool-panel[data-mobile-expanded="true"] {
     width:244px; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;
-    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "walk walk walk" "lighting lighting lighting" "ambience ambience ambience" "models models models" "download download download" "status status status";
+    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "walk walk walk" "lighting lighting lighting" "weather weather weather" "ambience ambience ambience" "models models models" "download download download" "status status status";
   }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel { padding:0; border:0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel > :not(.campus-navigation-choice) { display:none; }
@@ -1435,6 +1436,9 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
 #campus-sound-volume { display:block; width:100%; height:28px; margin:2px 0 0; accent-color:var(--foreground); cursor:pointer; }
 #campus-sound-status { margin:0; font-size:10px; line-height:1.4; color:var(--muted-foreground); }
 #campus-sound-volume:focus-visible, #campus-sound-toggle:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+
+.campus-weather-panel { grid-area:weather; display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding:5px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px; font-weight:600; }
+@media (pointer:coarse) { .campus-weather-panel .btn { min-height:44px; min-width:44px; } }
 
 /* The schedule is a document view, with the same mode and display controls. */
 body[data-campus-dimension="list"] .campus-tool-panel {
@@ -1677,7 +1681,7 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" aria-label="First floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">1st floor</span><span class="campus-floor-label-short" aria-hidden="true">1st fl</span></button>
     <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" aria-label="Second floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">2nd floor</span><span class="campus-floor-label-short" aria-hidden="true">2nd fl</span></button>
   </div>
-  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-walk-panel campus-lighting-panel campus-ambience-panel campus-model-downloads campus-download-pdf">
+  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-walk-panel campus-lighting-panel campus-weather-panel campus-ambience-panel campus-model-downloads campus-download-pdf">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
   </button>
   <button type="button" class="campus-compass" id="campus-compass" aria-label="North is up. Click to align Building 1 with the screen.">
@@ -1736,6 +1740,9 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
       <p id="campus-lighting-caption">Illustrative spring/autumn sun path</p>
     </div>
   </details>
+  <section class="campus-weather-panel" id="campus-weather-panel" aria-label="Weather" hidden>
+    <span>Rain</span><button type="button" class="btn" id="campus-rain-toggle" aria-pressed="false" aria-label="Turn rain on">Off</button>
+  </section>
   <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Outdoor sounds" hidden>
     <div class="campus-ambience-heading"><label for="campus-sound-volume">Outdoor sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="true" aria-label="Mute outdoor sounds">On</button></div>
     <input id="campus-sound-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Outdoor sound volume" aria-describedby="campus-sound-status">
@@ -6829,6 +6836,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const timePresets = [...panel.querySelectorAll('[data-campus-time-minutes]')];
   const modelDownloads = document.getElementById('campus-model-downloads');
   const timeStorageKey = 'olr-campus-time-of-day';
+  const weatherPanel = document.getElementById('campus-weather-panel');
+  const rainToggle = document.getElementById('campus-rain-toggle');
+  const rainStorageKey = 'olr-campus-rain';
+  let rainEnabled = false;
+  try { rainEnabled = localStorage.getItem(rainStorageKey) === 'on'; } catch {}
   const ambiencePanel = document.getElementById('campus-ambience-panel');
   const soundToggle = document.getElementById('campus-sound-toggle');
   const soundVolume = document.getElementById('campus-sound-volume');
@@ -6893,7 +6905,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=483d1013ba900759';
+      modelFrame.src='./campus-3d/?embedded=1&v=eef22f6e74c40114';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7015,15 +7027,37 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
   });
   renderTime();
+  function renderWeather() {
+    rainToggle.textContent = rainEnabled ? 'On' : 'Off';
+    rainToggle.setAttribute('aria-pressed', String(rainEnabled));
+    rainToggle.setAttribute('aria-label', rainEnabled ? 'Turn rain off' : 'Turn rain on');
+  }
+  function setRain(enabled, persist = false) {
+    rainEnabled = Boolean(enabled);
+    if (persist) { try { localStorage.setItem(rainStorageKey, rainEnabled ? 'on' : 'off'); } catch {} }
+    renderWeather();
+    renderSound();
+    sendModel('weather-rain', rainEnabled);
+  }
+  rainToggle.addEventListener('click', () => { setRain(!rainEnabled, true); startSound(true); });
+  window.addEventListener('storage', event => {
+    if (event.key === rainStorageKey || event.key === null) {
+      let enabled = false;
+      try { enabled = localStorage.getItem(rainStorageKey) === 'on'; } catch {}
+      setRain(enabled);
+    }
+  });
+  renderWeather();
   function renderSound() {
     const on=soundOptions.enabled&&soundOptions.volume>0;
-    soundToggle.textContent=on&&soundState.error?'Retry':on?'On':'Off';
+    const failed=Boolean(soundState.error)&&!(rainEnabled&&soundState.rainPlaying);
+    soundToggle.textContent=on&&failed?'Retry':on?'On':'Off';
     soundToggle.setAttribute('aria-pressed',String(on));
-    soundToggle.setAttribute('aria-label',on&&soundState.error?'Retry outdoor sounds':on?'Mute outdoor sounds':'Unmute outdoor sounds');
+    soundToggle.setAttribute('aria-label',on&&failed?'Retry outdoor sounds':on?'Mute outdoor sounds':'Unmute outdoor sounds');
     soundToggle.disabled=false;
     soundVolume.value=String(Math.round(soundOptions.volume*100));
     soundVolume.setAttribute('aria-valuetext',`${Math.round(soundOptions.volume*100)} percent`);
-    soundStatus.textContent=!on?'Outdoor sounds muted.':soundState.error?'Sounds could not load. Tap Retry.':soundState.loading?'Loading outdoor sounds…':!soundState.playing?'Sound is on. Click or tap in 3D to start.':'Soft birdsong, wind & distant play.';
+    soundStatus.textContent=!on?'Outdoor sounds muted.':rainEnabled&&soundState.rainPlaying?'Rain & distant thunder.':failed?'Sounds could not load. Tap Retry.':soundState.loading?'Loading outdoor sounds…':!soundState.playing?'Sound is on. Click or tap in 3D to start.':rainEnabled?'Rain & distant thunder.':'Soft birdsong, wind & distant play.';
   }
   function startSound(retry=false) {
     if(dimension!=='3d'||!soundOptions.enabled||soundOptions.volume<=0||(!retry&&soundState.error))return;
@@ -7038,7 +7072,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     renderSound();
   }
   soundToggle.addEventListener('click',()=>{
-    soundOptions.enabled=Boolean(soundState.error)||!soundOptions.enabled||soundOptions.volume===0;
+    soundOptions.enabled=(Boolean(soundState.error)&&!(rainEnabled&&soundState.rainPlaying))||!soundOptions.enabled||soundOptions.volume===0;
     if(soundOptions.enabled&&soundOptions.volume===0)soundOptions.volume=.25;
     setSound(soundOptions.enabled);
   });
@@ -7082,6 +7116,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
     sendModel('time-of-day',timeOfDay);
+    sendModel('weather-rain',rainEnabled);
     sendModel('ambience-options',soundOptions);
     if(dimension!=='list')sendModel('walk-presentation',dimension);
     sendModel('active',dimension!=='list'&&(dimension==='3d'||walkActive()));
@@ -7107,6 +7142,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     window.olrCampusList?.setVisible(next==='list');
     lightingPanel.hidden=next!=='3d';
     ambiencePanel.hidden=next!=='3d';
+    weatherPanel.hidden=next!=='3d';
     modelDownloads.hidden=next!=='3d';
     renderWalk();
     if(next!=='3d')lightingPanel.open=false;

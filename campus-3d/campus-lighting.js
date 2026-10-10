@@ -244,7 +244,7 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
   keyLight.target.position.copy(focus);
   Object.assign(keyLight.shadow.camera, { left: -extent * .72, right: extent * .72, top: extent * .72, bottom: -extent * .72, near: 1, far: extent * 3 });
   keyLight.shadow.camera.updateProjectionMatrix();
-  let state, shadowRevision = 0;
+  let state, shadowRevision = 0, raining = false;
 
   function setTime(value) {
     const next = lightingAtTime(value);
@@ -264,6 +264,17 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
     hemisphere.intensity = mix(.16, CAMPUS_DAYLIGHT.hemisphereIntensity, next.daylight);
     scene.environmentIntensity = mix(.035, CAMPUS_DAYLIGHT.environmentIntensity, next.daylight);
     renderer.toneMappingExposure = mix(.95, CAMPUS_DAYLIGHT.exposure, next.daylight);
+    if (raining) {
+      // Overcast light follows the selected sun/moon direction. Keep exposure,
+      // interior fixtures and the existing shadow map stable while clouds
+      // soften daylight. Recompute from clear values, never multiply in place.
+      keyLight.intensity *= .24;
+      keyLight.color.lerp(new THREE.Color('#c5d1df'), .58 * next.daylight);
+      hemisphere.intensity *= .76;
+      hemisphere.color.lerp(new THREE.Color('#aab8c8'), .62);
+      hemisphere.groundColor.lerp(new THREE.Color('#5c6567'), .62);
+      scene.environmentIntensity *= .66;
+    }
     for (const [material, original] of glassMaterials) {
       material.emissive.copy(original.color).lerp(new THREE.Color(0xffc680), next.nightStrength);
       material.emissiveIntensity = mix(original.intensity, .72, next.nightStrength);
@@ -281,10 +292,19 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
       sunPosition: focus.clone().addScaledVector(sunDirection, distance).toArray(),
       shadowDirection: lightDirection.clone().negate().toArray(),
       shadowLight: isSun ? 'sun' : 'moon', shadowRevision,
-      lampCount: lamps.length, lampsOn: next.nightStrength > .05
+      lampCount: lamps.length, lampsOn: next.nightStrength > .05,
+      raining, directIntensity: keyLight.intensity,
+      hemisphereIntensity: hemisphere.intensity, environmentIntensity: scene.environmentIntensity
     };
     document.documentElement.dataset.sceneLighting = next.daylight < .25 ? 'night' : 'day';
     return state;
   }
-  return { setTime, get state() { return structuredClone(state); } };
+  function setWeather(enabled) {
+    const next = Boolean(enabled);
+    if (next === raining) return false;
+    raining = next;
+    setTime(state?.minutes ?? 840);
+    return true;
+  }
+  return { setTime, setWeather, get state() { return structuredClone(state); } };
 }

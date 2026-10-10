@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const FT = 0.3048;
 const LAWN_TILE_METERS = 2.51;
 const clamp = THREE.MathUtils.clamp;
+const mix = THREE.MathUtils.lerp;
 const smooth = (a, b, x) => THREE.MathUtils.smoothstep(x, a, b);
 
 const COLOR_SATURATION = 1.24;
@@ -193,6 +194,7 @@ const skyShader = /* glsl */`
 uniform float uDaylight;
 uniform float uNight;
 uniform float uTwilight;
+uniform float uStorm;
 uniform vec3 uSun;
 uniform vec3 uGroundColor;
 uniform vec3 uHorizon;
@@ -207,10 +209,10 @@ vec3 skyRadiance(vec3 direction) {
   // A broad warm aureole and a small bright disk, all in scene-linear radiance.
   vec3 warmth = mix(vec3(1.0, .39, .12), vec3(1.0, .83, .58), smoothstep(.0, .5, uSun.y));
   sky += warmth * exp((sunAngle - 1.0) * 12.0) * uTwilight * .25;
-  sky += warmth * (exp((sunAngle - 1.0) * 120.0) * .19 + exp((sunAngle - 1.0) * 27000.0) * 5.0) * sunVisible;
+  sky += warmth * (exp((sunAngle - 1.0) * 120.0) * .19 + exp((sunAngle - 1.0) * 27000.0) * 5.0) * sunVisible * (1.0 - uStorm);
   float moonAngle = dot(d, -uSun);
   sky += vec3(.27, .36, .53) * (exp((moonAngle - 1.0) * 1700.0) * .10
-    + exp((moonAngle - 1.0) * 27000.0) * .60) * uNight;
+    + exp((moonAngle - 1.0) * 27000.0) * .60) * uNight * (1.0 - uStorm * .9);
 
   // Broken cumulus banks: broad rounded volumes, finer eroded edges, cool
   // shaded bases and warm sun-facing shoulders. This field is baked only on
@@ -219,7 +221,7 @@ vec3 skyRadiance(vec3 direction) {
   float broad = cloudNoise(cloudPoint);
   float detail = cloudNoise(cloudPoint * 3.6 + 13.0);
   float body = broad * .82 + detail * .18;
-  float coverage = smoothstep(.525, .59, body);
+  float coverage = smoothstep(mix(.525, .20, uStorm), mix(.59, .43, uStorm), body);
   coverage *= smoothstep(.02, .12, d.y);
   float lightEdge = cloudNoise(cloudPoint + uSun.xz * .28);
   float relief = clamp(.35 + (broad - lightEdge) * 6.0 + .24 * d.y, 0.0, 1.0);
@@ -227,13 +229,17 @@ vec3 skyRadiance(vec3 direction) {
   float silver = pow(max(0.0, sunAngle), 18.0) * (1.0 - coverage) * .22;
   cloudDay += vec3(1.0, .91, .78) * silver;
   cloudDay = mix(cloudDay, vec3(1.22, .65, .35), uTwilight * .56 * pow(max(0.0, sunAngle), 3.0));
+  // Dense layered storm banks retain relief rather than becoming a flat gray
+  // background. They are baked only when weather or time changes.
+  cloudDay = mix(cloudDay, mix(vec3(.042, .056, .077), vec3(.31, .35, .40), relief), uStorm);
   vec3 cloudNight = mix(vec3(.006, .009, .018), vec3(.026, .035, .055), relief);
+  cloudNight *= mix(1.0, .62, uStorm);
   sky = mix(sky, mix(cloudNight, cloudDay, uDaylight), coverage * .91);
   return max(sky, vec3(0.0));
 }
 vec3 distantGroundRadiance() {
   // A sky-lit environment hemisphere supplies a restrained green bounce.
-  return uGroundColor * mix(.10, .93, uDaylight);
+  return uGroundColor * mix(.10, .93, uDaylight) * mix(1.0, .52, uStorm);
 }
 `;
 
@@ -273,6 +279,7 @@ uniform mat4 uProjectionInverse;
 uniform mat4 uCameraWorld;
 uniform vec3 uCameraPosition;
 uniform float uFogDensity;
+uniform float uLightning;
 varying vec2 vNdc;
 ${skyShader}
 ${cachedSkyShader}
@@ -321,13 +328,15 @@ void main() {
     float detail = 1.0 - smoothstep(180.0, 850.0, distanceToGround);
     float variation = coarse * .085 + medium * .07 * detail + fine * .025 * detail;
     float sunHeight = max(0.0, uSun.y);
-    color = uGroundColor * (1.0 + variation) * mix(.10, .83 + .32 * sunHeight, uDaylight);
+    color = uGroundColor * (1.0 + variation) * mix(.10, .83 + .32 * sunHeight, uDaylight) * mix(1.0, .52, uStorm);
     float haze = 1.0 - exp(-pow(distanceToGround * uFogDensity, 2.0));
     color = mix(color, uHorizon, haze);
   } else {
     color = cachedSkyRadiance(direction);
     // The sub-pixel mathematical horizon has no finite green-plane edge.
     if (direction.y < 0.0) color = uHorizon;
+    // A restrained cloud glow, only in the sky and never a full-screen flash.
+    color += vec3(.18, .21, .27) * uLightning * smoothstep(.025, .30, direction.y);
   }
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
@@ -379,8 +388,10 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
   const dayZenith = new THREE.Color('#2877c8'), dayHorizon = new THREE.Color('#c5d9e6');
   const nightZenith = new THREE.Color('#091226'), nightHorizon = new THREE.Color('#1b2940');
   const duskHorizon = new THREE.Color('#d4a19b');
+  const stormHorizon = new THREE.Color('#768895'), stormZenith = new THREE.Color('#394a60');
   const shared = {
     uDaylight: { value: 1 }, uNight: { value: 0 }, uTwilight: { value: 0 },
+    uStorm: { value: 0 },
     uSun: { value: new THREE.Vector3(-.3, .8, .5).normalize() },
     uGroundColor: { value: lawn }, uHorizon: { value: dayHorizon.clone() }, uZenith: { value: dayZenith.clone() }
   };
@@ -418,7 +429,8 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
   }
   const uniforms = { ...shared,
     uProjectionInverse: { value: new THREE.Matrix4() }, uCameraWorld: { value: new THREE.Matrix4() },
-    uCameraPosition: { value: new THREE.Vector3() }, uFogDensity: { value: density }
+    uCameraPosition: { value: new THREE.Vector3() }, uFogDensity: { value: density },
+    uLightning: { value: 0 }
   };
   const geometry = new THREE.PlaneGeometry(2, 2);
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader: backdropVertex, fragmentShader: backdropFragment,
@@ -457,11 +469,13 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
   environmentScene.add(new THREE.Mesh(environmentGeometry, environmentMaterial));
   const pmrem = new THREE.PMREMGenerator(renderer);
   let environmentTarget = null, revision = 0, timeKey = null, latest = null, disposed = false;
+  let raining = false, lastTimeState = null;
 
   function setTime(state) {
     if (disposed) return false;
     if (!state || !Number.isFinite(state.daylight) || !Array.isArray(state.sunDirection) || state.sunDirection.length !== 3 || !state.sunDirection.every(Number.isFinite)) return false;
-    const key = JSON.stringify([state.minutes, state.daylight, state.nightStrength, state.sunDirection]);
+    lastTimeState = structuredClone(state);
+    const key = JSON.stringify([state.minutes, state.daylight, state.nightStrength, state.sunDirection, raining]);
     if (key === timeKey) return false;
     const daylight = clamp(state.daylight, 0, 1);
     const altitude = Number.isFinite(state.altitude) ? state.altitude : THREE.MathUtils.radToDeg(Math.asin(clamp(state.sunDirection[1], -1, 1)));
@@ -472,6 +486,15 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
     shared.uSun.value.fromArray(state.sunDirection).normalize();
     shared.uHorizon.value.copy(nightHorizon).lerp(dayHorizon, daylight).lerp(duskHorizon, twilight * .56);
     shared.uZenith.value.copy(nightZenith).lerp(dayZenith, daylight);
+    shared.uStorm.value = raining ? 1 : 0;
+    if (raining) {
+      shared.uHorizon.value.lerp(stormHorizon, daylight * .92);
+      shared.uZenith.value.lerp(stormZenith, daylight * .94);
+      if (daylight < 1) {
+        shared.uHorizon.value.multiplyScalar(mix(0.72, 1, daylight));
+        shared.uZenith.value.multiplyScalar(mix(0.72, 1, daylight));
+      }
+    }
     syncFogColor();
     bakeSky();
     // PMREM's fromScene temporarily sets NoToneMapping, so these linear colors
@@ -496,9 +519,23 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
     // physical terrain and the analytic continuation must already be >99.9%
     // horizon haze there, so a clipped ring can never reveal a color boundary.
     const effectiveDensity = Number.isFinite(camera.far) && camera.far > 0
-      ? Math.max(density, 2.7 / camera.far) : density;
+      ? Math.max(density * (raining ? 2.2 : 1), 2.7 / camera.far) : density * (raining ? 2.2 : 1);
     fog.density = effectiveDensity;
     uniforms.uFogDensity.value = effectiveDensity;
+  }
+
+  function setWeather(enabled) {
+    if (disposed) return false;
+    const next = Boolean(enabled);
+    if (next === raining) return false;
+    raining = next;
+    if (!raining) uniforms.uLightning.value = 0;
+    if (lastTimeState) setTime(lastTimeState);
+    return true;
+  }
+
+  function setLightning(value) {
+    uniforms.uLightning.value = !disposed && raining && Number.isFinite(value) ? clamp(value, 0, .65) : 0;
   }
 
   function dispose() {
@@ -516,10 +553,11 @@ export function createCampusAtmosphere({ scene, renderer, model = null, groundCo
     skyTarget.dispose(); skyBakeMaterial.dispose(); skyBakeGeometry.dispose();
   }
 
-  return Object.freeze({ setTime, updateCamera, sampleGround: sampleCampusGround, dispose,
+  return Object.freeze({ setTime, setWeather, setLightning, updateCamera, sampleGround: sampleCampusGround, dispose,
     get state() { return Object.freeze({ ...latest, environmentRevision: revision, environmentSize: size,
       groundColorLinear: lawn.toArray(), horizonColorLinear: shared.uHorizon.value.toArray(),
       zenithColorLinear: shared.uZenith.value.toArray(), fogDensity: fog.density, baseFogDensity: density,
+      raining, lightningIntensity: uniforms.uLightning.value,
       cameraPosition: uniforms.uCameraPosition.value.toArray(), cloudAnimation: false,
       skyCache: Object.freeze({ width: skyWidth, height: skyHeight, format: 'RGBA16F',
         updates: revision, updatesOnCameraMovement: false, colorSpace: 'scene-linear', seamlessLongitude: true }),

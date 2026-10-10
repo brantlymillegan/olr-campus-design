@@ -1,15 +1,16 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
-import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=ab771f06d6ec9c9a';
+import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=659b85a748e0ac3b';
 import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
 import * as THREE from 'three';
+import { createCampusWeather } from './campus-weather.js?v=4d98594a604831c8';
 // BEGIN campus world ambience imports
 import { createCampusBird } from './campus-bird.js?v=28f68412e3284087';
-import { createCampusAmbience } from './campus-ambience.js?v=704c16929b52e977';
+import { createCampusAmbience } from './campus-ambience.js?v=c5704debfe0748b9';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
+import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
 import { createCampusPdfCapture, loadHashedCampusModel, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=deac4af484104cf0';
 
 const EMBEDDED = window.parent !== window;
@@ -93,6 +94,7 @@ function fail(error) {
 
 // BEGIN campus world ambience
 let campusBird = null, campusAmbience = null;
+let campusWeather = null, rainEnabled = false;
 let ambienceOptions = { enabled: true, volume: .25 };
 let immediateDraw = false, lastWorldRender = -Infinity;
 const worldCamera = () => driving?.camera || walk?.camera || camera;
@@ -107,8 +109,17 @@ document.addEventListener('keydown', () => { void unlockAmbience(); });
 function updateWorldAmbience(now = performance.now() / 1000) {
   const visible = active && walkPresentation === '3d' && !document.hidden;
   campusBird?.update(now, { active: visible, minutes: timeOfDay });
+  campusWeather?.update(now, { camera: worldCamera(), active: visible });
   campusAmbience?.update(now, { active: visible, minutes: timeOfDay,
     interior: campusInteriorLighting?.state.active ? 1 : 0, position: worldCamera()?.position });
+}
+function setRain(enabled) {
+  rainEnabled = Boolean(enabled);
+  campusWeather?.setEnabled(rainEnabled);
+  campusAmbience?.setWeather(rainEnabled);
+  updateWorldAmbience();
+  publishAmbience();
+  requestDraw();
 }
 function publishAmbience() {
   post({ type: 'olr-3d-ambience', ...(campusAmbience?.state || ambienceOptions) });
@@ -170,7 +181,7 @@ function draw(timestamp) {
     renderedFrames++;
   }
   lastDrawTime = walk?.needsAnimation || driving?.needsAnimation ? timestamp : null;
-  if (walk?.needsAnimation || driving?.needsAnimation || campusBird?.state.visible) requestDraw(true);
+  if (walk?.needsAnimation || driving?.needsAnimation || campusBird?.state.visible || campusWeather?.state.visible) requestDraw(true);
 }
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
 function requestDraw(ambientFrame = false) {
@@ -467,6 +478,7 @@ window.addEventListener('message', event => {
   const { command, value } = event.data;
   // BEGIN campus world ambience commands
   if (command === 'ambience-options') { setAmbienceOptions(value); return; }
+  if (command === 'weather-rain') { setRain(value); return; }
   // END campus world ambience commands
   if (['pdf-info', 'pdf-capture', 'pdf-cancel'].includes(command)) { handlePdfCommand(command, value); return; }
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
@@ -542,6 +554,7 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   // BEGIN campus world ambience API
   get bird() { return campusBird?.state ?? null; },
   get ambience() { return campusAmbience?.state ?? null; },
+  get weather() { return campusWeather?.state ?? { enabled: rainEnabled, active: false }; },
   unlockAmbience,
   // END campus world ambience API
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
@@ -790,6 +803,12 @@ async function init() {
   applyEmbeddedCamera();
   // BEGIN campus world ambience initialization
   campusBird = createCampusBird({ scene });
+  campusWeather = createCampusWeather({
+    scene, model, lighting: campusLighting, atmosphere: campusAtmosphere,
+    onLightning: event => campusAmbience?.thunder(event)
+  });
+  campusWeather.setEnabled(rainEnabled);
+  campusAmbience.setWeather(rainEnabled);
   setAmbienceOptions(ambienceOptions);
   updateWorldAmbience();
   // END campus world ambience initialization
