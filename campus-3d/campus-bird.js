@@ -13,8 +13,17 @@ export const CAMPUS_BIRD_ROUTE = Object.freeze({
   daylightMinutes: Object.freeze([390, 1140]),
 });
 
-// A single vertex-colored material keeps the bird to five draw calls. All
-// geometry is created once; the four wing joints supply the animation.
+// Two birds share each corridor. Their opposite phases and small height offsets
+// keep them apart, while different lap lengths spread movement across campus.
+export const CAMPUS_BIRD_ROUTES = Object.freeze([
+  CAMPUS_BIRD_ROUTE,
+  Object.freeze({ centerFeet: Object.freeze([85, 35]), radiusFeet: Object.freeze([60, 48]), altitudeFeet: Object.freeze([52, 62]), lapSeconds: 31 }),
+  Object.freeze({ centerFeet: Object.freeze([201, 158]), radiusFeet: Object.freeze([22, 34]), altitudeFeet: Object.freeze([58, 68]), lapSeconds: 22 }),
+  Object.freeze({ centerFeet: Object.freeze([-210, 50]), radiusFeet: Object.freeze([60, 50]), altitudeFeet: Object.freeze([64, 74]), lapSeconds: 36 }),
+]);
+
+// Five shared geometries and one material serve the entire flock. Each bird
+// has its own wing joints, so flapping and gliding are not synchronized.
 function makeBird() {
   const geometries = [];
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .82, metalness: 0 });
@@ -117,22 +126,49 @@ function makeBird() {
   return { root, wings, geometries, material };
 }
 
-/** Scene sibling only: never add this group to the campus model/collision tree.
- * elapsedSeconds is the caller's monotonic clock. Inactive/night intervals are
- * discarded, so resuming a tab or switching back from 2D cannot teleport it.
+/** Scene sibling only: never add the flock to the model/collision tree.
+ * Inactive/night intervals are discarded, so resuming a tab or switching back
+ * from 2D does not advance any of the birds while the scene is paused.
  */
 export function createCampusBird({ scene }) {
   if (!scene?.isScene) throw new TypeError('createCampusBird requires a THREE.Scene');
-  const { root, wings, geometries, material } = makeBird();
-  scene.add(root); root.visible = false;
+  const prototype = makeBird();
+  const { geometries, material } = prototype;
+  const flock = new THREE.Group(); flock.name = 'Campus ambience • bird flock';
+  flock.userData.campusAmbient = true; flock.userData.excludeFromCollision = true;
+  scene.add(flock); flock.visible = false;
+  const birds = CAMPUS_BIRD_ROUTES.flatMap((route, routeIndex) => [0, 1].map(member => {
+    const index = routeIndex * 2 + member;
+    const root = index === 0 ? prototype.root : prototype.root.clone(true);
+    root.name = 'Campus bird • ' + (index + 1);
+    delete root.userData.campusAmbient;
+    root.scale.setScalar(.62 + (index % 3) * .035);
+    root.traverse(object => { if (object.isMesh) object.raycast = NO_RAYCAST; });
+    flock.add(root);
+    const wings = [-1, 1].map(sign => ({
+      sign,
+      shoulder: root.getObjectByName(sign < 0 ? 'Bird wing left' : 'Bird wing right'),
+      wrist: root.getObjectByName(sign < 0 ? 'Bird wrist left' : 'Bird wrist right'),
+    }));
+    return { root, wings, route, routeIndex,
+      phase: .72 + routeIndex * .87 + member * Math.PI,
+      heightOffsetFeet: member ? 2 : -2,
+      direction: routeIndex % 2 ? -1 : 1,
+      flapPhase: index * 1.37,
+      flapRate: 2.35 + (index % 4) * .14,
+    };
+  }));
   let enabled = true, disposed = false, lastElapsed = null, flightTime = 0;
   let previousRunning = false;
+  const positionsMeters = birds.map(() => [0, 0, 0]);
   const state = {
     active: false, visible: false, daylight: false, paused: true,
-    flightSeconds: 0, laps: 0, wingSpanMeters: .78,
-    triangles: geometries.reduce((n, g) => n + g.index.count / 3, 0),
-    meshCount: geometries.length,
-    positionMeters: [0, 0, 0],
+    flightSeconds: 0, laps: 0, wingSpanMeters: .83,
+    birdCount: birds.length, routeCount: CAMPUS_BIRD_ROUTES.length,
+    triangles: geometries.reduce((n, g) => n + g.index.count / 3, 0) * birds.length,
+    meshCount: geometries.length * birds.length,
+    uniqueGeometries: geometries.length, materialCount: 1,
+    positionMeters: positionsMeters[0], positionsMeters,
   };
   function update(elapsedSeconds, options) {
     if (disposed) return state;
@@ -146,38 +182,50 @@ export function createCampusBird({ scene }) {
     if (running && previousRunning) flightTime += dt;
     previousRunning = running;
     state.active = enabled && active; state.daylight = daylight;
-    state.visible = root.visible = running; state.paused = !running;
+    state.visible = flock.visible = running; state.paused = !running;
     if (!running) return state;
-    const a = flightTime * TAU / CAMPUS_BIRD_ROUTE.lapSeconds + .72;
-    const sin = Math.sin(a), cos = Math.cos(a);
-    const elevation = (69 + 5 * Math.sin(a * 2 + .35)) * FT;
-    root.position.set((112 + 62 * cos) * FT, elevation, -(210 + 62 * sin) * FT);
-    // Local -Z is forward. The tangential heading and modest inward bank follow
-    // the same continuous curve; pitch matches the gentle climb/descent.
-    root.rotation.set(Math.atan2(10 * Math.cos(a * 2 + .35), 62), a, .12, 'YXZ');
-    const cycle = flightTime % 8.4;
-    const flapEnvelope = cycle < 3.0 ? Math.sin(Math.PI * cycle / 3.0) ** 2 : 0;
-    const flap = Math.sin(flightTime * TAU * 2.6) * .57 * flapEnvelope;
-    const fold = Math.max(0, Math.cos(flightTime * TAU * 2.6)) * .23 * flapEnvelope;
-    for (let i = 0; i < wings.length; i++) {
-      const wing = wings[i];
-      wing.shoulder.rotation.z = wing.sign * (.055 + flap);
-      wing.wrist.rotation.z = wing.sign * (-.04 - flap * .34 + fold);
-      wing.wrist.rotation.y = -wing.sign * (.04 + fold * .6);
+    for (let index = 0; index < birds.length; index++) {
+      const bird = birds[index];
+      const { root, route, direction } = bird;
+      const a = flightTime * TAU / route.lapSeconds * direction + bird.phase;
+      const sin = Math.sin(a), cos = Math.cos(a);
+      const amplitude = (route.altitudeFeet[1] - route.altitudeFeet[0]) * .5;
+      const centerHeight = (route.altitudeFeet[0] + route.altitudeFeet[1]) * .5;
+      const elevation = centerHeight + amplitude * Math.sin(a * 2 + .35) + bird.heightOffsetFeet;
+      const [rx, ry] = route.radiusFeet;
+      root.position.set((route.centerFeet[0] + rx * cos) * FT, elevation * FT,
+        -(route.centerFeet[1] + ry * sin) * FT);
+      // Local -Z follows the ellipse tangent; pitch follows its vertical slope.
+      const tangentLength = Math.hypot(rx * sin, ry * cos);
+      const pitch = Math.atan2(2 * amplitude * Math.cos(a * 2 + .35) * direction, tangentLength);
+      const yaw = Math.atan2(rx * sin * direction, ry * cos * direction);
+      root.rotation.set(pitch, yaw, .12 * direction, 'YXZ');
+      const cycle = (flightTime + bird.flapPhase) % 8.4;
+      const flapEnvelope = cycle < 3.0 ? Math.sin(Math.PI * cycle / 3.0) ** 2 : 0;
+      const wingTime = (flightTime + bird.flapPhase) * TAU * bird.flapRate;
+      const flap = Math.sin(wingTime) * .57 * flapEnvelope;
+      const fold = Math.max(0, Math.cos(wingTime)) * .23 * flapEnvelope;
+      for (const wing of bird.wings) {
+        wing.shoulder.rotation.z = wing.sign * (.055 + flap);
+        wing.wrist.rotation.z = wing.sign * (-.04 - flap * .34 + fold);
+        wing.wrist.rotation.y = -wing.sign * (.04 + fold * .6);
+      }
+      const position = positionsMeters[index];
+      position[0] = root.position.x; position[1] = root.position.y; position[2] = root.position.z;
     }
     state.flightSeconds = flightTime; state.laps = flightTime / CAMPUS_BIRD_ROUTE.lapSeconds;
-    state.positionMeters[0] = root.position.x; state.positionMeters[1] = root.position.y; state.positionMeters[2] = root.position.z;
     return state;
   }
   function setActive(value) {
     enabled = !!value;
-    if (!enabled) { root.visible = false; previousRunning = false; state.visible = false; state.paused = true; state.active = false; }
+    if (!enabled) { flock.visible = false; previousRunning = false; state.visible = false; state.paused = true; state.active = false; }
   }
   function dispose() {
     if (disposed) return;
-    disposed = true; scene.remove(root);
+    disposed = true; scene.remove(flock);
+    // Clones share these resources; each is released exactly once.
     for (const geometry of geometries) geometry.dispose();
-    material.dispose(); root.clear(); state.active = false; state.visible = false; state.paused = true;
+    material.dispose(); flock.clear(); state.active = false; state.visible = false; state.paused = true;
   }
   return { update, setActive, state, dispose };
 }
