@@ -7357,8 +7357,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (url.origin !== location.origin || !['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid PDF input origin.');
     return url.href;
   }
-  function descriptor(value) {
-    if (!value || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isSafeInteger(value.bytes) || value.bytes < 1 || value.bytes > 100000000) throw new Error('Invalid PDF input information.');
+  // Model metadata must accept every model allowed by the site's 100 MiB
+  // publication limit. Other downloaded PDF inputs retain their smaller cap.
+  const MAX_MODEL_BYTES = 100 * 1024 * 1024;
+  function descriptor(value, maxBytes = 100000000) {
+    if (!value || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isSafeInteger(value.bytes) || value.bytes < 1 || value.bytes > maxBytes) throw new Error('Invalid PDF input information.');
     assetUrl(value.url); return value;
   }
   async function verifiedBytes(value, signal) {
@@ -7378,7 +7381,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if (!response.ok) throw new Error('Could not check the current campus.');
     const value = await response.json();
     if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || value.perspective_count !== 4 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
-    for (const item of [value.inputs, value.generator, value.model, value.libraries?.jspdf, value.libraries?.svg2pdf]) descriptor(item);
+    for (const item of [value.inputs, value.generator, value.libraries?.jspdf, value.libraries?.svg2pdf]) descriptor(item);
+    descriptor(value.model, MAX_MODEL_BYTES);
     assetUrl(value.viewer?.url); return value;
   }
   async function loadScript(value, signal) {
@@ -7499,7 +7503,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       save.href = saveUrl; save.download = result.filename; save.hidden = false;
       save.click(); progress('PDF ready.');
     } catch (error) {
-      progress(active.signal.aborted ? 'PDF generation canceled. Click Download PDF to try again.' : 'Couldn’t prepare the current PDF. Check your connection and try again.');
+      progress(active.signal.aborted ? 'PDF generation canceled. Click Download PDF to try again.' : 'Couldn’t prepare the current PDF. Please try again, or reload the page.');
       console.warn('Campus PDF generation:', error.message);
     } finally {
       clearTimeout(timeout); controller = null; cancel.hidden = true;
