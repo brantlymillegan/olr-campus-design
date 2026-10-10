@@ -4,6 +4,10 @@ import { createCampusWalk } from './campus-walk.js?v=07851a43718a2323';
 import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
 import * as THREE from 'three';
+// BEGIN campus world ambience imports
+import { createCampusBird } from './campus-bird.js?v=e8970f2162bba3f0';
+import { createCampusAmbience } from './campus-ambience.js?v=1adcd3d95003e475';
+// END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
 import { createCampusPdfCapture, loadHashedCampusModel } from './campus-pdf-capture.js?v=24cf28b4a2228ec2';
@@ -87,9 +91,47 @@ function fail(error) {
   post({ type: 'olr-3d-error', message: 'The interactive campus model could not load.' });
 }
 
+// BEGIN campus world ambience
+let campusBird = null, campusAmbience = null;
+let ambienceOptions = { enabled: true, volume: .25 };
+let immediateDraw = false, lastWorldRender = -Infinity;
+const worldCamera = () => driving?.camera || walk?.camera || camera;
+function updateWorldAmbience(now = performance.now() / 1000) {
+  const visible = active && walkPresentation === '3d' && !document.hidden;
+  campusBird?.update(now, { active: visible, minutes: timeOfDay });
+  campusAmbience?.update(now, { active: visible, minutes: timeOfDay,
+    interior: campusInteriorLighting?.state.active ? 1 : 0, position: worldCamera()?.position });
+}
+function publishAmbience() {
+  post({ type: 'olr-3d-ambience', ...(campusAmbience?.state || ambienceOptions) });
+}
+function setAmbienceOptions(value) {
+  if (typeof value?.enabled === 'boolean') ambienceOptions.enabled = value.enabled;
+  if (Number.isFinite(value?.volume)) ambienceOptions.volume = THREE.MathUtils.clamp(value.volume, 0, 1);
+  campusAmbience?.setEnabled(ambienceOptions.enabled);
+  campusAmbience?.setVolume(ambienceOptions.volume);
+  publishAmbience();
+}
+function unlockAmbience(options) {
+  if (options) setAmbienceOptions(options);
+  if (!active || walkPresentation !== '3d' || document.hidden || !campusAmbience) return Promise.resolve(false);
+  updateWorldAmbience();
+  const result = campusAmbience.unlock();
+  publishAmbience();
+  return result.then(ok => { publishAmbience(); return ok; });
+}
+// END campus world ambience
 function draw(timestamp) {
   frame = null; frameHost = null;
   if (!modelReady || !active || document.hidden) return;
+  // BEGIN campus world ambience frame pacing
+  // Idle bird animation is capped at 24 fps; input and first-person movement
+  // retain the existing responsive frame rate.
+  if (!immediateDraw && !walk?.needsAnimation && !driving?.needsAnimation && timestamp - lastWorldRender < 1000 / 24) {
+    requestDraw(true); return;
+  }
+  immediateDraw = false; lastWorldRender = timestamp;
+  // END campus world ambience frame pacing
   const dt = lastDrawTime === null ? 0 : Math.max(0, (timestamp - lastDrawTime) / 1000);
   walk?.update(dt);
   driving?.update(dt);
@@ -102,6 +144,7 @@ function draw(timestamp) {
   }
   const showingPlan = !showingModel && Boolean(walk?.camera);
   campusInteriorLighting?.update(driving?.camera || walk?.camera || camera, showingModel && Boolean(walk?.camera) && !driving?.camera);
+  updateWorldAmbience(timestamp / 1000); // campus world ambience
   planGround?.setEnabled(showingPlan);
   // First person uses the exact same camera in both presentations. The flat
   // plan has its own unlit scene, so no model geometry or shadow can appear.
@@ -116,10 +159,11 @@ function draw(timestamp) {
     renderedFrames++;
   }
   lastDrawTime = walk?.needsAnimation || driving?.needsAnimation ? timestamp : null;
-  if (walk?.needsAnimation || driving?.needsAnimation) requestDraw();
+  if (walk?.needsAnimation || driving?.needsAnimation || campusBird?.state.visible) requestDraw(true);
 }
 function cancelDraw() { if(frame !== null){frameHost.cancelAnimationFrame(frame);frame=null;frameHost=null;} }
-function requestDraw() {
+function requestDraw(ambientFrame = false) {
+  if (!ambientFrame) immediateDraw = true; // campus world ambience
   if (modelReady && active && !document.hidden && renderer && camera && frame === null) {
     frameHost = window;
     frame = frameHost.requestAnimationFrame(draw);
@@ -421,6 +465,9 @@ function installEmbeddedNavigation() {
 window.addEventListener('message', event => {
   if (!EMBEDDED || event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'olr-3d-command') return;
   const { command, value } = event.data;
+  // BEGIN campus world ambience commands
+  if (command === 'ambience-options') { setAmbienceOptions(value); return; }
+  // END campus world ambience commands
   if (['pdf-info', 'pdf-capture', 'pdf-cancel'].includes(command)) { handlePdfCommand(command, value); return; }
   if (command === 'walk-presentation' && ['2d', '3d'].includes(value)) {
     if (value === '2d' && driving?.state.driving && !driving.command('drive-exit')) {
@@ -429,6 +476,7 @@ window.addEventListener('message', event => {
     }
     if (walkPresentation !== value) cancelDraw();
     walkPresentation = value;
+    updateWorldAmbience(); // campus world ambience
     if (value === '2d') planGround?.preload();
     walk?.command('walk-presentation', value);
     if (['walking', 'flying'].includes(walk?.mode)) renderer?.domElement.focus({preventScroll:true});
@@ -465,6 +513,7 @@ window.addEventListener('message', event => {
     savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
+    updateWorldAmbience(); // campus world ambience
     if (!active) { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     if (!active) cancelDraw();
     requestDraw();
@@ -490,6 +539,11 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders }; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },
+  // BEGIN campus world ambience API
+  get bird() { return campusBird?.state ?? null; },
+  get ambience() { return campusAmbience?.state ?? null; },
+  unlockAmbience,
+  // END campus world ambience API
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
   get interiorLighting() { return campusInteriorLighting?.state ?? { ready: false, active: false, poolSize: 0 }; },
   get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
@@ -734,6 +788,17 @@ async function init() {
   driving.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
+  // BEGIN campus world ambience initialization
+  campusBird = createCampusBird({ scene });
+  campusAmbience = createCampusAmbience({ camera: {
+    get position() { return worldCamera().position; },
+    get matrixWorld() { return worldCamera().matrixWorld; }
+  } });
+  setAmbienceOptions(ambienceOptions);
+  updateWorldAmbience();
+  renderer.domElement.addEventListener('pointerdown', () => { void unlockAmbience(); }, { passive: true });
+  renderer.domElement.addEventListener('keydown', () => { void unlockAmbience(); });
+  // END campus world ambience initialization
   await warmModel();
   modelReady = true;
   loading.hidden = true;
@@ -741,6 +806,7 @@ async function init() {
   post({ type: 'olr-3d-ready', modelSha256, assetRevision: ASSET_REVISION });
   post({ type: 'olr-3d-walk', ...walk.state });
   publishLighting();
+  updateWorldAmbience(); // campus world ambience
   requestDraw();
 }
 // The main campus app is the only top-level experience. The document's early
@@ -750,6 +816,7 @@ if (EMBEDDED) {
   setupTheme();
   setupTimeOfDay();
   document.addEventListener('visibilitychange', () => {
+    updateWorldAmbience(); // campus world ambience
     if (document.hidden) { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     requestDraw();
   });

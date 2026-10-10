@@ -33,7 +33,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src 'self' blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src 'self' blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
 <style>
 :root {
@@ -1289,7 +1289,7 @@ html>body { padding:0; }
   border:1px solid color-mix(in srgb,var(--foreground) 20%,var(--background)); border-radius:14px;
   background:var(--background); color:var(--foreground); box-shadow:0 3px 18px #0002;
   grid-template-columns:minmax(0,1fr) 36px;
-  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "walk walk" "lighting lighting" "models models" "download download" "status status";
+  grid-template-areas:"title title" "maps maps" "floors floors" "layers layers" "camera north" "display display" "three three" "navigation navigation" "walk walk" "lighting lighting" "ambience ambience" "models models" "download download" "status status";
 }
 .campus-tools-title { grid-area:title; }
 .campus-map-switch { grid-area:maps; }
@@ -1402,12 +1402,13 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-view-3d,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-3d-navigation,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-lighting-panel,
+  .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-ambience-panel,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-model-downloads,
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-download-pdf,
   .campus-tool-panel:not([data-mobile-expanded="true"]) #campus-fullscreen-status { display:none; }
   .campus-tool-panel[data-mobile-expanded="true"] {
     width:244px; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;
-    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "walk walk walk" "lighting lighting lighting" "models models models" "download download download" "status status status";
+    grid-template-areas:"first second toggle" "maps maps maps" "buildings buildings north" "layers layers layers" "camera camera camera" "display display display" "three three three" "navigation navigation navigation" "walk walk walk" "lighting lighting lighting" "ambience ambience ambience" "models models models" "download download download" "status status status";
   }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel { padding:0; border:0; }
   .campus-tool-panel:not([data-mobile-expanded="true"]) .campus-walk-panel > :not(.campus-navigation-choice) { display:none; }
@@ -1428,6 +1429,12 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   .campus-lighting-panel summary { min-height:40px; }
   #campus-time-of-day { height:36px; }
 }
+
+.campus-ambience-panel { grid-area:ambience; min-width:0; padding:7px 8px; border:1px solid var(--border); border-radius:8px; }
+.campus-ambience-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:600; }
+#campus-sound-volume { display:block; width:100%; height:28px; margin:2px 0 0; accent-color:var(--foreground); cursor:pointer; }
+#campus-sound-status { margin:0; font-size:10px; line-height:1.4; color:var(--muted-foreground); }
+#campus-sound-volume:focus-visible, #campus-sound-toggle:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 
 /* The schedule is a document view, with the same mode and display controls. */
 body[data-campus-dimension="list"] .campus-tool-panel {
@@ -1670,7 +1677,7 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <button type="button" class="btn" data-campus-floor="1" aria-pressed="true" aria-label="First floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">1st floor</span><span class="campus-floor-label-short" aria-hidden="true">1st fl</span></button>
     <button type="button" class="btn" data-campus-floor="2" aria-pressed="false" aria-label="Second floor" aria-keyshortcuts="F"><span class="campus-floor-label-full">2nd floor</span><span class="campus-floor-label-short" aria-hidden="true">2nd fl</span></button>
   </div>
-  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-walk-panel campus-lighting-panel campus-model-downloads campus-download-pdf">
+  <button type="button" class="btn campus-tools-toggle" id="campus-tools-toggle" aria-label="Show map settings" aria-expanded="false" aria-controls="campus-map-switch campus-building-view campus-old-buildings campus-compass campus-camera-tools campus-display-tools campus-view-3d campus-3d-navigation campus-walk-panel campus-lighting-panel campus-ambience-panel campus-model-downloads campus-download-pdf">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
   </button>
   <button type="button" class="campus-compass" id="campus-compass" aria-label="North is up. Click to align Building 1 with the screen.">
@@ -1729,6 +1736,11 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
       <p id="campus-lighting-caption">Illustrative spring/autumn sun path</p>
     </div>
   </details>
+  <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Outdoor sounds" hidden>
+    <div class="campus-ambience-heading"><label for="campus-sound-volume">Outdoor sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="false">Enable</button></div>
+    <input id="campus-sound-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Outdoor sound volume" aria-describedby="campus-sound-status">
+    <p id="campus-sound-status" role="status" aria-live="polite">Soft birdsong, wind & distant play.</p>
+  </section>
   <div class="campus-model-downloads" id="campus-model-downloads" role="group" aria-label="3D model downloads" hidden>
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=f12be32972c9fe91" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
     <a class="btn" href="./campus-3d/OLR-New-Campus.glb?v=f12be32972c9fe91" download="OLR-New-Campus.glb" aria-label="Download 3D model (.glb)">3D .glb</a>
@@ -6818,6 +6830,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const timePresets = [...panel.querySelectorAll('[data-campus-time-minutes]')];
   const modelDownloads = document.getElementById('campus-model-downloads');
   const timeStorageKey = 'olr-campus-time-of-day';
+  const ambiencePanel = document.getElementById('campus-ambience-panel');
+  const soundToggle = document.getElementById('campus-sound-toggle');
+  const soundVolume = document.getElementById('campus-sound-volume');
+  const soundStatus = document.getElementById('campus-sound-status');
+  const soundStorageKey = 'olr-campus-outdoor-sounds';
+  let soundOptions = {enabled:true,volume:.25}, soundState = {};
+  try {
+    const saved=JSON.parse(localStorage.getItem(soundStorageKey));
+    if(typeof saved?.enabled==='boolean')soundOptions.enabled=saved.enabled;
+    if(Number.isFinite(saved?.volume))soundOptions.volume=Math.max(0,Math.min(1,saved.volume));
+  } catch {}
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
   let expanded = false, renderedState = null, mapState = null, modelCamera = null;
   let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
@@ -6865,12 +6888,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.id='campus-3d-frame';
       modelFrame.title='Interactive campus walkthrough';
       modelFrame.loading='eager';
+      modelFrame.allow='autoplay';
       modelFrame.dataset.preloading='true';
       modelFrame.hidden=true;
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=777eef07e4c82f1a';
+      modelFrame.src='./campus-3d/?embedded=1&v=a7f3a3e93e4d78e1';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -6987,6 +7011,36 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
   });
   renderTime();
+  function renderSound() {
+    const on=soundOptions.enabled&&soundOptions.volume>0;
+    soundToggle.textContent=soundState.error?'Retry':!soundState.unlocked&&on?'Enable':on?'On':'Off';
+    soundToggle.setAttribute('aria-pressed',String(on&&Boolean(soundState.unlocked)));
+    soundToggle.setAttribute('aria-label',soundState.error?'Retry outdoor sounds':on&&soundState.unlocked?'Mute outdoor sounds':'Enable outdoor sounds');
+    soundToggle.disabled=!modelReady;
+    soundVolume.value=String(Math.round(soundOptions.volume*100));
+    soundVolume.setAttribute('aria-valuetext',`${Math.round(soundOptions.volume*100)} percent`);
+    soundStatus.textContent=soundState.error?'Sounds could not load. Tap Retry.':!on?'Outdoor sounds muted.':soundState.loading?'Loading outdoor sounds…':!soundState.unlocked?'Starts when you explore, or tap Enable.':'Soft birdsong, wind & distant play.';
+  }
+  function setSound(unlock=false) {
+    try {localStorage.setItem(soundStorageKey,JSON.stringify(soundOptions));}catch{}
+    sendModel('ambience-options',soundOptions);
+    // A direct same-origin call retains this button's user activation.
+    if(unlock&&dimension==='3d'){
+      try {void modelFrame?.contentWindow?.olr3d?.unlockAmbience(soundOptions);}catch{}
+    }
+    renderSound();
+  }
+  soundToggle.addEventListener('click',()=>{
+    soundOptions.enabled=soundState.error||!soundState.unlocked||!soundOptions.enabled||soundOptions.volume===0;
+    if(soundOptions.enabled&&soundOptions.volume===0)soundOptions.volume=.25;
+    setSound(soundOptions.enabled);
+  });
+  soundVolume.addEventListener('input',()=>{
+    soundOptions.volume=Number(soundVolume.value)/100;
+    soundOptions.enabled=soundOptions.volume>0;
+    setSound(soundOptions.enabled);
+  });
+  renderSound();
   function requestMapCamera(){
     modelNeedsMapCamera=true;
     pendingCameraRequest=++cameraRequest;
@@ -7019,6 +7073,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
     sendModel('time-of-day',timeOfDay);
+    sendModel('ambience-options',soundOptions);
     if(dimension!=='list')sendModel('walk-presentation',dimension);
     sendModel('active',dimension!=='list'&&(dimension==='3d'||walkActive()));
     startQueuedWalk();
@@ -7041,6 +7096,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     frame.setAttribute('aria-hidden',String(next!=='2d'));
     window.olrCampusList?.setVisible(next==='list');
     lightingPanel.hidden=next!=='3d';
+    ambiencePanel.hidden=next!=='3d';
     modelDownloads.hidden=next!=='3d';
     renderWalk();
     if(next!=='3d')lightingPanel.open=false;
@@ -7159,7 +7215,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   window.addEventListener('message',event=>{
     const s=event.data;
     if(modelFrame&&event.source===modelFrame.contentWindow&&event.origin===location.origin){
-      if(s?.type==='olr-3d-ready'){modelReady=true;delete modelFrame.dataset.preloading;renderWalk();syncModel();}
+      if(s?.type==='olr-3d-ready'){modelReady=true;delete modelFrame.dataset.preloading;renderWalk();renderSound();syncModel();}
+      else if(s?.type==='olr-3d-ambience'){soundState=s;renderSound();}
       else if(s?.type==='olr-3d-error'){
         modelReady=false;delete modelFrame.dataset.preloading;
         driveState={available:false,driving:false,near:false};

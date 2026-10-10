@@ -186,3 +186,26 @@ Nominal current Model 3 dimensions: 4.720 m length, 1.850 m body width,
 2.089 m mirror width, 1.440 m height, 2.875 m wheelbase, 1.584 m track.
 Small artistic details may extend slightly beyond nominal manufacturer bounds;
 vehicle-spec.json records measured complete-mesh bounds.
+
+
+CAMPUS AMBIENCE — RECORDINGS AND LICENSES
+
+Birds chirping 04 — swiftoid
+https://freesound.org/people/swiftoid/sounds/182500/
+Natural stereo field recording, March 30, 2013.
+License: CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Campus adaptation: mono, gentle high/low-pass filtering, loudness adjustment,
+32 kHz MP3. Short unpitched excerpts play with soft fades and varied spacing.
+
+Children Playing .mp3 — piermic
+https://freesound.org/people/piermic/sounds/396118/
+Children playing in a playground in Rome, recorded with a Tascam DR05,
+June 23, 2017. Real field recording, not synthesized voices.
+License: CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Campus adaptation: mono, gentle high/low-pass filtering, loudness adjustment,
+32 kHz MP3. Soft crossfades; localized to the main playground during daylight.
+
+Wind: original low-volume filtered procedural noise, generated locally.
+No microphone access, tracking, third-party streaming, or audio uploads.
