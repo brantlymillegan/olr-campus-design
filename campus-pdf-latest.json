@@ -1,17 +1,17 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "2a0b824067b4587f8b375fe7ecdae10758492dc23c32f92fbae4e264a7b84a16",
+  "revision": "4c155a4a7700c3489056aad54b9ad9f983e8ec88289c734517006609d59e4b74",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-3773a1999bf7316060d90803d0d5f30e366c39ac477229ec39a932f312386660.json",
-    "sha256": "3773a1999bf7316060d90803d0d5f30e366c39ac477229ec39a932f312386660",
-    "bytes": 38412,
+    "url": "./pdf-inputs/campus-pdf-inputs-c70ce3363988f0ed8baa027348dd54b900580b842df4476703c1424d44a37b79.json",
+    "sha256": "c70ce3363988f0ed8baa027348dd54b900580b842df4476703c1424d44a37b79",
+    "bytes": 40137,
     "mime": "application/json"
   },
   "generator": {
-    "url": "./pdf-inputs/pdf-compose-e6cacfaf58c7732dd29908b10d69b028c5ee351c6264f4c6309a7b86042d69b5.js",
-    "sha256": "e6cacfaf58c7732dd29908b10d69b028c5ee351c6264f4c6309a7b86042d69b5",
-    "bytes": 27219,
+    "url": "./pdf-inputs/pdf-compose-5c3f21f55eca0b021fdc99a0427a854f964fd5df361030b6dd79a63fc381c5a1.js",
+    "sha256": "5c3f21f55eca0b021fdc99a0427a854f964fd5df361030b6dd79a63fc381c5a1",
+    "bytes": 28126,
     "mime": "text/javascript"
   },
   "libraries": {
@@ -43,16 +43,16 @@
     }
   },
   "model": {
-    "url": "./campus-3d/OLR-New-Campus.glb?v=3e25c23b4d0d23b5",
-    "sha256": "4238a205e64fd56ab3e5507ab27b9151b1fbe724ef1d6160bf23249db88e497a",
-    "bytes": 104768496,
+    "url": "./campus-3d/OLR-New-Campus.glb?v=2607a6869b61cdeb",
+    "sha256": "8fd6dace8e744528322d7f896dd23ba4582a21854434cdc583e65c3a83a716c0",
+    "bytes": 104844548,
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=3d543a6392672d7c",
-    "revision": "3d543a6392672d7c",
-    "asset_revision": "3e25c23b4d0d23b5",
-    "files_sha256": "5d1cd237395476ca4413c0431ee9d6fc7b4dd60204b9337ab2462f14848f9ff3",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=2babc25082d1ed0f",
+    "revision": "2babc25082d1ed0f",
+    "asset_revision": "2607a6869b61cdeb",
+    "files_sha256": "099339c4d3ac66057fd8433d86e5bb9e736fae0273c1292894ef44b76e86d11d",
     "files": [
       {
         "url": "./campus-3d/campus-atmosphere.js",
@@ -68,8 +68,8 @@
       },
       {
         "url": "./campus-3d/campus-lighting.js",
-        "sha256": "f367bd46970b1a3bc9e31e6915c8416782cc890736a1dcf9cd263c323c02bb86",
-        "bytes": 10493,
+        "sha256": "108eaf6149a3014618b1f9b4440119d4faec4b816f1b68a1aed038c54313b4e6",
+        "bytes": 12550,
         "mime": "text/javascript"
       },
       {
@@ -80,7 +80,7 @@
       },
       {
         "url": "./campus-3d/campus-plan-ground.js",
-        "sha256": "2e6e1541b69d066d51b42c920bd7f37836689d4f999f3b3428ba68e4c3681390",
+        "sha256": "0823de4c0c642c049b3135caa58efef3ee4b14e17378ca3a2555f25f762ab01a",
         "bytes": 10171,
         "mime": "text/javascript"
       },
@@ -98,7 +98,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "4549fcb074cbf74293ebf3f4b88851dd9d9309a898e79ffb1156bfc1065cffb3",
+        "sha256": "7503df8e579e343a9b106cd44c88f41cb0ff03b91bcc7f3b650b0d9a20f84a11",
         "bytes": 4343,
         "mime": "text/html"
       },
@@ -110,8 +110,8 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "37fdd29d56618f0d49ed156d19d4cc9fbbdd74664acd161da91c0857ee1f44d9",
-        "bytes": 37974,
+        "sha256": "06ec7d92cfaf97d287a8db68e87b57533c6fcfd880045290df4d79e0f123d15d",
+        "bytes": 38124,
         "mime": "text/javascript"
       }
     ]
@@ -123,7 +123,7 @@
     "mime": "application/json"
   },
   "cover_view_id": "playground-gardens",
-  "specifications_room_count": 62,
+  "specifications_room_count": 63,
   "map_count": 4,
   "perspective_count": 4,
   "download_date": {

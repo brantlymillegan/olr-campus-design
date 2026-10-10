@@ -63,6 +63,50 @@ export function applyCampusPalette(model) {
       if (tint) material.color.multiply(new THREE.Color().setRGB(...tint));
     }
   });
+  addAdorationChapelLighting(model);
+}
+
+function addAdorationChapelLighting(model) {
+  // Add these after imported native lights are removed. Keeping the fixed
+  // lights beneath the model also includes them in its on-demand capture clone.
+  if (model.getObjectByName('Adoration chapel • fixed lighting')) return;
+  const anchorName = '03B • Romanesque bell tower / Interior walls • warm ivory';
+  let hasChapel = false;
+  model.traverse(object => {
+    // GLTFLoader sanitizes object names, retaining the original in userData.
+    if (object.isMesh && (object.userData.name === anchorName || object.name === anchorName)) hasChapel = true;
+  });
+  if (!hasChapel) return;
+  const group = new THREE.Group();
+  group.name = 'Adoration chapel • fixed lighting';
+  // Keep the lower beam beneath the pendant ring to avoid its oversized shadow;
+  // the offset upper source lights the tall vault without intersecting its chain.
+  const fixtures = [
+    { name: 'Pendant illumination', position: [261.5, 104.5, 8.8], target: [261.5, 104.5, -3.7], intensity: 22, distance: 8 },
+    { name: 'Concealed vault illumination', position: [262.5, 104.5, 45.5], intensity: 18, distance: 8 }
+  ];
+  for (const fixture of fixtures) {
+    const light = fixture.target
+      ? new THREE.SpotLight(0xffd8ad, fixture.intensity, fixture.distance, Math.PI * 0.42, .7, 2)
+      : new THREE.PointLight(0xffd8ad, fixture.intensity, fixture.distance, 2);
+    light.name = 'Adoration chapel • ' + fixture.name;
+    const [x, y, z] = fixture.position;
+    light.position.set(x * FEET, z * FEET, -y * FEET);
+    if (fixture.target) {
+      const [tx, ty, tz] = fixture.target;
+      light.target.position.set(tx * FEET, tz * FEET, -ty * FEET);
+      group.add(light.target);
+    }
+    light.castShadow = true;
+    light.shadow.mapSize.set(512, 512);
+    light.shadow.camera.near = .05;
+    light.shadow.camera.far = fixture.distance;
+    light.shadow.bias = -.002;
+    light.shadow.normalBias = .035;
+    light.shadow.radius = 2;
+    group.add(light);
+  }
+  model.add(group);
 }
 
 export function normalizeMinutes(value) {
