@@ -209,21 +209,10 @@ function applyEmbeddedCamera(announce = false) {
   const focus = new THREE.Vector3(embeddedCamera.center.x * FEET, 0, -embeddedCamera.center.y * FEET);
   const tilt = THREE.MathUtils.degToRad(embeddedCamera.tilt);
   const direction = new THREE.Vector3(Math.sin(theta) * Math.sin(tilt), Math.cos(tilt), Math.cos(theta) * Math.sin(tilt));
-  aerialDistance = Math.max(requestedDistance, 6 * FEET / direction.y);
-  // Dolly back before a close aerial view enters a roof or terrain. Reuse the
-  // walker's spatial index, and report the adjusted scale to the 2D toolbar.
-  for (let attempt = 0; attempt < 96; attempt++) {
-    camera.position.copy(focus).addScaledVector(direction, aerialDistance);
-    if (!walk || camera.position.y >= walk.clearanceHeight(camera.position.x, camera.position.z) + 6 * FEET) break;
-    aerialDistance *= 1.08;
-  }
+  // Normal navigation follows the requested orbit through model geometry.
+  // Walking, Flying and Driving retain their own collision behavior.
+  aerialDistance = requestedDistance;
   camera.position.copy(focus).addScaledVector(direction, aerialDistance);
-  const constrained = aerialDistance > requestedDistance * (1 + 1e-10);
-  if (constrained) {
-    const ratio = requestedDistance / aerialDistance;
-    embeddedCamera.scale *= ratio;
-    embeddedCamera.zoom = Math.max(1, embeddedCamera.zoom * ratio);
-  }
   Object.assign(camera, { aspect: width / height, fov: AERIAL_FOV, zoom: 1, far: Math.max(5000, aerialDistance + extent * 4) });
   // Retain the compass bearing even directly overhead, where world-up would
   // be parallel to the viewing direction and lookAt cannot resolve yaw.
@@ -243,7 +232,7 @@ function applyEmbeddedCamera(announce = false) {
   }
   camera.updateProjectionMatrix();
   requestDraw();
-  if (announce || constrained) publishCamera();
+  if (announce) publishCamera();
 }
 function groundAt(point) {
   const rect = wrap.getBoundingClientRect();
