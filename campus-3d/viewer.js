@@ -1,7 +1,7 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=f367bd46970b1a3b';
 import { createCampusWalk } from './campus-walk.js?v=766d42beb01a3315';
-import { createCampusPlanGround } from './campus-plan-ground.js?v=0500f7861e0f39f6';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=2e6e1541b69d066d';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
@@ -20,7 +20,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '5b83747d764cd418';
+const ASSET_REVISION = '3e25c23b4d0d23b5';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
