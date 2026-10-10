@@ -1737,7 +1737,7 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     </div>
   </details>
   <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Outdoor sounds" hidden>
-    <div class="campus-ambience-heading"><label for="campus-sound-volume">Outdoor sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="false">Enable</button></div>
+    <div class="campus-ambience-heading"><label for="campus-sound-volume">Outdoor sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="true" aria-label="Mute outdoor sounds">On</button></div>
     <input id="campus-sound-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Outdoor sound volume" aria-describedby="campus-sound-status">
     <p id="campus-sound-status" role="status" aria-live="polite">Soft birdsong, wind & distant play.</p>
   </section>
@@ -6894,7 +6894,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=62f25c12271978c3';
+      modelFrame.src='./campus-3d/?embedded=1&v=a7f65975cef1e916';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7013,25 +7013,28 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   renderTime();
   function renderSound() {
     const on=soundOptions.enabled&&soundOptions.volume>0;
-    soundToggle.textContent=soundState.error?'Retry':!soundState.unlocked&&on?'Enable':on?'On':'Off';
-    soundToggle.setAttribute('aria-pressed',String(on&&Boolean(soundState.unlocked)));
-    soundToggle.setAttribute('aria-label',soundState.error?'Retry outdoor sounds':on&&soundState.unlocked?'Mute outdoor sounds':'Enable outdoor sounds');
-    soundToggle.disabled=!modelReady;
+    soundToggle.textContent=on&&soundState.error?'Retry':on?'On':'Off';
+    soundToggle.setAttribute('aria-pressed',String(on));
+    soundToggle.setAttribute('aria-label',on&&soundState.error?'Retry outdoor sounds':on?'Mute outdoor sounds':'Unmute outdoor sounds');
+    soundToggle.disabled=false;
     soundVolume.value=String(Math.round(soundOptions.volume*100));
     soundVolume.setAttribute('aria-valuetext',`${Math.round(soundOptions.volume*100)} percent`);
-    soundStatus.textContent=soundState.error?'Sounds could not load. Tap Retry.':!on?'Outdoor sounds muted.':soundState.loading?'Loading outdoor sounds…':!soundState.unlocked?'Starts when you explore, or tap Enable.':'Soft birdsong, wind & distant play.';
+    soundStatus.textContent=!on?'Outdoor sounds muted.':soundState.error?'Sounds could not load. Tap Retry.':soundState.loading?'Loading outdoor sounds…':!soundState.playing?'Sound is on. Click or tap in 3D to start.':'Soft birdsong, wind & distant play.';
+  }
+  function startSound(retry=false) {
+    if(dimension!=='3d'||!soundOptions.enabled||soundOptions.volume<=0||(!retry&&soundState.error))return;
+    // Call synchronously in the selecting gesture, even while the model loads.
+    // The audio hint bridges the queued presentation/active messages only.
+    try {void modelFrame?.contentWindow?.olr3d?.unlockAmbience(soundOptions,true);}catch{}
   }
   function setSound(unlock=false) {
     try {localStorage.setItem(soundStorageKey,JSON.stringify(soundOptions));}catch{}
     sendModel('ambience-options',soundOptions);
-    // A direct same-origin call retains this button's user activation.
-    if(unlock&&dimension==='3d'){
-      try {void modelFrame?.contentWindow?.olr3d?.unlockAmbience(soundOptions);}catch{}
-    }
+    if(unlock)startSound(true);
     renderSound();
   }
   soundToggle.addEventListener('click',()=>{
-    soundOptions.enabled=soundState.error||!soundState.unlocked||!soundOptions.enabled||soundOptions.volume===0;
+    soundOptions.enabled=Boolean(soundState.error)||!soundOptions.enabled||soundOptions.volume===0;
     if(soundOptions.enabled&&soundOptions.volume===0)soundOptions.volume=.25;
     setSound(soundOptions.enabled);
   });
@@ -7041,6 +7044,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     setSound(soundOptions.enabled);
   });
   renderSound();
+  document.addEventListener('click',()=>startSound());
+  document.addEventListener('keydown',()=>startSound());
   function requestMapCamera(){
     modelNeedsMapCamera=true;
     pendingCameraRequest=++cameraRequest;
@@ -7077,6 +7082,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(dimension!=='list')sendModel('walk-presentation',dimension);
     sendModel('active',dimension!=='list'&&(dimension==='3d'||walkActive()));
     startQueuedWalk();
+    startSound();
   }
   function setDimension(next) {
     if(!['2d','3d','list'].includes(next)||next===dimension)return;
@@ -7133,7 +7139,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       }
       ensureModel();
       document.body.dataset.campusDimension='3d';
-      if(modelReady)syncModel();
+      syncModel();
     }else{
       // The model frame shares our origin. Capture its current pose before
       // switching, even if its final gesture postMessage is still queued.

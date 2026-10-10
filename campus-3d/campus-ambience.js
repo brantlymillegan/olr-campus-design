@@ -1,4 +1,4 @@
-// Optional ambient sound. No requests, audio graph or sound before unlock().
+// Default-on 3D ambience. Audio starts only when browser playback policy allows it.
 // Recordings and CC0 credits: ./audio/ASSET-CREDITS.txt.
 const FEET = .3048;
 const PLAYGROUND = Object.freeze({ x: 100.962893 * FEET, y: 1.2, z: -48.753048 * FEET });
@@ -148,7 +148,10 @@ export function createCampusAmbience({ camera } = {}) {
 
   function sync() {
     if (!wanted()) { stop(); return; }
-    if (!context || !ready) return;
+    if (!context) return;
+    // An unlock can finish before the asynchronous 3D activation message.
+    // Complete that pending intent when the view becomes active, once only.
+    if (!ready) { if (!loading && !error) void load(); return; }
     if (context.state === 'running') { start(); return; }
     if (!resumePending) {
       resumePending = context.resume().then(() => { if (wanted()) start(); else stop(); })
@@ -161,17 +164,20 @@ export function createCampusAmbience({ camera } = {}) {
   globalThis.document?.addEventListener('visibilitychange', visibility);
   return {
     async unlock() {
-      if (disposed || !enabled) return false;
+      if (disposed || !enabled || volume <= 0) return false;
+      error = null;
       graph(); if (!context) return false;
       unlocked = true;
       // Invoke resume immediately in the user gesture, before awaiting downloads.
       try { await context.resume(); } catch { error = 'Tap the scene to enable sound.'; return false; }
       if (!wanted()) { stop(); return false; }
+      // Another concurrent resume may have already finished a failed load.
+      // Keep that error until a later, explicit retry instead of fetching twice.
+      if (error) return false;
       await load(); sync(); return ready && wanted();
     },
     setEnabled(value) {
       enabled = Boolean(value);
-      if (enabled && unlocked && context && !ready && !loading) load();
       sync();
     },
     setVolume(value) { volume = clamp(Number.isFinite(Number(value)) ? Number(value) : .25); sync(); if (running) mix(); },

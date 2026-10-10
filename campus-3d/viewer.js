@@ -6,7 +6,7 @@ import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fc
 import * as THREE from 'three';
 // BEGIN campus world ambience imports
 import { createCampusBird } from './campus-bird.js?v=2f29a235b91a7fe7';
-import { createCampusAmbience } from './campus-ambience.js?v=1adcd3d95003e475';
+import { createCampusAmbience } from './campus-ambience.js?v=704c16929b52e977';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=cf320ecba907f5a5';
@@ -96,6 +96,14 @@ let campusBird = null, campusAmbience = null;
 let ambienceOptions = { enabled: true, volume: .25 };
 let immediateDraw = false, lastWorldRender = -Infinity;
 const worldCamera = () => driving?.camera || walk?.camera || camera;
+// Create the lightweight controller before the model loads. Its AudioContext
+// and recordings remain deferred until visible 3D requests playback.
+campusAmbience = createCampusAmbience({ camera: {
+  get position() { return worldCamera()?.position; },
+  get matrixWorld() { return worldCamera()?.matrixWorld; }
+} });
+document.addEventListener('pointerdown', () => { void unlockAmbience(); }, { passive: true });
+document.addEventListener('keydown', () => { void unlockAmbience(); });
 function updateWorldAmbience(now = performance.now() / 1000) {
   const visible = active && walkPresentation === '3d' && !document.hidden;
   campusBird?.update(now, { active: visible, minutes: timeOfDay });
@@ -112,10 +120,13 @@ function setAmbienceOptions(value) {
   campusAmbience?.setVolume(ambienceOptions.volume);
   publishAmbience();
 }
-function unlockAmbience(options) {
+function unlockAmbience(options, selecting3d = false) {
   if (options) setAmbienceOptions(options);
-  if (!active || walkPresentation !== '3d' || document.hidden || !campusAmbience) return Promise.resolve(false);
+  if (document.hidden || !campusAmbience || (!selecting3d && (!active || walkPresentation !== '3d'))) return Promise.resolve(false);
   updateWorldAmbience();
+  // The parent selection gesture precedes its queued active/presentation
+  // messages. Carry only the audio intent across that short interval.
+  if (selecting3d) campusAmbience.update(performance.now() / 1000, { active: true });
   const result = campusAmbience.unlock();
   publishAmbience();
   return result.then(ok => { publishAmbience(); return ok; });
@@ -790,14 +801,8 @@ async function init() {
   applyEmbeddedCamera();
   // BEGIN campus world ambience initialization
   campusBird = createCampusBird({ scene });
-  campusAmbience = createCampusAmbience({ camera: {
-    get position() { return worldCamera().position; },
-    get matrixWorld() { return worldCamera().matrixWorld; }
-  } });
   setAmbienceOptions(ambienceOptions);
   updateWorldAmbience();
-  renderer.domElement.addEventListener('pointerdown', () => { void unlockAmbience(); }, { passive: true });
-  renderer.domElement.addEventListener('keydown', () => { void unlockAmbience(); });
   // END campus world ambience initialization
   await warmModel();
   modelReady = true;
