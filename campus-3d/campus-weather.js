@@ -19,13 +19,18 @@ function randomSequence(seed = 712703) {
 // It is built once from the actual roof/vault/ceiling triangles. Courtyard gaps
 // and spaces between disconnected buildings remain open; no per-frame raycast
 // or whole-building bounding box is used during walking or flying.
+function phaseVisible(object) {
+  for (let node = object; node; node = node.parent) if (!node.visible && node.userData?.constructionPhaseHidden) return false;
+  return true;
+}
+
 function createRoofMap(model) {
   const surfaces = [];
   const bounds = new THREE.Box3();
   const point = new THREE.Vector3();
   model?.updateMatrixWorld(true);
   model?.traverse(object => {
-    if (!object.isMesh || !object.geometry?.getAttribute('position')) return;
+    if (!object.isMesh || !phaseVisible(object) || !object.geometry?.getAttribute('position')) return;
     const name = object.name.replace(/_/g, ' ');
     if (!/roof|ceiling.*acoustic|^School canopy|Classical school entrance.*vault|Skybridge.*continuous-vault/i.test(name)) return;
     // Natural leaves and the shrine's jasmine canopy are intentionally porous.
@@ -144,7 +149,7 @@ void main() {
  */
 export function createCampusWeather({ scene, model, lighting, atmosphere, onLightning = null, reducedMotion = null } = {}) {
   if (!scene?.isScene || !model?.isObject3D) throw new TypeError('Weather needs the campus scene and loaded model.');
-  const roof = createRoofMap(model);
+  let roof = createRoofMap(model);
   const random = randomSequence();
   const positions = new Float32Array(RAIN_DROPS * 2 * 3);
   const seeds = new Float32Array(RAIN_DROPS * 2 * 4), tips = new Float32Array(RAIN_DROPS * 2);
@@ -264,7 +269,15 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
     rain.removeFromParent(); bolt.removeFromParent();
     geometry.dispose(); material.dispose(); boltGeometry.dispose(); boltMaterial.dispose(); roof.texture.dispose();
   }
-  return Object.freeze({ setEnabled, setActive, update, dispose,
+  function refreshRoofMap() {
+    const previous = roof; roof = createRoofMap(model);
+    uniforms.uRoofHeight.value = roof.texture;
+    uniforms.uRoofOrigin.value = roof.origin;
+    uniforms.uRoofSpan.value = roof.span;
+    previous.texture.dispose();
+    return roof.diagnostics;
+  }
+  return Object.freeze({ setEnabled, setActive, update, dispose, refreshRoofMap,
     shelterHeightAt: (x, z) => roof.sample(x, z),
     get state() { return Object.freeze({ enabled, active, visible: rain.visible, flashIntensity, lightningCount, thunderCount,
       rainDropCount: RAIN_DROPS, roofMapReady: true, roofMap: roof.diagnostics,

@@ -1,5 +1,7 @@
 // Driving uses world meters, +Y up, and vehicle-local -Z forward.
 const FT = .3048, MPH = 2.2369362921;
+// Existing east-school parking bay, clear of the retained Phase 1 school.
+const PHASE_ONE_PARK = Object.freeze({x:131.9775,y:232.4285,heading:1.5769727});
 export const DRIVING_LIMITS = Object.freeze({forward: 10.73, reverse: 3.58, acceleration: 3.4, brake: 8, steering: .51, wheelbase: 2.875, maxDt: .1, step: 1 / 120});
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const approach = (a, b, amount) => a < b ? Math.min(b, a + amount) : Math.max(b, a - amount);
@@ -123,6 +125,21 @@ export function createCampusDriving({THREE, scene, canvas, getWalk, requestDraw,
     for(const [p,g] of samples)if(world.blockedAt(p.x,p.z,g.y+.008,radius,Math.max(config.height??1.44,2*radius)))return null;
     return surface;
   }
+  function setPhase(value) {
+    if (!['new','phase1','phase2'].includes(value) || !vehicle || driving || distance > .01) return false;
+    const original = config.park;
+    if (!original) return false;
+    const atPark = p => Math.hypot(position.x-p.x*FT,position.z+p.y*FT)<.1;
+    if (!atPark(original) && !atPark(PHASE_ONE_PARK)) return false;
+    const destination = value==='phase1' ? PHASE_ONE_PARK : original;
+    if (atPark(destination)) return false;
+    const x=destination.x*FT,z=-destination.y*FT,yaw=destination.heading??0;
+    const surface=bodyPlacement(x,z,yaw);
+    if (!surface) return false;
+    // Only the untouched parked car changes bays. Never relocate a driver or
+    // a car the visitor has driven, and never alter the walking/flying camera.
+    position.set(x,surface.y,z);heading=yaw;syncVehicle(surface);refresh();requestDraw();return true;
+  }
   function inputState() {return {throttle:Number(keys.has('KeyW')||keys.has('ArrowUp')||holds.has('forward'))-Number(keys.has('KeyS')||keys.has('ArrowDown')||holds.has('backward')),steer:Number(keys.has('KeyA')||keys.has('ArrowLeft')||holds.has('left'))-Number(keys.has('KeyD')||keys.has('ArrowRight')||holds.has('right')),brake:keys.has('Space')||holds.has('brake')};}
   function update(dt) {
     if(disposed)return;refresh();if(vehicle)shadow.visible=vehicle.visible;if(!driving||!vehicle)return;
@@ -178,7 +195,7 @@ export function createCampusDriving({THREE, scene, canvas, getWalk, requestDraw,
       position.set(start.x*FT,0,-start.y*FT);const ground=getWalk()?.vehicleWorld.groundAt(position.x,position.z);position.y=ground?.y??0;
       driverEye.fromArray(options.driver_eye_m??options.driverEye??[-.36,1.12,-.38]);const wheelNames=options.wheel_nodes?.map(n=>typeof n==='string'?n:n.spin_node??n.name)??['Wheel_FL','Wheel_FR','Wheel_RL','Wheel_RR'];wheels=wheelNames.map(n=>root.getObjectByName(n)).filter(Boolean);steerPivots=['Steer_FL','Steer_FR'].map(n=>root.getObjectByName(n)).filter(Boolean);speed=0;steering=0;wheelAngle=0;syncVehicle(ground);refresh();requestDraw();
     },
-    update,command,pause,resize(w,h){camera.aspect=Math.max(1,w)/Math.max(1,h);camera.updateProjectionMatrix();},
+    update,command,pause,setPhase,resize(w,h){camera.aspect=Math.max(1,w)/Math.max(1,h);camera.updateProjectionMatrix();},
     get camera(){return driving?camera:null;},get state(){return snapshot();},get needsAnimation(){const i=inputState();return driving&&(Math.abs(speed)>.001||Boolean(i.throttle||i.steer||i.brake));},
     dispose(){if(disposed)return;if(driving)exit({resumeWalking:false});disposed=true;listeners.forEach(remove=>remove());hud.remove();scene.remove(shadow);shadow.geometry.dispose();shadowMaterial.dispose();shadowTexture.dispose();}
   });

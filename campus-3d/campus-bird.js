@@ -162,7 +162,7 @@ export function createCampusBird({scene}) {
   const birds=[];
   function bird(type,behavior,data) {
     const spec=species.find(s=>s.id===type),index=birds.length;
-    const item={index,id:'campus-bird-'+(index+1),spec,behavior,...data,
+    const item={index,id:'campus-bird-'+(index+1),spec,behavior,...data,originalHabitat:data.habitat,
       slot:spec.birds.length,phase:.72+index*1.371,scale:spec.scale*(.96+(index%3)*.04),
       position:new THREE.Vector3(),heading:0,rootMatrix:new THREE.Matrix4()};
     birds.push(item);spec.birds.push(item);
@@ -188,7 +188,7 @@ export function createCampusBird({scene}) {
   const individuals=birds.map(b=>({id:b.id,species:b.spec.id,behavior:b.behavior,positionMeters:positionsMeters[b.index],
     support:b.habitat?.support||null,supportFeet:b.habitat?.at||null,headingRadians:0,walking:false,pecking:false,wingSpanMeters:1.26*b.scale}));
   const counts=key=>Object.fromEntries([...new Set(individuals.map(b=>b[key]))].map(k=>[k,individuals.filter(b=>b[key]===k).length]));
-  const state={active:false,visible:false,daylight:false,paused:true,flightSeconds:0,laps:0,
+  const state={active:false,visible:false,daylight:false,paused:true,flightSeconds:0,laps:0,constructionPhase:'new',
     birdCount:birds.length,routeCount:CAMPUS_BIRD_ROUTES.length,speciesCount:species.length,
     species:counts('species'),behaviors:counts('behavior'),individuals,
     triangles,meshCount,uniqueGeometries:species.reduce((n,s)=>n+s.geometries.length,0),materialCount:1,
@@ -282,6 +282,21 @@ export function createCampusBird({scene}) {
     enabled=!!value;
     if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
   }
+  function setPhase(value) {
+    if(disposed||!['new','phase1','phase2'].includes(value)||state.constructionPhase===value)return;
+    state.constructionPhase=value;
+    // Building 2 has not been built in Phase 1. Its two ridge birds use
+    // separated, supported positions on Building 1 instead, keeping the flock
+    // and animation timing intact while construction views change.
+    for(const bird of birds) {
+      const home=bird.originalHabitat;
+      if(bird.behavior!=='roof-perch'||!home||home.at[0]<42||home.at[0]>153)continue;
+      bird.habitat=value==='phase1'?{...home,at:home.at[0]===95?[-16,160,36.5]:[-16,240,34.815943]}:home;
+      individuals[bird.index].supportFeet=bird.habitat.at;
+      pose(bird,flightTime,0);
+    }
+    for(const spec of species)for(const mesh of Object.values(spec.batches))mesh.instanceMatrix.needsUpdate=true;
+  }
   function dispose() {
     if(disposed)return;disposed=true;scene.remove(flock);
     for(const spec of species) {
@@ -290,5 +305,5 @@ export function createCampusBird({scene}) {
     }
     material.dispose();flock.clear();state.active=false;state.visible=false;state.paused=true;
   }
-  return {update,setActive,state,dispose};
+  return {update,setActive,setPhase,state,dispose};
 }

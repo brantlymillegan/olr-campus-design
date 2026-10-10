@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 const FT = .3048;
-const PLAN_REVISION = '76b3a20e5bd548d1';
+const PLAN_REVISION = '87c4ab389c3e9815';
 const DETAIL_FEET = 128, DETAIL_STEP_FEET = 32;
 
 // Only these two textures are resident: a campus overview and one sharp local
@@ -19,7 +19,7 @@ export function createCampusPlanGround({ renderer, requestDraw, onBounds = () =>
   const maxRasterSize = Math.min(2048, renderer.capabilities.maxTextureSize);
   const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   let manifest = null, svgRoot = null, overviewKey = '', detailKey = '', optionsKey = '';
-  let options = { floor: 0, theme: 'light', oldBuildings: true };
+  let options = { phase: 'new', floor: 0, theme: 'light', oldBuildings: true };
   let generation = 0, enabled = false, busy = false, pending = false;
   let wantedCenter = { x: 0, y: 0 }, appliedCenter = null, elevation = 0;
   let error = null, rasterCount = 0, discardedRasters = 0, textureBytes = 0;
@@ -41,7 +41,7 @@ export function createCampusPlanGround({ renderer, requestDraw, onBounds = () =>
     }).catch(reason => { manifestPromise = null; throw reason; });
     return manifestPromise;
   }
-  function variantKey() { return `${options.floor}-${options.theme}-${options.oldBuildings ? '1' : '0'}`; }
+  function variantKey() { return `${options.phase}-${options.floor}-${options.theme}-${options.oldBuildings ? '1' : '0'}`; }
   async function loadSvg(key) {
     const data = await loadManifest();
     const filename = data.variants[key];
@@ -125,6 +125,7 @@ export function createCampusPlanGround({ renderer, requestDraw, onBounds = () =>
   }
   function setOptions(value) {
     const next = {
+      phase: ['new', 'phase1', 'phase2'].includes(value?.phase) ? value.phase : options.phase,
       floor: [0, 1, 2].includes(value?.floor) ? value.floor : options.floor,
       theme: ['light', 'dark'].includes(value?.theme) ? value.theme : options.theme,
       oldBuildings: typeof value?.oldBuildings === 'boolean' ? value.oldBuildings : options.oldBuildings

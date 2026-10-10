@@ -49,6 +49,11 @@ function makeSurfaceIndex(model) {
   model.updateMatrixWorld(true);
   model.traverse(object => {
     if (!object.isMesh || !object.visible || !object.geometry?.attributes.position) return;
+    // The whole model may be hidden for the flat-plan presentation. Only
+    // visibility within it determines which physical structures still exist.
+    for (let node = object; node && node !== model; node = node.parent) {
+      if (!node.visible || node.userData?.constructionPhaseHidden) return;
+    }
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     // Door leaves and furniture stay visible but never block movement,
     // become a stepping surface, or intercept a placement ray.
@@ -206,7 +211,7 @@ function closestSegments(p, q, a, b, resultP, resultQ) {
 }
 
 export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose, requestDraw, onChange = () => {}, onPose = () => {}, canFocus = () => true }) {
-  const surfaces = makeSurfaceIndex(model);
+  let surfaces = makeSurfaceIndex(model);
   const camera = new THREE.PerspectiveCamera(65, 1, .08, 2000);
   camera.rotation.order = 'YXZ';
   let externalControl = false, transferringMouseLook = false;
@@ -533,6 +538,25 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (!terrain) return null;
     return surfaces.solidSupportAt(x, z, terrain.y + .001, feet.y + (grounded ? STEP : .002)) || terrain;
   }
+  function refreshSurfaces() {
+    // Construction views change geometry infrequently. Rebuild the triangle
+    // grids once per change; ordinary movement keeps the same cached queries.
+    // Traverse visible descendants so removed buildings and their rooms cannot
+    // survive as invisible walls or roofs in the collision/placement indices.
+    surfaces = makeSurfaceIndex(model);
+    if (presentation === '3d' && mode === 'walking' && grounded && !resumeModelOnMove) {
+      const terrain = surfaces.groundAt(feet.x, feet.z);
+      const support = surfaces.solidSupportAt(feet.x, feet.z, feet.y - .025, feet.y + .025)
+        || (terrain && Math.abs(terrain.y - feet.y) <= .025 ? terrain : null);
+      // Losing a roof resumes gravity normally, without relocating the visitor
+      // or clearing held movement, jump impulses, pointer lock, or camera pose.
+      if (!support) grounded = false;
+      else { groundY = support.y; groundSurface = support.name; }
+    }
+    announce(true);
+    requestDraw();
+    return surfaces.diagnostics;
+  }
   function movement() {
     const forward = Number(keys.has('KeyW') || keys.has('ArrowUp') || padDirections.has('forward')) - Number(keys.has('KeyS') || keys.has('ArrowDown') || padDirections.has('backward'));
     const side = Number(keys.has('KeyD') || keys.has('ArrowRight') || padDirections.has('right')) - Number(keys.has('KeyA') || keys.has('ArrowLeft') || padDirections.has('left'));
@@ -722,7 +746,8 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   return Object.freeze({
     get mode() { return mode; }, get camera() { return navigating() ? camera : null; }, get state() { return snapshot(); },
     get needsAnimation() { const input = movement(); return navigating() && (bankNeedsAnimation() || (!suspended && (Boolean(input.x || input.y || input.z) || (mode === 'walking' && !grounded)))); },
-    clearanceHeight: surfaces.clearanceHeight,
+    clearanceHeight: (x, z) => surfaces.clearanceHeight(x, z),
+    refreshSurfaces,
     // Read-only collision queries share the existing static triangle grid.
     // Vehicle queries always inspect the real campus, regardless of the plan presentation.
     vehicleWorld: Object.freeze({

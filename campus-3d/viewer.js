@@ -1,13 +1,14 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=cff9d31e0ce590de';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
-import { createCampusWalk } from './campus-walk.js?v=659b85a748e0ac3b';
-import { createCampusDriving } from './campus-driving.js?v=da8d8c4e93bf53dc';
-import { createCampusPlanGround } from './campus-plan-ground.js?v=cf1a1d58a654fcce';
+import { createCampusWalk } from './campus-walk.js?v=8fafcc9abd0bd706';
+import { createCampusDriving } from './campus-driving.js?v=6fb7ca4b999094b6';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=dd2ab117442a0d37';
 import * as THREE from 'three';
+import { createCampusPhases } from './campus-phases.js?v=9a924f12f019c9b9';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
-import { createCampusWeather } from './campus-weather.js?v=4d98594a604831c8';
+import { createCampusWeather } from './campus-weather.js?v=80bf5a4e96e057f8';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=28f68412e3284087';
+import { createCampusBird } from './campus-bird.js?v=1abbbb3555ce0b7d';
 import { createCampusAmbience } from './campus-ambience.js?v=9754eb96fa6b25d0';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -42,7 +43,8 @@ let modelSha256 = null, campusPdfCapture = null;
 let preparedTextures = 0, preparationRenders = 0;
 let walk = null, planGround = null, lastDrawTime = null, walkPresentation = '3d';
 let driving = null, vehicleModel = null, parkedVehicle = null, vehicleConfig = null, vehicleSha256 = null;
-let planOptions = { floor: 0, theme: 'light', oldBuildings: true };
+let planOptions = { floor: 0, theme: 'light', oldBuildings: true, phase: 'new' };
+let campusPhases = null, constructionPhase = 'new';
 let flatBounds = null;
 let campusBell = null;
 let resetAerialInput = () => {};
@@ -73,7 +75,7 @@ function handlePdfCommand(command, value) {
       // Printing uses the parked car, independent of the visitor's driving
       // position. Shared geometry is cloned by the existing capture pipeline.
       const campus = new THREE.Group();
-      campus.add(model.clone(true));
+      campus.add(campusPhases ? campusPhases.createCompletedModelClone() : model.clone(true));
       if (parkedVehicle) campus.add(parkedVehicle.clone(true));
       return campus;
     }, getSourceScene: () => scene,
@@ -351,6 +353,23 @@ function setupTimeOfDay() {
   });
 }
 
+function setConstructionPhase(value) {
+  if (!['new', 'phase1', 'phase2'].includes(value)) return;
+  constructionPhase = value; planOptions.phase = value;
+  const geometryChanged = campusPhases?.setPhase(value);
+  if (geometryChanged) {
+    walk?.refreshSurfaces();
+    campusWeather?.refreshRoofMap();
+    if (renderer) renderer.shadowMap.needsUpdate = true;
+    if (sun) sun.shadow.needsUpdate = true;
+  }
+  campusBird?.setPhase(value);
+  driving?.setPhase(value);
+  planGround?.setOptions(planOptions);
+  setOldOutlines({ polygons: oldOutlinePolygons });
+  post({ type: 'olr-3d-construction-phase', value, ready: Boolean(campusPhases) });
+  requestDraw();
+}
 function setOldOutlines(value) {
   if (typeof value === 'boolean') oldOutlineVisible = value;
   else if (value && typeof value === 'object') {
@@ -369,6 +388,7 @@ function setOldOutlines(value) {
   oldOutlines.name = 'Former building outlines';
   oldOutlines.visible = oldOutlineVisible;
   for (const polygon of oldOutlinePolygons) {
+    if (constructionPhase === 'phase1' && campusPhases?.isRetainedSchoolOutline(polygon)) continue;
     if (!Array.isArray(polygon) || polygon.length < 3 || !polygon.every(p => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))) continue;
     const points = [...polygon, polygon[0]].map(([x, y]) => new THREE.Vector3(x * FEET, 0.05, -y * FEET));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -499,7 +519,9 @@ window.addEventListener('message', event => {
     requestDraw();
     return;
   }
+  if (command === 'construction-phase') { setConstructionPhase(value); return; }
   if (command === 'plan-options' && value && typeof value === 'object') {
+    if (['new', 'phase1', 'phase2'].includes(value.phase) && value.phase !== constructionPhase) setConstructionPhase(value.phase);
     if ([0, 1, 2].includes(value.floor)) planOptions.floor = value.floor;
     if (['light', 'dark'].includes(value.theme)) planOptions.theme = value.theme;
     if (typeof value.oldBuildings === 'boolean') planOptions.oldBuildings = value.oldBuildings;
@@ -564,7 +586,11 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   // END campus world ambience API
   get lighting() { return campusLighting?.state ?? lightingAtTime(timeOfDay); },
   get interiorLighting() { return campusInteriorLighting?.state ?? { ready: false, active: false, poolSize: 0 }; },
-  get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length }; },
+  get oldBuildings() { return { visible: oldOutlineVisible, polygonCount: oldOutlinePolygons.length, renderedPolygonCount: oldOutlines?.children.length ?? 0 }; },
+  get constructionPhase() { return constructionPhase; },
+  get phases() { return campusPhases?.state ?? { ready: false, phase: constructionPhase }; },
+  createCompletedModelClone() { return campusPhases?.createCompletedModelClone() ?? null; },
+  get phaseQueries() { return { groundAt: (x, z) => walk?.vehicleWorld.groundAt(x, z), blockedAt: (x, z, y, radius, height) => walk?.vehicleWorld.blockedAt(x, z, y, radius, height), clearanceHeight: (x, z) => walk?.clearanceHeight(x, z), shelterHeightAt: (x, z) => campusWeather?.shelterHeightAt(x, z) }; },
   get camera() { return structuredClone(embeddedCamera); }, get dragMode() { return dragMode; }, get frames() { return renderedFrames; },
   get walk() { return walk?.state ?? { mode: 'aerial', eyeHeightFeet: 6 }; },
   get driving() { return {...(driving?.state ?? {available:false,driving:false,near:false}), modelSha256:vehicleSha256}; },
@@ -598,6 +624,7 @@ function createInteriorLighting(data) {
   function update(activeCamera, firstPerson) {
     const x = activeCamera.position.x / FEET, y = -activeCamera.position.z / FEET, elevation = activeCamera.position.y / FEET;
     const building = firstPerson && buildings.find(b => {
+      if (constructionPhase === 'phase1' && b.id === 'b2') return false;
       const height = Number.isFinite(b.interiorHeightFeet) && b.interiorHeightFeet > 0
         ? b.interiorHeightFeet : (b.floor === 1 ? 14.05 : 13.4);
       return elevation >= b.floorElevationFeet && elevation < b.floorElevationFeet + height && contains(b.polygonWorldFeet, x, y);
@@ -655,6 +682,11 @@ async function loadVehicle() {
   return {config, ...loaded};
 }
 
+async function loadConstructionPhaseConfig() {
+  const response = await fetch('./construction-phases.json?v=cd46637a553bab17');
+  if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
+  return response.json();
+}
 async function loadBellConfig() {
   const url = './bell-config.json?v=7acdbe53f16d1d0a';
   const response = await fetch(url);
@@ -712,9 +744,9 @@ async function init() {
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
-  const [loadedModel, loadedVehicle, bellConfig] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
+  const [loadedModel, loadedVehicle, bellConfig, phaseConfig] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
-  }), loadVehicle(), loadBellConfig()]);
+  }), loadVehicle(), loadBellConfig(), loadConstructionPhaseConfig()]);
   const { gltf } = loadedModel;
   modelSha256 = loadedModel.sha256;
   model = gltf.scene;
@@ -765,6 +797,9 @@ async function init() {
   target.y = Math.max(0, bounds.min.y) + size.y * 0.12;
   extent = Math.max(size.x, size.z);
   applyCampusPalette(model);
+  campusPhases = createCampusPhases({ model, config: phaseConfig, modelSha256 });
+  campusPhases.setPhase(constructionPhase);
+  setOldOutlines({ polygons: oldOutlinePolygons });
   campusAtmosphere = createCampusAtmosphere({ scene, renderer, model, groundColor: CAMPUS_DAYLIGHT.lawnColor });
   campusLighting = createCampusLighting({ scene, model, keyLight: sun, hemisphere: hemi, renderer, target, extent });
   campusLighting.setTime(timeOfDay);
@@ -821,11 +856,13 @@ async function init() {
   // The isolated print clone may cast a conventional static shadow, while the
   // live car uses a moving contact shadow without re-rendering campus shadows.
   parkedVehicle.traverse(object=>{if(object.isMesh)object.castShadow=!object.material?.transparent;});
+  driving.setPhase(constructionPhase);
   driving.resize(wrap.clientWidth, wrap.clientHeight);
   applyTheme();
   applyEmbeddedCamera();
   // BEGIN campus world ambience initialization
   campusBird = createCampusBird({ scene });
+  campusBird.setPhase(constructionPhase);
   campusWeather = createCampusWeather({
     scene, model, lighting: campusLighting, atmosphere: campusAtmosphere,
     onLightning: event => campusAmbience?.thunder(event)
