@@ -14,6 +14,38 @@ export const CAMPUS_DAYLIGHT = Object.freeze({
   lawnColor: Object.freeze([.1021480285 * .90, .1599647863 * 1.12, .0461954114 * .90])
 });
 
+const isChapelMaterial = material => /^Adoration chapel • /.test(material.name);
+export const CHAPEL_CANDLELIGHT = Object.freeze([
+  Object.freeze({ name: 'altar candle pool', position: Object.freeze([266.7, 104.5, 2.35]), target: Object.freeze([268.23, 104.5, 1.05]), color: 0xffb45f, intensity: 2.4, distance: 3.2, angle: .95 }),
+  Object.freeze({ name: 'pendant candle pool', position: Object.freeze([261.5, 104.5, 9.65]), target: Object.freeze([261.5, 104.5, -3.7]), color: 0xffc078, intensity: 4.2, distance: 6, angle: 1.08 })
+]);
+
+function applyChapelMaterial(material) {
+  if (!isChapelMaterial(material)) return;
+  // The enclosed chapel receives candle bounce rather than the school's bright
+  // white fixture fill. These constants never depend on the camera or distance.
+  if (/glass|glazing/i.test(material.name) && material.emissive) {
+    material.emissive.setRGB(0, 0, 0);
+    material.emissiveIntensity = 0;
+  }
+  if (/amber flame|flame core/.test(material.name)) return;
+  const metal = material.metalness > .5;
+  const bounce = /beeswax/.test(material.name) ? ['wax', '0.032, 0.017, 0.005']
+    : /gilded bronze|gold highlights/.test(material.name) ? ['gold', '0.024, 0.012, 0.0035']
+    : /print/.test(material.name) ? ['art', '0.016, 0.010, 0.005']
+    : ['surface', '0.008, 0.004, 0.0015'];
+  material.onBeforeCompile = shader => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `
+      #include <lights_fragment_end>
+      reflectedLight.indirectDiffuse *= 0.16;
+      reflectedLight.indirectSpecular *= ${metal ? '0.55' : '0.22'};
+      reflectedLight.indirectDiffuse += diffuseColor.rgb * vec3(${bounce[1]});
+    `);
+  };
+  material.customProgramCacheKey = () => `chapel-candle-bounce-v2-${metal ? 'metal' : 'surface'}-${bounce[0]}`;
+  material.needsUpdate = true;
+}
+
 export function applyCampusPalette(model) {
   const visited = new Set();
   model.traverse(object => {
@@ -21,6 +53,7 @@ export function applyCampusPalette(model) {
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material?.color || visited.has(material)) continue;
       visited.add(material);
+      applyChapelMaterial(material);
       if (['Interior walls • warm ivory', 'Interior trim • painted white'].includes(material.name)) {
         // These enclosed, white-painted surfaces should receive neutral room
         // bounce, not the exterior environment's blue sky and green lawn tint.
@@ -90,25 +123,20 @@ function addAdorationChapelLighting(model) {
   // Add these after imported native lights are removed. Keeping the fixed
   // lights beneath the model also includes them in its on-demand capture clone.
   if (model.getObjectByName('Adoration chapel • fixed lighting')) return;
-  const anchorName = '03B • Romanesque bell tower / Interior walls • warm ivory';
   let hasChapel = false;
   model.traverse(object => {
-    // GLTFLoader sanitizes object names, retaining the original in userData.
-    if (object.isMesh && (object.userData.name === anchorName || object.name === anchorName)) hasChapel = true;
+    if (!object.isMesh) return;
+    if ((Array.isArray(object.material) ? object.material : [object.material]).some(isChapelMaterial)) hasChapel = true;
   });
   if (!hasChapel) return;
   const group = new THREE.Group();
   group.name = 'Adoration chapel • fixed lighting';
-  // Keep the lower beam beneath the pendant ring to avoid its oversized shadow;
-  // the offset upper source lights the tall vault without intersecting its chain.
-  const fixtures = [
-    { name: 'Pendant illumination', position: [261.5, 104.5, 8.8], target: [261.5, 104.5, -3.7], intensity: 22, distance: 8 },
-    { name: 'Concealed vault illumination', position: [262.5, 104.5, 45.5], intensity: 18, distance: 8 }
-  ];
-  for (const fixture of fixtures) {
-    const light = fixture.target
-      ? new THREE.SpotLight(0xffd8ad, fixture.intensity, fixture.distance, Math.PI * 0.42, .7, 2)
-      : new THREE.PointLight(0xffd8ad, fixture.intensity, fixture.distance, 2);
+  group.userData = { steady: true, proximityEffects: false, source: 'modeled candles', modeledFlames: 14 };
+  // Two steady aggregate pools represent14 modeled candles. Cached spotlight
+  // shadows contain the light within the chapel without a cube map per flame.
+  // There is deliberately no upper-vault flood or animated candle intensity.
+  for (const fixture of CHAPEL_CANDLELIGHT) {
+    const light = new THREE.SpotLight(fixture.color, fixture.intensity, fixture.distance, fixture.angle, .85, 2);
     light.name = 'Adoration chapel • ' + fixture.name;
     const [x, y, z] = fixture.position;
     light.position.set(x * FEET, z * FEET, -y * FEET);
@@ -124,6 +152,7 @@ function addAdorationChapelLighting(model) {
     light.shadow.bias = -.002;
     light.shadow.normalBias = .035;
     light.shadow.radius = 2;
+    light.userData = { steady: true, proximityEffects: false, source: 'modeled candles' };
     group.add(light);
   }
   model.add(group);
@@ -183,7 +212,7 @@ export function createCampusLighting({ scene, model, keyLight, hemisphere, rende
   model.traverse(object => {
     if (!object.isMesh) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (/glazing/i.test(material.name) && material.emissive && !glassMaterials.has(material)) {
+      if (/glazing/i.test(material.name) && !isChapelMaterial(material) && material.emissive && !glassMaterials.has(material)) {
         glassMaterials.set(material, { color: material.emissive.clone(), intensity: material.emissiveIntensity });
       }
     }
