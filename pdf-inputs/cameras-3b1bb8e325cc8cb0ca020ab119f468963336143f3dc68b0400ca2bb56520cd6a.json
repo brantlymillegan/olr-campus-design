@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "coordinate_system": "Campus-aligned Blender axes: x east, y plan north, z up; camera positions and targets in feet.",
+  "resolution": [
+    3072,
+    1860
+  ],
+  "jpeg_quality": 95,
+  "samples": 64,
+  "views": [
+    {
+      "id": "frontage-road",
+      "title": "New campus: 3D view from Frontage Road",
+      "filename": "frontage-road.jpg",
+      "camera": {
+        "position_ft": [
+          80,
+          495,
+          175
+        ],
+        "target_ft": [
+          130,
+          105,
+          10
+        ],
+        "lens_mm": 23,
+        "shift_y": -0.1
+      },
+      "description": "Elevated perspective looking south from the Frontage Road side, across the north parking and new school buildings."
+    },
+    {
+      "id": "james-drive",
+      "title": "New campus: 3D view from James Drive",
+      "filename": "james-drive.jpg",
+      "camera": {
+        "position_ft": [
+          -80,
+          -290,
+          180
+        ],
+        "target_ft": [
+          100,
+          95,
+          10
+        ],
+        "lens_mm": 28,
+        "shift_y": -0.07
+      },
+      "description": "Elevated perspective looking north from James Drive, showing the south campus access, school and church."
+    },
+    {
+      "id": "campus-overview",
+      "title": "New campus: 3D campus overview",
+      "filename": "campus-overview.jpg",
+      "camera": {
+        "position_ft": [
+          -800,
+          -720,
+          750
+        ],
+        "target_ft": [
+          10,
+          80,
+          4
+        ],
+        "lens_mm": 40
+      },
+      "description": "A broad southwest perspective showing how the complete campus, circulation and outdoor spaces fit together."
+    },
+    {
+      "id": "playground-gardens",
+      "title": "New campus: 3D playground and Guardian Angel garden",
+      "filename": "playground-gardens.jpg",
+      "camera": {
+        "position_ft": [
+          -167.57064655521947,
+          -73.21889425522475,
+          41.3084195067391
+        ],
+        "target_ft": [
+          154.29633742522594,
+          163.54001268431819,
+          22.684117959444393
+        ],
+        "lens_mm": 26.84434019653985,
+        "shift_x": -0.15158583245140705,
+        "shift_y": -0.03922722973372845
+      },
+      "description": "Lower southwest perspective matched to the October 10 reference: Building 1 fills the foreground, playground to the right, and church and bell tower behind.",
+      "resolution": [
+        3072,
+        2098
+      ]
+    }
+  ]
+}

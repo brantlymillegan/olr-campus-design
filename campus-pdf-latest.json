@@ -1,11 +1,11 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "d35faa20edf66456cd5617eaea22cd73d9158be237e828a2066f3f02e6420e75",
+  "revision": "cd723ba77dce4f78bf0aff89e8758a86e38f60a993c64c3608cce67a4286159c",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-cc4761ba4ba02f9eda8dd0425ab94ab8bbaf36076762eb5d65541446a723b08a.json",
-    "sha256": "cc4761ba4ba02f9eda8dd0425ab94ab8bbaf36076762eb5d65541446a723b08a",
-    "bytes": 40602,
+    "url": "./pdf-inputs/campus-pdf-inputs-c87b6e5790956da0ad571790e6e269296f7e1bcb1ba7be2dca25d543064ee9f9.json",
+    "sha256": "c87b6e5790956da0ad571790e6e269296f7e1bcb1ba7be2dca25d543064ee9f9",
+    "bytes": 40616,
     "mime": "application/json"
   },
   "generator": {
@@ -135,9 +135,9 @@
     ]
   },
   "camera_config": {
-    "url": "./pdf-inputs/cameras-a47daae222a0b82c9e6e971db9169f1b80ca487b68a65ccdded2635f6c0fa4c7.json",
-    "sha256": "a47daae222a0b82c9e6e971db9169f1b80ca487b68a65ccdded2635f6c0fa4c7",
-    "bytes": 2490,
+    "url": "./pdf-inputs/cameras-3b1bb8e325cc8cb0ca020ab119f468963336143f3dc68b0400ca2bb56520cd6a.json",
+    "sha256": "3b1bb8e325cc8cb0ca020ab119f468963336143f3dc68b0400ca2bb56520cd6a",
+    "bytes": 2498,
     "mime": "application/json"
   },
   "cover_view_id": "playground-gardens",
