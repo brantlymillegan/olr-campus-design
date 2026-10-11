@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
 const FT = .3048;
-const PHASES = new Set(['new', 'phase1', 'phase2', 'current']);
+const PHASES = new Set(['new', 'phase1', 'phase2', 'current', 'phase15']);
+const PHASE15_GROUP = 'Phase 1.5 only geometry';
 const CURRENT_GROUP = 'Current campus only geometry';
 const PHASE_GROUP = 'Construction phase only geometry';
 
@@ -55,6 +56,7 @@ export function createCampusPhases({ model, config, modelSha256 }) {
   }));
   const group = new THREE.Group(); group.name = PHASE_GROUP;
   const currentGroup = new THREE.Group(); currentGroup.name = CURRENT_GROUP;
+  const phase15Group = new THREE.Group(); phase15Group.name = PHASE15_GROUP;
   const phaseMaterials = [];
   const roofMaterial = new THREE.MeshStandardMaterial({ name: 'Phase retained school roof membrane', color: 0x56595a, roughness: .95, metalness: 0 });
   phaseMaterials.push(roofMaterial); materials.set('phase-roof', roofMaterial);
@@ -125,28 +127,39 @@ export function createCampusPhases({ model, config, modelSha256 }) {
     const clone = source.clone(); clone.userData.currentRetainedSchool = true; currentGroup.add(clone);
   }
   for (const definition of config.current?.additions || []) add(definition, currentGroup);
-  for (const item of [group, currentGroup]) { model.add(item); item.visible = false; item.userData.constructionPhaseHidden = true; }
+  if (config.phase15 && config.phase15.base_phase !== 'phase1') throw new Error('Invalid Phase 1.5 base geometry.');
+  // The intermediate phase shares the existing B1 bridge closures, but never
+  // includes the retained school envelope or any B2/bridge construction.
+  for (const name of config.phase15?.reuse_phase1_additions || []) {
+    const source = group.getObjectByName(name);
+    if (!source) throw new Error(`Missing Phase 1.5 bridge closure: ${name}`);
+    phase15Group.add(source.clone());
+  }
+  for (const item of [group, currentGroup, phase15Group]) { model.add(item); item.visible = false; item.userData.constructionPhaseHidden = true; }
   let phase = 'new', disposed = false;
   function setPhase(value) {
     if (!PHASES.has(value) || disposed || phase === value) return false;
+    if (value === 'phase15' && !config.phase15) throw new Error('Phase 1.5 geometry is missing. Please reload.');
+    const geometryPhase = value === 'phase15' ? 'phase1' : value;
     if (value === 'current' && !config.current) throw new Error('Current campus geometry is missing. Please reload.');
     // Restore first so switching directly between Current and Phase 1 cannot
     // retain hidden proposal meshes or an index buffer from the previous phase.
     for (const row of hidden) { row.object.visible = row.visible; row.object.userData.constructionPhaseHidden = false; }
     for (const row of runtimeHidden) { row.object.visible = row.visible; row.object.userData.constructionPhaseHidden = false; }
     for (const row of filtered) row.mesh.geometry = row.original;
-    for (const row of hidden) if (row.phase === value) { row.object.visible = false; row.object.userData.constructionPhaseHidden = true; }
-    for (const row of filtered) if (row.phase === value) row.mesh.geometry = row.geometry;
+    for (const row of hidden) if (row.phase === geometryPhase) { row.object.visible = false; row.object.userData.constructionPhaseHidden = true; }
+    for (const row of filtered) if (row.phase === geometryPhase) row.mesh.geometry = row.geometry;
     if (value === 'current') for (const row of runtimeHidden) { row.object.visible = false; row.object.userData.constructionPhaseHidden = true; }
     group.visible = value === 'phase1'; group.userData.constructionPhaseHidden = !group.visible;
+    phase15Group.visible = value === 'phase15'; phase15Group.userData.constructionPhaseHidden = !phase15Group.visible;
     currentGroup.visible = value === 'current'; currentGroup.userData.constructionPhaseHidden = !currentGroup.visible;
-    const geometryChanged = phase === 'phase1' || phase === 'current' || value === 'phase1' || value === 'current';
+    const geometryChanged = ['phase1', 'phase15', 'current'].includes(phase) || ['phase1', 'phase15', 'current'].includes(value);
     phase = value; model.updateMatrixWorld(true);
     return geometryChanged;
   }
   function createCompletedModelClone() {
     const clone = model.clone(true);
-    clone.getObjectByName(PHASE_GROUP)?.removeFromParent(); clone.getObjectByName(CURRENT_GROUP)?.removeFromParent();
+    clone.getObjectByName(PHASE_GROUP)?.removeFromParent(); clone.getObjectByName(CURRENT_GROUP)?.removeFromParent(); clone.getObjectByName(PHASE15_GROUP)?.removeFromParent();
     clone.traverse(object => { if (originals.has(object.name)) object.visible = originals.get(object.name); delete object.userData.constructionPhaseHidden; });
     for (const row of filtered) {
       const mesh = clone.getObjectByName(row.mesh.name);
@@ -164,16 +177,16 @@ export function createCampusPhases({ model, config, modelSha256 }) {
     if (disposed) return;
     setPhase('new');
     const geometries = new Set();
-    for (const item of [group, currentGroup]) { item.removeFromParent(); item.traverse(object => { if (object.geometry) geometries.add(object.geometry); }); }
+    for (const item of [group, currentGroup, phase15Group]) { item.removeFromParent(); item.traverse(object => { if (object.geometry) geometries.add(object.geometry); }); }
     geometries.forEach(geometry => geometry.dispose());
     for (const row of filtered) row.geometry.dispose();
     phaseMaterials.forEach(material => material.dispose()); disposed = true;
   }
   return Object.freeze({ setPhase, createCompletedModelClone, isRetainedSchoolOutline, dispose,
     get currentHabitats() { return config.current?.bird_habitats || null; },
-    get state() { return { ready: true, phase, modelSha256, hiddenNodeCount: hidden.filter(row => row.phase === phase).length,
-      filteredMeshCount: filtered.filter(row => row.phase === phase).length, retainedSchoolVisible: group.visible || currentGroup.visible,
+    get state() { return { ready: true, phase, modelSha256, hiddenNodeCount: hidden.filter(row => row.phase === (phase === 'phase15' ? 'phase1' : phase)).length,
+      filteredMeshCount: filtered.filter(row => row.phase === (phase === 'phase15' ? 'phase1' : phase)).length, retainedSchoolVisible: group.visible || currentGroup.visible,
       currentCampusVisible: currentGroup.visible, currentOnlyMeshes: currentGroup.children.length,
-      bridgeClosureVisible: group.visible, phaseOnlyMeshes: group.children.length, completeModelUnchanged: true, disposed }; }
+      phase15Visible: phase15Group.visible, bridgeClosureVisible: group.visible || phase15Group.visible, phaseOnlyMeshes: group.children.length, completeModelUnchanged: true, disposed }; }
   });
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 const FT = .3048;
-const PLAN_REVISION = 'bb124c54c4eb8278';
+const PLAN_REVISION = 'a66c99e5b43c51d6';
 const DETAIL_FEET = 128, DETAIL_STEP_FEET = 32;
 
 // Only these two textures are resident: a campus overview and one sharp local
@@ -125,7 +125,7 @@ export function createCampusPlanGround({ renderer, requestDraw, onBounds = () =>
   }
   function setOptions(value) {
     const next = {
-      phase: ['new', 'phase1', 'phase2', 'current'].includes(value?.phase) ? value.phase : options.phase,
+      phase: ['new', 'phase1', 'phase15', 'phase2', 'current'].includes(value?.phase) ? value.phase : options.phase,
       floor: [0, 1, 2].includes(value?.floor) ? value.floor : options.floor,
       theme: ['light', 'dark'].includes(value?.theme) ? value.theme : options.theme,
       oldBuildings: typeof value?.oldBuildings === 'boolean' ? value.oldBuildings : options.oldBuildings

@@ -128,12 +128,12 @@ export function createCampusDriving({THREE, scene, canvas, getWalk, requestDraw,
     return surface;
   }
   function setPhase(value) {
-    if (!['new','current','phase1','phase2'].includes(value) || !vehicle || driving || distance > .01) return false;
+    if (!['new','current','phase1','phase15','phase2'].includes(value) || !vehicle || driving || distance > .01) return false;
     const original = config.park;
     if (!original) return false;
     const atPark = p => Math.hypot(position.x-p.x*FT,position.z+p.y*FT)<.1;
     if (!atPark(original) && !atPark(PHASE_ONE_PARK) && !atPark(CURRENT_PARK)) return false;
-    const destination = value==='current' ? CURRENT_PARK : value==='phase1' ? PHASE_ONE_PARK : original;
+    const destination = value==='current' ? CURRENT_PARK : (value==='phase1'||value==='phase15') ? PHASE_ONE_PARK : original;
     if (atPark(destination)) return false;
     const x=destination.x*FT,z=-destination.y*FT,yaw=destination.heading??0;
     const surface=bodyPlacement(x,z,yaw);

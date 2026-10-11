@@ -1347,8 +1347,10 @@ body[data-campus-dimension="2d"][data-campus-first-person="true"] #codex-visuali
 .campus-tool-panel [hidden] { display:none !important; }
 .campus-tools-title { font-size:11px; font-weight:600; color:var(--muted-foreground); }
 .campus-tool-panel .btn { flex:none; min-height:28px; padding:3px 9px; font-size:12px; line-height:1.25; }
-.campus-map-switch { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:center; gap:3px; }
-.campus-tool-panel .campus-map-switch .btn { min-width:0; padding:4px 2px; font-size:11px; white-space:nowrap; }
+.campus-map-switch { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); align-items:center; gap:3px; }
+.campus-map-switch .btn { grid-column:span 2; }
+.campus-map-switch .btn:nth-child(-n+2) { grid-column:span 3; }
+.campus-tool-panel .campus-map-switch .btn { inline-size:100%; box-sizing:border-box; justify-self:stretch; min-width:0; padding:4px 2px; font-size:11px; white-space:nowrap; }
 .campus-tool-panel .btn[aria-pressed="true"] { background:var(--foreground); color:var(--background); border-color:var(--foreground); }
 .campus-new-floors { display:flex; gap:3px; margin:-3px 0 0 10px; padding:7px 0 0 7px; border-left:2px solid var(--foreground); }
 .campus-new-floors .btn { min-width:0; padding:3px 7px; font-size:11px; }
@@ -1371,6 +1373,7 @@ body[data-campus-dimension="2d"][data-campus-first-person="true"] #codex-visuali
 .campus-tool-panel #campus-fullscreen-status { font-size:11px; line-height:1.4; }
 @media (pointer:coarse) {
   .campus-tool-panel .btn, .campus-tool-panel .campus-theme-control select { min-height:34px; }
+  .campus-tool-panel .campus-map-switch .btn { min-height:44px; }
   .campus-walk-keyboard { display:none; }
   .campus-walk-touch { display:inline; }
 }
@@ -1389,7 +1392,7 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
   }
   .campus-tool-panel .campus-tools-title { display:none; }
   .campus-tool-panel .campus-map-switch { gap:2px; }
-  .campus-tool-panel .campus-map-switch .btn { min-width:0; padding:4px 2px; }
+  .campus-tool-panel .campus-map-switch .btn { min-width:0; min-height:44px; padding:4px 2px; }
   .campus-tool-panel .btn { min-height:40px; }
   .campus-tool-panel .campus-tools-toggle { display:grid; place-items:center; padding:0; width:40px; }
   .campus-tools-toggle circle { fill:var(--background); }
@@ -1679,6 +1682,7 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     <button type="button" class="btn" data-campus-map="shifted" aria-pressed="true" aria-controls="campus-new-floors" aria-label="New design" aria-keyshortcuts="T">New</button>
     <button type="button" class="btn" data-campus-map="existing" aria-pressed="false" aria-label="Current campus" aria-keyshortcuts="T">Current</button>
     <button type="button" class="btn" data-campus-map="phase1" aria-pressed="false" aria-controls="campus-new-floors" aria-label="Phase 1: Building 1 and existing lower school">Phase 1</button>
+    <button type="button" class="btn" data-campus-map="phase15" aria-pressed="false" aria-controls="campus-new-floors" aria-label="Phase 1.5: Building 1 after the existing lower school is demolished">Phase 1.5</button>
     <button type="button" class="btn" data-campus-map="phase2" aria-pressed="false" aria-controls="campus-new-floors" aria-label="Phase 2: Buildings 1 and 2">Phase 2</button>
   </div>
   <div class="campus-new-floors" id="campus-new-floors" role="group" aria-label="New design floor">
@@ -3321,7 +3325,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     const groups = new Map();
     for (const w of inventory.entries) {
       if (!w.views.includes(view)) continue;
-      if (phase === &#x27;phase1&#x27; &amp;&amp; [&#x27;shared&#x27;, &#x27;bridge&#x27;].includes(w.building)) continue;
+      if ([&#x27;phase1&#x27;, &#x27;phase15&#x27;].includes(phase) &amp;&amp; [&#x27;shared&#x27;, &#x27;bridge&#x27;].includes(w.building)) continue;
       // Interior glazing belongs to its floor plan, below the roof outline.
       if (w.interior &amp;&amp; Number(floor) !== w.floor) continue;
       if (floor &amp;&amp; w.floor != null &amp;&amp; w.floor !== Number(floor)) continue;
@@ -3421,7 +3425,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       width: Math.abs(x(b[2]) - x(b[0])), height: Math.abs(y(b[3]) - y(b[1])), ...attrs
     }, target);
     // Only the long edges are drawn: both building entrances stay unobstructed.
-    if (proposal.bridge &amp;&amp; phase !== &#x27;phase1&#x27;) {
+    if (proposal.bridge &amp;&amp; ![&#x27;phase1&#x27;, &#x27;phase15&#x27;].includes(phase)) {
       const b = proposal.bridge;
       const bridge = el(&#x27;g&#x27;, {&#x27;data-campus-floor-bridge&#x27;: floor, &#x27;aria-label&#x27;: data.bridge?.[`floor${floor}`] || (floor === 1 ? &#x27;Covered walk&#x27; : &#x27;Upper bridge&#x27;)}, overlay);
       worldRect(b, {fill: &#x27;var(--background)&#x27;}, bridge);
@@ -3432,7 +3436,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       }, bridge);
     }
     for (const building of data.buildings || []) {
-      if (phase === &#x27;phase1&#x27; &amp;&amp; building.id === &#x27;b2&#x27;) continue;
+      if ([&#x27;phase1&#x27;, &#x27;phase15&#x27;].includes(phase) &amp;&amp; building.id === &#x27;b2&#x27;) continue;
       const site = building.id === &#x27;b1&#x27; ? proposal.academic : building.id === &#x27;b2&#x27; ? proposal.shared : null;
       if (!site) continue;
       const bx = v =&gt; x(site[0] + v), by = v =&gt; y(site[3] - v);
@@ -3639,7 +3643,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       const xmax = Math.max(...building.outline.map(p =&gt; p[0])), ymax = Math.max(...building.outline.map(p =&gt; p[1]));
       for (const e of data.exits || []) if (e.building === building.id &amp;&amp; e.floor === floor) {
         // The future upper bridge doorway is solid wall during Phase 1.
-        if (phase === &#x27;phase1&#x27; &amp;&amp; building.id === &#x27;b1&#x27; &amp;&amp; floor === 2 &amp;&amp; e.side === &#x27;E&#x27; &amp;&amp; e.pos === 106) continue;
+        if ([&#x27;phase1&#x27;, &#x27;phase15&#x27;].includes(phase) &amp;&amp; building.id === &#x27;b1&#x27; &amp;&amp; floor === 2 &amp;&amp; e.side === &#x27;E&#x27; &amp;&amp; e.pos === 106) continue;
         drawDoor({id: `${building.id}-exterior`, rect: [0, 0, xmax, ymax]}, e, true);
       }
 
@@ -3751,6 +3755,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link active&quot; id=&quot;fc-shifted-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-shifted-panel&quot; aria-selected=&quot;true&quot; data-view=&quot;shifted&quot;&gt;New&lt;/button&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-existing-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-existing-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;existing&quot;&gt;Current&lt;/button&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-phase1-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-shifted-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;phase1&quot;&gt;Phase 1&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-phase15-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-shifted-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;phase15&quot;&gt;Phase 1.5&lt;/button&gt;
       &lt;button type=&quot;button&quot; class=&quot;nav-link&quot; id=&quot;fc-phase2-tab&quot; role=&quot;tab&quot; aria-controls=&quot;fc-shifted-panel&quot; aria-selected=&quot;false&quot; data-view=&quot;phase2&quot;&gt;Phase 2&lt;/button&gt;
     &lt;/div&gt;
     &lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;fc-toggle-map&quot; aria-keyshortcuts=&quot;T&quot; hidden&gt;Switch map · T&lt;/button&gt;
@@ -3784,7 +3789,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   const data=JSON.parse(document.getElementById(&#x27;fc-east-shift-data&#x27;).textContent);
   const tabs=[...root.querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)];
   const panels=[...root.querySelectorAll(&#x27;[role=&quot;tabpanel&quot;]&#x27;)];
-  const views=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase2&#x27;];
+  const views=[&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase15&#x27;,&#x27;phase2&#x27;];
   const mapKeys=[&#x27;existing&#x27;,&#x27;shifted&#x27;];
   const savedState=window.openai?.widgetState?.modelContent;
   const storyControls=document.getElementById(&#x27;cf-floor-controls&#x27;);
@@ -3857,9 +3862,10 @@ html&gt;body{padding:0}&lt;/style&gt;
     const svg=root.querySelector(`[data-map=&quot;${kind}&quot;]`),proposed=baseKind!==&#x27;existing&#x27;,shifted=proposed,detail=kind===&#x27;detail&#x27;,parkingDetail=kind===&#x27;parking&#x27;,closeup=detail||parkingDetail;
     const proposal=data.shifted,roadX=data.parking.road_center_x,combined=campusFloor&gt;0;
     const phase1=proposed&amp;&amp;view===&#x27;phase1&#x27;;
+    const phase15=proposed&amp;&amp;view===&#x27;phase15&#x27;,b1Only=phase1||phase15;
     const retainsBuilding=b=&gt;!proposed||!b.remove_in_proposal||(phase1&amp;&amp;b.id===887530);
-    const phaseLabel=phase1?&#x27;Phase 1&#x27;:view===&#x27;phase2&#x27;?&#x27;Phase 2&#x27;:&#x27;New&#x27;;
-    svg.setAttribute(&#x27;data-construction-phase&#x27;,proposed?(phase1?&#x27;phase1&#x27;:view===&#x27;phase2&#x27;?&#x27;phase2&#x27;:&#x27;new&#x27;):&#x27;current&#x27;);
+    const phaseLabel=phase1?&#x27;Phase 1&#x27;:phase15?&#x27;Phase 1.5&#x27;:view===&#x27;phase2&#x27;?&#x27;Phase 2&#x27;:&#x27;New&#x27;;
+    svg.setAttribute(&#x27;data-construction-phase&#x27;,proposed?(b1Only?view:view===&#x27;phase2&#x27;?&#x27;phase2&#x27;:&#x27;new&#x27;):&#x27;current&#x27;);
     const courtyardOutline=data.currentWalkways?.polygons.find(item=&gt;item.id===&#x27;church-west-courtyard&#x27;)?.polygon;
     const rootWidth=root.getBoundingClientRect().width;
     const [xmin,ymin,xmax,ymax]=parkingDetail?[-225,-10,40,225]:detail?[20,-15,310,225]:data.bbox;
@@ -3965,7 +3971,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         ...(roofHeader&amp;&amp;line.kind===&#x27;name&#x27;?{&#x27;data-campus-floor-building-label&#x27;:name}:{})
       }));
     }
-    svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;phase1?(![&#x27;shared&#x27;,&#x27;bridge&#x27;,880586].includes(entry.id)&amp;&amp;(entry.views.includes(&#x27;New&#x27;)||entry.id===887530)):entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionDescription(entry.id)).join(&#x27;; &#x27;));
+    svg.setAttribute(&#x27;aria-description&#x27;,data.buildingDimensions.entries.filter(entry=&gt;b1Only?(![&#x27;shared&#x27;,&#x27;bridge&#x27;,880586].includes(entry.id)&amp;&amp;(entry.views.includes(&#x27;New&#x27;)||(phase1&amp;&amp;entry.id===887530))):entry.views.includes(proposed?&#x27;New&#x27;:&#x27;Current&#x27;)).map(entry=&gt;dimensionDescription(entry.id)).join(&#x27;; &#x27;));
     function arrow(a,b){
       const ax=x(a[0]),ay=y(a[1]),bx=x(b[0]),by=y(b[1]),len=Math.hypot(bx-ax,by-ay),ux=(bx-ax)/len,uy=(by-ay)/len,h=Math.max(2,Math.min(4,5*scale));
       el(&#x27;path&#x27;,{d:`M${ax},${ay} L${bx},${by} M${bx-ux*2*h-uy*h},${by-uy*2*h+ux*h} L${bx},${by} L${bx-ux*2*h+uy*h},${by-uy*2*h-ux*h}`,fill:&#x27;none&#x27;,stroke:&#x27;var(--foreground)&#x27;,&#x27;stroke-width&#x27;:1.3,&#x27;data-traffic-arrow&#x27;:&#x27;north-entry-south-exit&#x27;},map);
@@ -4001,7 +4007,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     if(proposed){
       for(const r of proposal.pavingRemovalRects)pavingCuts.push([rectRing(r)]);
       pavingCuts.push([proposal.academic_outline_polygon||rectRing(proposal.academic)]);
-      if(!phase1)pavingCuts.push([proposal.shared_polygon]);
+      if(!b1Only)pavingCuts.push([proposal.shared_polygon]);
       if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)pavingCuts.push([courtyardOutline]);else if(proposal.courtyard)pavingCuts.push([rectRing(proposal.courtyard)]);
     }
     const map=el(&#x27;g&#x27;,{&#x27;clip-path&#x27;:`url(#fc-${kind}-clip)`});
@@ -4049,9 +4055,9 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
       const academicStyle={fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-building-envelope&#x27;:&#x27;academic&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;academic&#x27;,&#x27;Building 1 · shifted 65 ft north · east entrance projection · phase 1&#x27;)};
       if(proposal.academic_outline_polygon)poly(proposal.academic_outline_polygon,academicStyle,map);else rect(proposal.academic,academicStyle,map);
-      if(!phase1)poly(proposal.shared_polygon,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-building-envelope&#x27;:&#x27;shared&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;shared&#x27;,&#x27;Building 2 · phase 2&#x27;)},map);
+      if(!b1Only)poly(proposal.shared_polygon,{fill:newBuilding,stroke:&#x27;var(--viz-series-2)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;data-building-envelope&#x27;:&#x27;shared&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;shared&#x27;,&#x27;Building 2 · phase 2&#x27;)},map);
       if(detail)line(data.chamfer.former_corner,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:1,&#x27;stroke-dasharray&#x27;:&#x27;4 3&#x27;},map);
-      if(!phase1)rect(proposal.bridge,{fill:&#x27;var(--muted-foreground)&#x27;,&#x27;data-building-envelope&#x27;:&#x27;bridge&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;bridge&#x27;)},map);
+      if(!b1Only)rect(proposal.bridge,{fill:&#x27;var(--muted-foreground)&#x27;,&#x27;data-building-envelope&#x27;:&#x27;bridge&#x27;,&#x27;aria-label&#x27;:dimensionDescription(&#x27;bridge&#x27;)},map);
       const p=data.parking;
       poly(p.parking_pad,{fill:paving},map);
       for(const bay of p.stalls)angledBay(bay,&#x27;y&#x27;,{stroke:&#x27;var(--muted-foreground)&#x27;,&#x27;stroke-width&#x27;:closeup?1.1:.65,&#x27;data-parking-bay&#x27;:&#x27;southbound-head-in-southwest&#x27;},map);
@@ -4119,7 +4125,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       const stripeCuts=[...retainedBuildingCuts,[proposal.theater]];
       if(proposed){
         stripeCuts.push([proposal.academic_outline_polygon||rectRing(proposal.academic)]);
-        if(!phase1)stripeCuts.push([proposal.shared_polygon]);
+        if(!b1Only)stripeCuts.push([proposal.shared_polygon]);
         if(proposal.retainedCourtyard&amp;&amp;courtyardOutline)stripeCuts.push([courtyardOutline]);else if(proposal.courtyard)stripeCuts.push([rectRing(proposal.courtyard)]);
         if(data.canopyExtension)stripeCuts.push([data.canopyExtension.full_outline]);
         for(const r of [...(data.retainedNorthParking.proposal_exclusion_rects||[]),...(proposal.northParkingExtension?.walk_rects||[]),...(proposal.northParkingExtension?.landscape_rects||[])])stripeCuts.push([rectRing(r)]);
@@ -4229,11 +4235,11 @@ html&gt;body{padding:0}&lt;/style&gt;
       // In 2D, retain only the church courtyard paving. Keep the traced
       // walkway data available to the separate 3D model.
       const pathColor=&#x27;color-mix(in srgb,var(--viz-series-2) 18%,var(--background))&#x27;;
-      const group=proposed?cutoutGroup(&#x27;retained-courtyard-cutout&#x27;,phase1?[]:[[proposal.shared_polygon]],{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,&#x27;aria-label&#x27;:&#x27;Retained church courtyard&#x27;}):
+      const group=proposed?cutoutGroup(&#x27;retained-courtyard-cutout&#x27;,b1Only?[]:[[proposal.shared_polygon]],{&#x27;data-retained-courtyard&#x27;:&#x27;existing&#x27;,&#x27;aria-label&#x27;:&#x27;Retained church courtyard&#x27;}):
         el(&#x27;g&#x27;,{&#x27;data-current-walking-paths&#x27;:&#x27;aerial-trace&#x27;,&#x27;aria-label&#x27;:&#x27;Existing church courtyard · approximate aerial tracing&#x27;},map);
       for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;courtyard&#x27;))poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-walk-area&#x27;:item.id},group);
       // BEGIN Building 2 east courtyard entrance connector
-      for(const item of phase1?[]:selection?.entrance_connectors||[])poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-courtyard-entrance-connector&#x27;:item.id,&#x27;aria-label&#x27;:item.description},group);
+      for(const item of b1Only?[]:selection?.entrance_connectors||[])poly(item.polygon,{fill:pathColor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-courtyard-entrance-connector&#x27;:item.id,&#x27;aria-label&#x27;:item.description},group);
       // END Building 2 east courtyard entrance connector
       for(const item of walks.polygons.filter(p=&gt;p.kind===&#x27;lawn&#x27;))poly(item.polygon,{fill:outdoor,stroke:&#x27;var(--border)&#x27;,&#x27;stroke-width&#x27;:.6,&#x27;data-current-courtyard-lawn&#x27;:item.id},group);
       for(const f of walks.features){
@@ -4413,7 +4419,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           style:`font-size:${chosen.fontSize}px`,&#x27;data-label-placement&#x27;:&#x27;inside&#x27;,&#x27;data-label-detail&#x27;:chosen.level,&#x27;data-map-label-anchor&#x27;:`${x(lx)} ${y(ly)}`,&#x27;data-playground-label&#x27;:line.kind
         }));
       }
-      if(!phase1&amp;&amp;!parkingDetail)buildingLabel(&#x27;shared&#x27;,&#x27;Building 2&#x27;,sx+(compact&amp;&amp;!detail?8/scale:0),153);
+      if(!b1Only&amp;&amp;!parkingDetail)buildingLabel(&#x27;shared&#x27;,&#x27;Building 2&#x27;,sx+(compact&amp;&amp;!detail?8/scale:0),153);
       if(proposal.northParkingExtension&amp;&amp;!closeup){
         if(!compact&amp;&amp;!combined)label(&#x27;Landscaped walk&#x27;,77,210,{&#x27;data-north-extension-label&#x27;:&#x27;landscaped-walk&#x27;});
       }
@@ -4460,13 +4466,13 @@ html&gt;body{padding:0}&lt;/style&gt;
     svg.setAttribute(&#x27;data-campus-story&#x27;,combined&amp;&amp;proposed?String(campusFloor):&#x27;none&#x27;);
     if(combined&amp;&amp;proposed){
       siteFloorData??=JSON.parse(document.getElementById(&#x27;fp-data&#x27;).textContent);
-      window.olrDrawCampusFloors({data:siteFloorData,proposal,phase:phase1?&#x27;phase1&#x27;:&#x27;new&#x27;,floor:campusFloor,parent:map,el,x,y,scale});
+      window.olrDrawCampusFloors({data:siteFloorData,proposal,phase:b1Only?view:&#x27;new&#x27;,floor:campusFloor,parent:map,el,x,y,scale});
       for(const [id,name,box] of [[&#x27;academic&#x27;,&#x27;Building 1&#x27;,proposal.academic],[&#x27;shared&#x27;,&#x27;Building 2&#x27;,proposal.shared]]){
-        if(!phase1||id===&#x27;academic&#x27;)buildingLabel(id,name,(box[0]+box[2])/2,box[3],0,true);
+        if(!b1Only||id===&#x27;academic&#x27;)buildingLabel(id,name,(box[0]+box[2])/2,box[3],0,true);
       }
-      svg.setAttribute(&#x27;aria-label&#x27;,`${phaseLabel} campus with ${campusFloor===1?&#x27;first&#x27;:&#x27;second&#x27;}-floor plans inside ${phase1?&#x27;Building 1&#x27;:&#x27;Buildings 1 and 2&#x27;}`);
+      svg.setAttribute(&#x27;aria-label&#x27;,`${phaseLabel} campus with ${campusFloor===1?&#x27;first&#x27;:&#x27;second&#x27;}-floor plans inside ${b1Only?&#x27;Building 1&#x27;:&#x27;Buildings 1 and 2&#x27;}`);
     }else svg.setAttribute(&#x27;aria-label&#x27;,proposed?`${phaseLabel} campus · building outlines`:&#x27;Current campus · existing exterior layout&#x27;);
-    window.olrDrawCampusWindows({view:proposed?&#x27;new&#x27;:&#x27;current&#x27;,phase:phase1?&#x27;phase1&#x27;:&#x27;new&#x27;,floor:proposed?campusFloor:0,parent:map,el,x,y,scale});
+    window.olrDrawCampusWindows({view:proposed?&#x27;new&#x27;:&#x27;current&#x27;,phase:b1Only?view:&#x27;new&#x27;,floor:proposed?campusFloor:0,parent:map,el,x,y,scale});
     // Old building references render after all proposed plan details.
     if(proposed&amp;&amp;showOldBuildings){
       const oldBuildings=el(&#x27;g&#x27;,{&#x27;data-old-buildings-layer&#x27;:&#x27;references&#x27;,&#x27;pointer-events&#x27;:&#x27;none&#x27;},drawing);
@@ -5583,7 +5589,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const camera = window.olrMapCamera?.snapshot();
     if(camera)camera.center={x:camera.center.x+bbox[0],y:bbox[3]-camera.center.y};
     const state = {type:&#x27;olr-tools-state&#x27;,
-      view: [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase2&#x27;].find(value=&gt;document.getElementById(`fc-${value}-tab`).getAttribute(&#x27;aria-selected&#x27;)===&#x27;true&#x27;) || &#x27;shifted&#x27;,
+      view: [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase15&#x27;,&#x27;phase2&#x27;].find(value=&gt;document.getElementById(`fc-${value}-tab`).getAttribute(&#x27;aria-selected&#x27;)===&#x27;true&#x27;) || &#x27;shifted&#x27;,
       floor: Number(floors.find(b=&gt;b.getAttribute(&#x27;aria-pressed&#x27;) === &#x27;true&#x27;)?.dataset.campusFloor ?? 1),
       zoom: zoom?.value ?? 1, minZoom: zoom?.min ?? 1, maxZoom: zoom?.max ?? 32,
       bearing: window.olrMapCamera?.bearing ?? 0,
@@ -5616,7 +5622,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     else if (command === &#x27;drag-mode&#x27;) window.olrMapCamera?.setDragMode(value);
     else if (command === &#x27;snapshot&#x27;) {lastPublished=null;publish(value);return;}
-    else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase2&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
+    else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase15&#x27;,&#x27;phase2&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
     else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
       if (document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27;) return;
       floors.find(b=&gt;Number(b.dataset.campusFloor) === value)?.click();
@@ -6910,7 +6916,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const captureNormalCamera = () => {
     try { if(modelReady&&!walkActive()&&(dimension==='3d'||retainedNormalPlan()))modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
   };
-  const constructionPhase = () => mapState?.view==='existing'?'current':['phase1','phase2'].includes(mapState?.view)?mapState.view:'new';
+  const constructionPhase = () => mapState?.view==='existing'?'current':['phase1','phase15','phase2'].includes(mapState?.view)?mapState.view:'new';
   const sendPlanOptions = () => sendModel('plan-options',{phase:constructionPhase(),floor:mapState?.floor??1,theme:window.olrThemeState?.().resolved||'light',oldBuildings:mapState?.oldBuildings!==false});
   const sendPlanWalk = () => sendMap('walk-state',{...walkState,presentation:dimension==='list'?'3d':dimension,aerialCamera:walkAerialCamera});
   function renderSurfaces(){
@@ -6944,7 +6950,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=1c1b93c8fdc5337d';
+      modelFrame.src='./campus-3d/?embedded=1&v=305c0449c9e68ed1';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7364,7 +7370,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(Array.isArray(s.oldBuildingPolygons))oldBuildingPolygons=s.oldBuildingPolygons;
       connect();return;
     }
-    if(s?.type!=='olr-tools-state'||!['existing','shifted','phase1','phase2'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
+    if(s?.type!=='olr-tools-state'||!['existing','shifted','phase1','phase15','phase2'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
     const previous=mapState;mapState=s;
     if(!modelReady&&!walkActive()&&s.camera)sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});
     if(!previous||previous.view!==s.view)sendModel('construction-phase',constructionPhase());

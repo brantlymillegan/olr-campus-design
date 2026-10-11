@@ -439,14 +439,14 @@ export function createCampusBird({scene}) {
     enabled=!!value;if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
   }
   function setPhase(value, currentHabitats) {
-    if(disposed||!['new','current','phase1','phase2'].includes(value)||state.constructionPhase===value)return;
+    if(disposed||!['new','current','phase1','phase15','phase2'].includes(value)||state.constructionPhase===value)return;
     state.constructionPhase=value;
     for(const bird of birds) {
       const home=bird.originalHabitat;if(!home)continue;
       const supports=currentHabitats?.[bird.behavior];
       if(value==='current'&&supports?.length) {
         bird.habitat=supports[bird.index%supports.length];
-      }else if(value==='phase1'&&bird.behavior==='roof-perch'&&home.at[0]>=42&&home.at[0]<=153) {
+      }else if((value==='phase1'||value==='phase15')&&bird.behavior==='roof-perch'&&home.at[0]>=42&&home.at[0]<=153) {
         bird.habitat={...home,at:home.at[0]===95?[-16,160,36.5]:[-16,240,34.815943]};
       }else bird.habitat=home;
       individuals[bird.index].support=bird.habitat.support;

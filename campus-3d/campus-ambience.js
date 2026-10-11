@@ -23,7 +23,7 @@ export function schoolPresence(position, phase = 'new', config, out = {}) {
   const x = position.x / FEET, y = -position.z / FEET, height = position.y / FEET;
   let officeZone = null;
   for (const zone of config.zones) {
-    if (phase === 'phase1' && zone.buildingId === 'building-2') continue;
+    if ((phase === 'phase1' || phase === 'phase15') && zone.buildingId === 'building-2') continue;
     if (height < zone.floor_ft - 1e-8 || height >= zone.ceiling_ft - 1e-8) continue;
     let inside = false, distanceSquared = Infinity;
     const polygon = zone.polygon_ft;

@@ -1,16 +1,16 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=acbc3933ddb9c971';
-import { createCampusDriving } from './campus-driving.js?v=9aafe93a78599b17';
-import { createCampusPlanGround } from './campus-plan-ground.js?v=7b9c26fbf3c77800';
+import { createCampusDriving } from './campus-driving.js?v=859fb8688c394449';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=cefbecea902832b9';
 import * as THREE from 'three';
 import { createCampusSnow } from './campus-snow.js?v=601d49e8139aa567';
-import { createCampusPhases } from './campus-phases.js?v=ee42b1d6c94cbce8';
+import { createCampusPhases } from './campus-phases.js?v=a0e01e89076de6c3';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=4eb1bae727228478';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=0e7e1507dfc123a1';
-import { createCampusAmbience } from './campus-ambience.js?v=c45215b916832d35';
+import { createCampusBird } from './campus-bird.js?v=cbdd912b66bef3c1';
+import { createCampusAmbience } from './campus-ambience.js?v=46f2067fe8d4f5cf';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
@@ -468,7 +468,7 @@ function setupTimeOfDay() {
 }
 
 function setConstructionPhase(value) {
-  if (!['new', 'current', 'phase1', 'phase2'].includes(value)) return;
+  if (!['new', 'current', 'phase1', 'phase15', 'phase2'].includes(value)) return;
   constructionPhase = value; planOptions.phase = value;
   const geometryChanged = campusPhases?.setPhase(value);
   if (geometryChanged) {
@@ -638,7 +638,7 @@ window.addEventListener('message', event => {
   }
   if (command === 'construction-phase') { setConstructionPhase(value); return; }
   if (command === 'plan-options' && value && typeof value === 'object') {
-    if (['new', 'current', 'phase1', 'phase2'].includes(value.phase) && value.phase !== constructionPhase) setConstructionPhase(value.phase);
+    if (['new', 'current', 'phase1', 'phase15', 'phase2'].includes(value.phase) && value.phase !== constructionPhase) setConstructionPhase(value.phase);
     if ([0, 1, 2].includes(value.floor)) planOptions.floor = value.floor;
     if (['light', 'dark'].includes(value.theme)) planOptions.theme = value.theme;
     if (typeof value.oldBuildings === 'boolean') planOptions.oldBuildings = value.oldBuildings;
@@ -770,7 +770,7 @@ function createInteriorLighting(data) {
   function update(activeCamera, firstPerson) {
     const x = activeCamera.position.x / FEET, y = -activeCamera.position.z / FEET, elevation = activeCamera.position.y / FEET;
     const building = firstPerson && buildings.find(b => {
-      if (constructionPhase === 'current' || (constructionPhase === 'phase1' && b.id === 'b2')) return false;
+      if (constructionPhase === 'current' || (['phase1', 'phase15'].includes(constructionPhase) && b.id === 'b2')) return false;
       const height = Number.isFinite(b.interiorHeightFeet) && b.interiorHeightFeet > 0
         ? b.interiorHeightFeet : (b.floor === 1 ? 14.05 : 13.4);
       return elevation >= b.floorElevationFeet && elevation < b.floorElevationFeet + height && contains(b.polygonWorldFeet, x, y);
@@ -831,7 +831,7 @@ async function loadVehicle() {
 }
 
 async function loadConstructionPhaseConfig() {
-  const response = await fetch('./construction-phases.json?v=ec166692a1f008d6');
+  const response = await fetch('./construction-phases.json?v=3fa0ab0edc0582a6');
   if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
   return response.json();
 }
