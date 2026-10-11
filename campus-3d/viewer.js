@@ -1,9 +1,10 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
-import { createCampusWalk } from './campus-walk.js?v=acbc3933ddb9c971';
+import { createCampusWalk } from './campus-walk.js?v=c64ddc2618616dfe';
 import { createCampusDriving } from './campus-driving.js?v=859fb8688c394449';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=33972dd4d392dfac';
 import * as THREE from 'three';
+import { createCampusRenderCulling } from './campus-render-culling.js?v=eed73815dd659e27';
 import { createCampusSnow } from './campus-snow.js?v=601d49e8139aa567';
 import { createCampusPhases } from './campus-phases.js?v=75ff38c51eeffc60';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
@@ -14,10 +15,11 @@ import { createCampusAmbience } from './campus-ambience.js?v=46f2067fe8d4f5cf';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
-import { loadHashedCampusModel } from './campus-model-loader.js?v=d8050bfa5304012e';
+import { loadHashedCampusModel, preloadCampusModelTransports } from './campus-model-loader.js?v=3e776bdd79845c46';
 import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9ab9f83670763e99';
 
 const EMBEDDED = window.parent !== window;
+const DEFER_GPU = new URL(location.href).searchParams.get('defer') === '1';
 const FEET = 0.3048;
 const CAMPUS_BEARING = 9.067253590763931;
 const DEFAULT_TILT = 25;
@@ -36,6 +38,7 @@ const status = document.getElementById('status');
 const loading = document.getElementById('loading');
 const errorPanel = document.getElementById('error');
 let renderer, camera, scene, extent = 200;
+let renderCulling = null, initialization = null, pendingNormalPose = null;
 let modelBounds = null;
 let aerialDistance = 1200;
 const navigationRay = new THREE.Raycaster();
@@ -201,7 +204,8 @@ function draw(timestamp) {
   } else if (showingModel) {
     const activeCamera = driving?.camera || walk?.camera || camera;
     campusAtmosphere?.updateCamera(activeCamera);
-    renderer.render(scene, activeCamera);
+    if (renderCulling) renderCulling.render(scene, activeCamera);
+    else renderer.render(scene, activeCamera);
     renderedFrames++;
   }
   lastDrawTime = walk?.needsAnimation || driving?.needsAnimation ? timestamp : null;
@@ -282,6 +286,7 @@ function restoreNormalPose(pose) {
   if (Math.abs(quaternion.lengthSq() - 1) > 1e-5) return false;
   const position = new THREE.Vector3().fromArray(pose.position), focus = new THREE.Vector3().fromArray(pose.target);
   if (position.distanceToSquared(focus) < 1e-8) return false;
+  if (!camera) { pendingNormalPose = structuredClone(pose); return true; }
   camera.position.copy(position); camera.quaternion.copy(quaternion); normalTarget.copy(focus);
   for (const key of ['fov', 'zoom', 'near', 'far', 'filmGauge', 'filmOffset', 'focus']) {
     if (Number.isFinite(pose[key])) camera[key] = pose[key];
@@ -473,6 +478,7 @@ function setConstructionPhase(value) {
   const geometryChanged = campusPhases?.setPhase(value);
   if (geometryChanged) {
     walk?.refreshSurfaces();
+    void renderCulling?.prepare().catch(error => console.warn('Campus rendering preparation:', error));
     campusWeather?.refreshRoofMap();
     campusSnow?.refreshSurfaceMap();
     if (renderer) renderer.shadowMap.needsUpdate = true;
@@ -676,6 +682,7 @@ window.addEventListener('message', event => {
     if (!restored) savedEmbeddedCamera = structuredClone(embeddedCamera);
   } else if (command === 'active') {
     active = Boolean(value);
+    if (active) void startInitialization();
     updateWorldAmbience(); // campus world ambience
     if (!active) { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; }
     if (!active) cancelDraw();
@@ -699,7 +706,8 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   get ready() { return modelReady; }, get embedded() { return EMBEDDED; }, get active() { return active; },
   get modelSha256() { return modelSha256; }, get assetRevision() { return ASSET_REVISION; },
   get pdfCapture() { return campusPdfCapture?.state ?? { busy: false, requestId: null, completed: 0, views: PDF_PERSPECTIVES.length }; },
-  get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders }; },
+  get preparation() { return { complete: modelReady, textures: preparedTextures, renders: preparationRenders, deferredGpu: DEFER_GPU, initializationStarted: Boolean(initialization) }; },
+  get renderCulling() { return renderCulling?.state ?? null; },
   get themePreference() { return themePreference; }, get resolvedTheme() { return resolvedTheme; },
   get atmosphere() { return campusAtmosphere?.state ?? null; },
   // BEGIN campus world ambience API
@@ -798,7 +806,7 @@ async function warmModel() {
   scene.traverse(object => {
     if (!object.isMesh && !object.isLine && !object.isPoints) return;
     culling.push([object, object.frustumCulled]);
-    object.frustumCulled = false;
+    if (!DEFER_GPU) object.frustumCulled = false;
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
       if (material) for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
     }
@@ -807,7 +815,14 @@ async function warmModel() {
     // Shader compilation can run in parallel with texture uploads. Await both
     // before the full-scene preparation render so walking never inherits work.
     const compilation = renderer.compileAsync(scene, camera);
-    for (const texture of textures) renderer.initTexture(texture);
+    let uploadYield = performance.now();
+    for (const texture of textures) {
+      renderer.initTexture(texture);
+      if (DEFER_GPU && performance.now() - uploadYield > 8) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        uploadYield = performance.now();
+      }
+    }
     await compilation;
     preparedTextures = textures.size;
     campusAtmosphere?.updateCamera(camera);
@@ -860,6 +875,12 @@ async function loadCampusMetadata(url, description) {
   } catch (error) { console.warn(error); return null; }
 }
 
+function startInitialization() {
+  // Activation can arrive before preload completes or more than once.
+  // Network-only preload never blocks the visitor's explicit request.
+  if (!initialization) initialization = init().catch(fail);
+  return initialization;
+}
 async function init() {
   // Native depth testing rejects hidden room fragments before shading them.
   // Logarithmic depth writes gl_FragDepth and disables that optimization on
@@ -893,6 +914,7 @@ async function init() {
   sun.shadow.normalBias = 0.035;
   scene.add(sun, sun.target);
   camera = new THREE.PerspectiveCamera(AERIAL_FOV, 1, 0.1, 5000);
+  if (pendingNormalPose) { restoreNormalPose(pendingNormalPose); pendingNormalPose = null; }
   setDragMode(dragMode, false);
   installEmbeddedNavigation();
   function resize() {
@@ -1037,6 +1059,8 @@ async function init() {
   setAmbienceOptions(ambienceOptions);
   updateWorldAmbience();
   // END campus world ambience initialization
+  renderCulling = createCampusRenderCulling({ model, renderer, requestDraw });
+  await renderCulling.prepare();
   await warmModel();
   modelReady = true;
   loading.hidden = true;
@@ -1059,7 +1083,11 @@ if (EMBEDDED) {
     requestDraw();
   });
   window.addEventListener('blur', () => { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; });
-  init().catch(fail);
+  if (DEFER_GPU) {
+    // Prepare exact compressed downloads while the phone shows 2D; do not
+    // allocate a WebGL context, decode models or upload textures until entry.
+    void preloadCampusModelTransports().catch(error => console.warn('Campus preload:', error));
+  } else void startInitialization();
 } else {
   location.replace(new URL('../?view=3d', location.href).href);
 }

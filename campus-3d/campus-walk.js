@@ -7,6 +7,8 @@ const STEP = 1.05 * FT, GRAVITY = 9.81, JUMP_HEIGHT = 8 * FT;
 const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const SUPER_JUMP_HEIGHT = 60 * FT;
 const SUPER_JUMP_SPEED = Math.sqrt(2 * GRAVITY * SUPER_JUMP_HEIGHT);
+// Nine vertex coordinates, three normal components, then min/max X, Y, Z.
+const TRIANGLE_STRIDE = 18;
 const CELL = 3, SLOPE_COS = Math.cos(50 * Math.PI / 180);
 const CAMPUS_BEARING = 9.067253590763931;
 const EPS = .008;
@@ -35,17 +37,21 @@ function makeSurfaceIndex(model) {
   const ground = new Map(), terrain = new Map(), solids = new Map(), supports = new Map();
   const rayMeshes = [], groundMeshes = new Set();
   const terrainBounds = new THREE.Box3();
+  const geometryTriangle = new THREE.Triangle(), geometryNormal = new THREE.Vector3();
   let triangleCount = 0, solidCount = 0, groundCount = 0, walkThroughMeshes = 0, walkThroughTriangles = 0;
   const key = (x, z) => `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
-  function add(index, triangle) {
-    for (let x = Math.floor(triangle.minX / CELL); x <= Math.floor(triangle.maxX / CELL); x++) {
-      for (let z = Math.floor(triangle.minZ / CELL); z <= Math.floor(triangle.maxZ / CELL); z++) {
+  function add(index, id) {
+    const offset = id * TRIANGLE_STRIDE;
+    for (let x = Math.floor(data[offset + 12] / CELL); x <= Math.floor(data[offset + 13] / CELL); x++) {
+      for (let z = Math.floor(data[offset + 16] / CELL); z <= Math.floor(data[offset + 17] / CELL); z++) {
         const k = `${x},${z}`;
         if (!index.has(k)) index.set(k, []);
-        index.get(k).push(triangle);
+        index.get(k).push(id);
       }
     }
   }
+  const meshes = [];
+  let capacity = 0;
   model.updateMatrixWorld(true);
   model.traverse(object => {
     if (!object.isMesh || !object.visible || !object.geometry?.attributes.position) return;
@@ -74,10 +80,20 @@ function makeSurfaceIndex(model) {
     // Canopies still obstruct placement, even though leaves are not colliders.
     rayMeshes.push(object);
     if (vegetation) return;
+    capacity += Math.floor((object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3);
+    meshes.push({ object, materials, names, name, isTerrain, isGround });
+  });
+  // Keep the exact world-space doubles in contiguous storage. Integer IDs in
+  // the cell lists avoid hundreds of thousands of retained record, Triangle,
+  // and Vector3 objects without simplifying or quantizing physical geometry.
+  const data = new Float64Array(capacity * TRIANGLE_STRIDE);
+  const supportable = new Uint8Array(capacity), triangleNames = new Uint32Array(capacity), names = [];
+  for (const { object, materials, names: materialNames, name, isTerrain, isGround } of meshes) {
+    const nameId = names.length; names.push(name);
     const positions = object.geometry.attributes.position;
     const indices = object.geometry.index;
     const count = indices ? indices.count : positions.count;
-    const canSupport = !/fascia|glazing|window.frames|Fountain.water/i.test(names);
+    const canSupport = !/fascia|glazing|window.frames|Fountain.water/i.test(materialNames);
     // Indexed triangles share immutable world vertices. Transform each unique
     // vertex once, retaining the identical double-precision coordinates used
     // by collision, roof placement, birds, and driving queries.
@@ -92,32 +108,50 @@ function makeSurfaceIndex(model) {
       const a = vertex(indices ? indices.getX(i) : i);
       const b = vertex(indices ? indices.getX(i + 1) : i + 1);
       const c = vertex(indices ? indices.getX(i + 2) : i + 2);
-      const triangle = new THREE.Triangle(a, b, c);
-      if (triangle.getArea() < 1e-10) continue;
-      const normal = triangle.getNormal(new THREE.Vector3());
-      const record = {
-        triangle, normal, name, canSupport,
-        minX: Math.min(a.x, b.x, c.x), maxX: Math.max(a.x, b.x, c.x),
-        minY: Math.min(a.y, b.y, c.y), maxY: Math.max(a.y, b.y, c.y),
-        minZ: Math.min(a.z, b.z, c.z), maxZ: Math.max(a.z, b.z, c.z)
-      };
-      triangleCount++;
-      if (isTerrain) { add(terrain, record); terrainBounds.expandByPoint(a); terrainBounds.expandByPoint(b); terrainBounds.expandByPoint(c); }
-      if (isGround && normal.y >= SLOPE_COS) { add(ground, record); groundCount++; }
+      geometryTriangle.set(a, b, c);
+      if (geometryTriangle.getArea() < 1e-10) continue;
+      const normal = geometryTriangle.getNormal(geometryNormal);
+      const id = triangleCount++, offset = id * TRIANGLE_STRIDE;
+      data[offset] = a.x; data[offset + 1] = a.y; data[offset + 2] = a.z;
+      data[offset + 3] = b.x; data[offset + 4] = b.y; data[offset + 5] = b.z;
+      data[offset + 6] = c.x; data[offset + 7] = c.y; data[offset + 8] = c.z;
+      data[offset + 9] = normal.x; data[offset + 10] = normal.y; data[offset + 11] = normal.z;
+      data[offset + 12] = Math.min(a.x, b.x, c.x); data[offset + 13] = Math.max(a.x, b.x, c.x);
+      data[offset + 14] = Math.min(a.y, b.y, c.y); data[offset + 15] = Math.max(a.y, b.y, c.y);
+      data[offset + 16] = Math.min(a.z, b.z, c.z); data[offset + 17] = Math.max(a.z, b.z, c.z);
+      supportable[id] = canSupport ? 1 : 0; triangleNames[id] = nameId;
+      if (isTerrain) { add(terrain, id); terrainBounds.expandByPoint(a); terrainBounds.expandByPoint(b); terrainBounds.expandByPoint(c); }
+      if (isGround && normal.y >= SLOPE_COS) { add(ground, id); groundCount++; }
       else if (!isGround) {
-        add(solids, record); solidCount++;
-        if (record.canSupport && normal.y >= SLOPE_COS) add(supports, record);
+        add(solids, id); solidCount++;
+        if (canSupport && normal.y >= SLOPE_COS) add(supports, id);
       }
     }
-  });
-  const point = new THREE.Vector3(), supportPoint = new THREE.Vector3();
+  }
+  for (const index of [ground, terrain, solids, supports]) {
+    for (const [key, ids] of index) index.set(key, Uint32Array.from(ids));
+  }
+  const point = new THREE.Vector3(), supportPoint = new THREE.Vector3(), surfaceTriangle = new THREE.Triangle();
+  const normals = new Map();
+  function surfaceNormal(id) {
+    let normal = normals.get(id);
+    if (!normal) { const offset = id * TRIANGLE_STRIDE; normal = new THREE.Vector3(data[offset + 9], data[offset + 10], data[offset + 11]); normals.set(id, normal); }
+    return normal;
+  }
+  function setTriangle(id, target) {
+    const offset = id * TRIANGLE_STRIDE;
+    target.a.fromArray(data, offset); target.b.fromArray(data, offset + 3); target.c.fromArray(data, offset + 6);
+    return target;
+  }
   function height(index, x, z) {
     let highest = null;
-    for (const record of index.get(key(x, z)) || []) {
-      if (x < record.minX - 1e-6 || x > record.maxX + 1e-6 || z < record.minZ - 1e-6 || z > record.maxZ + 1e-6 || Math.abs(record.normal.y) < 1e-5) continue;
-      const y = record.triangle.a.y - (record.normal.x * (x - record.triangle.a.x) + record.normal.z * (z - record.triangle.a.z)) / record.normal.y;
+    const candidates = index === solids ? nearSolids.atPoint(x, z) : index.get(key(x, z)) || [];
+    for (const id of candidates) {
+      const offset = id * TRIANGLE_STRIDE;
+      if (x < data[offset + 12] - 1e-6 || x > data[offset + 13] + 1e-6 || z < data[offset + 16] - 1e-6 || z > data[offset + 17] + 1e-6 || Math.abs(data[offset + 10]) < 1e-5) continue;
+      const y = data[offset + 1] - (data[offset + 9] * (x - data[offset]) + data[offset + 11] * (z - data[offset + 2])) / data[offset + 10];
       point.set(x, y, z);
-      if (record.triangle.containsPoint(point) && (!highest || y > highest.y)) highest = { y, normal: record.normal, name: record.name };
+      if (setTriangle(id, surfaceTriangle).containsPoint(point) && (!highest || y > highest.y)) highest = { y, normal: surfaceNormal(id), name: names[triangleNames[id]] };
     }
     return highest;
   }
@@ -149,10 +183,56 @@ function makeSurfaceIndex(model) {
   // triangle list is already unique. Cache the few overlapping-cell lists so
   // each physics substep does not allocate and populate another large Set.
   function neighbors(index) {
-    const cache = new Map(), empty = [];
-    return (x, z, radius = RADIUS) => {
+    const cache = new Map(), empty = [], trees = new Map();
+    // Dense details (sculptures, fluted columns, equipment) can contribute tens
+    // of thousands of triangles to one grid cell. A bounds hierarchy rejects
+    // distant parts and other floors before capsule/triangle calculations.
+    // Contiguous ranges preserve the original triangle order, including ties.
+    function tree(records, start = 0, end = records.length) {
+      const node = { start, end, minX: Infinity, minY: Infinity, minZ: Infinity, maxX: -Infinity, maxY: -Infinity, maxZ: -Infinity };
+      if (end - start > 32) {
+        const mid = (start + end) >>> 1;
+        node.left = tree(records, start, mid); node.right = tree(records, mid, end);
+        const a = node.left, b = node.right;
+        node.minX = Math.min(a.minX, b.minX); node.maxX = Math.max(a.maxX, b.maxX);
+        node.minY = Math.min(a.minY, b.minY); node.maxY = Math.max(a.maxY, b.maxY);
+        node.minZ = Math.min(a.minZ, b.minZ); node.maxZ = Math.max(a.maxZ, b.maxZ);
+      } else for (let i = start; i < end; i++) {
+        const offset = records[i] * TRIANGLE_STRIDE;
+        node.minX = Math.min(node.minX, data[offset + 12]); node.maxX = Math.max(node.maxX, data[offset + 13]);
+        node.minY = Math.min(node.minY, data[offset + 14]); node.maxY = Math.max(node.maxY, data[offset + 15]);
+        node.minZ = Math.min(node.minZ, data[offset + 16]); node.maxZ = Math.max(node.maxZ, data[offset + 17]);
+      }
+      return node;
+    }
+    for (const [key, records] of index) if (records.length >= 256) trees.set(key, tree(records));
+    function collect(node, records, loX, hiX, loY, hiY, loZ, hiZ, add) {
+      if (node.maxX < loX || node.minX > hiX || node.maxY < loY || node.minY > hiY || node.maxZ < loZ || node.minZ > hiZ) return;
+      if (node.left) { collect(node.left, records, loX, hiX, loY, hiY, loZ, hiZ, add); collect(node.right, records, loX, hiX, loY, hiY, loZ, hiZ, add); }
+      else for (let i = node.start; i < node.end; i++) {
+        const id = records[i], offset = id * TRIANGLE_STRIDE;
+        if (data[offset + 13] >= loX && data[offset + 12] <= hiX && data[offset + 15] >= loY && data[offset + 14] <= hiY && data[offset + 17] >= loZ && data[offset + 16] <= hiZ) add(id);
+      }
+    }
+    const query = (x, z, radius = RADIUS, lowY = -Infinity, highY = Infinity) => {
       const minX = Math.floor((x - radius) / CELL), maxX = Math.floor((x + radius) / CELL);
       const minZ = Math.floor((z - radius) / CELL), maxZ = Math.floor((z + radius) / CELL);
+      if (Number.isFinite(lowY) || Number.isFinite(highY)) {
+        let dense = false;
+        for (let ix = minX; ix <= maxX && !dense; ix++) for (let iz = minZ; iz <= maxZ; iz++) if (trees.has(`${ix},${iz}`)) { dense = true; break; }
+        if (dense) {
+          const found = new Set(), add = row => found.add(row);
+          for (let ix = minX; ix <= maxX; ix++) for (let iz = minZ; iz <= maxZ; iz++) {
+            const key = `${ix},${iz}`, records = index.get(key) || empty, branch = trees.get(key);
+            if (branch) collect(branch, records, x - radius, x + radius, lowY, highY, z - radius, z + radius, add);
+            else for (const id of records) {
+              const offset = id * TRIANGLE_STRIDE;
+              if (data[offset + 13] >= x - radius && data[offset + 12] <= x + radius && data[offset + 15] >= lowY && data[offset + 14] <= highY && data[offset + 17] >= z - radius && data[offset + 16] <= z + radius) add(id);
+            }
+          }
+          return [...found];
+        }
+      }
       if (minX === maxX && minZ === maxZ) return index.get(`${minX},${minZ}`) || empty;
       const key = `${minX},${maxX},${minZ},${maxZ}`;
       let records = cache.get(key);
@@ -163,23 +243,34 @@ function makeSurfaceIndex(model) {
           for (const record of index.get(`${ix},${iz}`) || empty) found.add(record);
         }
       }
-      records = [...found];
+      records = Uint32Array.from(found);
       if (cache.size >= 128) cache.delete(cache.keys().next().value);
       cache.set(key, records);
       return records;
     };
+    // Roof/flight clearance uses only the point's original cell. Preserve that
+    // boundary rule and triangle order while skipping dense distant detail.
+    query.atPoint = (x, z) => {
+      const cell = key(x, z), records = index.get(cell) || empty, branch = trees.get(cell);
+      if (!branch) return records;
+      const found = [];
+      collect(branch, records, x - 2e-6, x + 2e-6, -Infinity, Infinity, z - 2e-6, z + 2e-6, id => found.push(id));
+      return found;
+    };
+    return query;
   }
   const nearSolids = neighbors(solids), nearSupports = neighbors(supports);
   function solidSupportAt(x, z, lowest, highest, strict = false) {
     let support = null;
     const reach = strict ? .001 : RADIUS - EPS;
-    for (const record of nearSupports(x, z)) {
+    for (const id of nearSupports(x, z, RADIUS, lowest - 1e-6, highest + 1e-6)) {
+      const offset = id * TRIANGLE_STRIDE;
       // Reject other floors and distant furniture before the closest-point
       // calculation. Keep a rounding margin around the exact triangle bounds.
-      if (record.maxY < lowest - 1e-6 || record.minY > highest + 1e-6 || x < record.minX - reach - 1e-6 || x > record.maxX + reach + 1e-6 || z < record.minZ - reach - 1e-6 || z > record.maxZ + reach + 1e-6) continue;
-      const planeY = record.triangle.a.y - (record.normal.x * (x - record.triangle.a.x) + record.normal.z * (z - record.triangle.a.z)) / record.normal.y;
+      if (data[offset + 15] < lowest - 1e-6 || data[offset + 14] > highest + 1e-6 || x < data[offset + 12] - reach - 1e-6 || x > data[offset + 13] + reach + 1e-6 || z < data[offset + 16] - reach - 1e-6 || z > data[offset + 17] + reach + 1e-6) continue;
+      const planeY = data[offset + 1] - (data[offset + 9] * (x - data[offset + 0]) + data[offset + 11] * (z - data[offset + 2])) / data[offset + 10];
       point.set(x, planeY, z);
-      record.triangle.closestPointToPoint(point, supportPoint);
+      setTriangle(id, surfaceTriangle).closestPointToPoint(point, supportPoint);
       if (Math.hypot(supportPoint.x - x, supportPoint.z - z) > reach) continue;
       const y = supportPoint.y;
       // The caller limits support to the feet while airborne, and permits a
@@ -187,11 +278,11 @@ function makeSurfaceIndex(model) {
       if (y < lowest || y > highest || (support && y <= support.y)) continue;
       // Retain support until the capsule footprint clears the edge, allowing a
       // clean walk-off instead of snapping the body down into the log's side.
-      support = { y, normal: record.normal, name: record.name };
+      support = { y, normal: surfaceNormal(id), name: names[triangleNames[id]] };
     }
     return support;
   }
-  return { groundAt, clearanceHeight, solidSupportAt, nearSolids, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount, walkThroughMeshes, walkThroughTriangles }) };
+  return { groundAt, clearanceHeight, solidSupportAt, nearSolids, data, supportable, triangleNames, names, setTriangle, rayMeshes, groundMeshes, terrainBounds, diagnostics: Object.freeze({ triangleCount, solidCount, groundCount, walkThroughMeshes, walkThroughTriangles }) };
 }
 
 // Closest points between two finite line segments (including degenerate ends).
@@ -238,7 +329,7 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
   const ndc = new THREE.Vector2();
   const capsuleA = new THREE.Vector3(), capsuleB = new THREE.Vector3(), closestA = new THREE.Vector3(), closestB = new THREE.Vector3();
   const testPoint = new THREE.Vector3(), edgeA = new THREE.Vector3(), edgeB = new THREE.Vector3();
-  const collisionNormal = new THREE.Vector3();
+  const collisionNormal = new THREE.Vector3(), collisionTriangle = new THREE.Triangle();
   const host = canvas.parentElement;
   const hud = document.createElement('div');
   hud.id = 'campus-walk-hud'; hud.className = 'campus-walk-hud'; hud.hidden = true;
@@ -355,15 +446,17 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
     if (!physical && presentation === '2d') return null;
     capsuleA.set(x, footY + radius, z); capsuleB.set(x, footY + height - radius, z);
     let deepest = null;
-    for (const record of surfaces.nearSolids(x, z, radius)) {
-      if (record.maxY < footY + EPS || record.minY > footY + height || x < record.minX - radius || x > record.maxX + radius || z < record.minZ - radius || z > record.maxZ + radius) continue;
+    const { data, supportable, triangleNames, names } = surfaces;
+    for (const id of surfaces.nearSolids(x, z, radius, footY + EPS, footY + height)) {
+      const offset = id * TRIANGLE_STRIDE;
+      if (data[offset + 15] < footY + EPS || data[offset + 14] > footY + height || x < data[offset + 12] - radius || x > data[offset + 13] + radius || z < data[offset + 16] - radius || z > data[offset + 17] + radius) continue;
       // A walkable slope under the feet is support, not a wall intersecting the
       // bottom of the capsule. Roof undersides and surfaces above still collide.
-      if (record.canSupport && record.normal.y >= SLOPE_COS) {
-        const planeY = record.triangle.a.y - (record.normal.x * (x - record.triangle.a.x) + record.normal.z * (z - record.triangle.a.z)) / record.normal.y;
+      if (supportable[id] && data[offset + 10] >= SLOPE_COS) {
+        const planeY = data[offset + 1] - (data[offset + 9] * (x - data[offset + 0]) + data[offset + 11] * (z - data[offset + 2])) / data[offset + 10];
         if (planeY <= footY + EPS) continue;
       }
-      const tri = record.triangle;
+      const tri = surfaces.setTriangle(id, collisionTriangle);
       let best = Infinity;
       const consider = (a, b) => { const d = a.distanceToSquared(b); if (d < best) { best = d; closestA.copy(a); closestB.copy(b); } };
       tri.closestPointToPoint(capsuleA, testPoint); consider(capsuleA, testPoint);
@@ -371,16 +464,16 @@ export function createCampusWalk({ model, canvas, getAerialCamera, getAerialPose
       closestSegments(capsuleA, capsuleB, tri.a, tri.b, edgeA, edgeB); consider(edgeA, edgeB);
       closestSegments(capsuleA, capsuleB, tri.b, tri.c, edgeA, edgeB); consider(edgeA, edgeB);
       closestSegments(capsuleA, capsuleB, tri.c, tri.a, edgeA, edgeB); consider(edgeA, edgeB);
-      const denom = record.normal.y * (capsuleB.y - capsuleA.y);
+      const denom = data[offset + 10] * (capsuleB.y - capsuleA.y);
       if (Math.abs(denom) > 1e-10) {
-        const t = (record.normal.x * (tri.a.x - capsuleA.x) + record.normal.y * (tri.a.y - capsuleA.y) + record.normal.z * (tri.a.z - capsuleA.z)) / denom;
+        const t = (data[offset + 9] * (tri.a.x - capsuleA.x) + data[offset + 10] * (tri.a.y - capsuleA.y) + data[offset + 11] * (tri.a.z - capsuleA.z)) / denom;
         if (t >= 0 && t <= 1) { testPoint.lerpVectors(capsuleA, capsuleB, t); if (tri.containsPoint(testPoint)) { best = 0; closestA.copy(testPoint); closestB.copy(testPoint); } }
       }
       if (best < (radius - EPS) ** 2 && (!deepest || best < deepest.distanceSq)) {
         collisionNormal.subVectors(closestA, closestB); collisionNormal.y = 0;
-        if (collisionNormal.lengthSq() < 1e-10) collisionNormal.set(record.normal.x, 0, record.normal.z);
+        if (collisionNormal.lengthSq() < 1e-10) collisionNormal.set(data[offset + 9], 0, data[offset + 11]);
         if (collisionNormal.lengthSq() > 0) collisionNormal.normalize();
-        deepest = { distanceSq: best, normal: collisionNormal.clone(), name: record.name };
+        deepest = { distanceSq: best, normal: collisionNormal.clone(), name: names[triangleNames[id]] };
       }
     }
     return deepest;

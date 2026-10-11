@@ -6892,6 +6892,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(Number.isFinite(saved?.volume))soundOptions.volume=Math.max(0,Math.min(1,saved.volume));
   } catch {}
   const mobile = window.matchMedia?.('(max-width: 767px), (max-width: 1024px) and (pointer: coarse)');
+  // Fetch the model early on phones, but reserve decoding/GPU memory for
+  // an explicit walkthrough request so the 2D plan stays responsive.
+  const deferModelPreparation = window.matchMedia?.('(pointer: coarse), (max-width: 767px)').matches === true;
   let expanded = false, renderedState = null, mapState = null, modelCamera = null;
   let dimension = '2d', modelFrame = null, modelReady = false, modelNeedsMapCamera = false;
   let listReturnDimension = '2d';
@@ -6951,7 +6954,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=fe05fb7c0980a129';
+      modelFrame.src='./campus-3d/?embedded=1&v=d993a943da223e84'+(deferModelPreparation?'&defer=1':'');
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7426,7 +7429,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   frame.addEventListener('load',connect);
   window.addEventListener('pageshow',connect);
   connect();
-  // Begin loading and GPU preparation immediately, without changing the view.
+  // Begin downloading immediately. On phones the hidden viewer prefetches
+  // verified compressed bytes and waits for a walkthrough before GPU work.
   // The same iframe stays alive for later 3D and first-person transitions.
   ensureModel();
 })();
@@ -7553,6 +7557,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     try {
       // Reuse the page's already-preloaded model whenever it is current. An
       // older open tab gets one isolated current viewer only after the click.
+      if (frame && new URL(frame.src, location.href).searchParams.get('defer') === '1') {
+        // A phone's network-only preload is deliberately not ready yet. Keep
+        // its interactive state untouched and initialize the isolated PDF view.
+        let initializationStarted = false;
+        try { initializationStarted = Boolean(frame.contentWindow?.olr3d?.preparation?.initializationStarted); } catch {}
+        if (!initializationStarted) frame = null;
+      }
       if (frame) {
         const state = await waitReady(frame, signal);
         if (!state.pdfCapture || state.pdfCapture.views !== views.length || state.modelSha256 !== manifest.model.sha256 || state.assetRevision !== manifest.viewer.asset_revision || new URL(frame.src).searchParams.get('v') !== manifest.viewer.revision) frame = null;

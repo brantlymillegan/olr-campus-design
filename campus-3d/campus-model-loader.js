@@ -7,6 +7,8 @@ const clock = () => performance.now();
 const failure = (code, message) => Object.assign(new Error(message), {code});
 let manifestPromise;
 let brotliPromise;
+const prefetches = new Map();
+const activeModelLoads = new Map();
 
 async function digest(bytes) {
   if (!globalThis.crypto?.subtle) throw failure('MODEL_DIGEST', 'Secure model verification is unavailable.');
@@ -206,11 +208,48 @@ async function retainVerified(cache, entry, transport, packed, assets, metrics) 
   metrics.cacheWriteMs += clock() - started;
 }
 
+// Mobile preload deliberately stops at verified compressed bytes. It does not
+// instantiate a decoder, parse geometry, create image bitmaps or allocate WebGL.
+// Download sequentially to bound temporary memory to one compressed asset.
+export async function preloadCampusModelTransports() {
+  const data = await manifest();
+  let previous = Promise.resolve();
+  const pendingDownloads = [];
+  for (const entry of data.assets) {
+    if (prefetches.has(entry.url)) { pendingDownloads.push(prefetches.get(entry.url)); continue; }
+    if (activeModelLoads.has(entry.url)) continue;
+    const pending = previous.catch(() => {}).then(async () => {
+      const transport = entry.brotli || entry.gzip, metrics = {};
+      const cache = await openCache(metrics);
+      if (cache) {
+        try { if (await cache.match(transport.url)) return; } catch {}
+      }
+      const response = await fetch(transport.url, {cache: 'force-cache'});
+      if (!response.ok) throw failure('MODEL_HTTP', `Model preload HTTP ${response.status}`);
+      const packed = await readExact(response.body, transport.bytes);
+      if (await digest(packed) !== transport.sha256) throw failure('MODEL_DIGEST', 'Model preload verification failed.');
+      if (cache) {
+        try { await cache.put(transport.url, compressedResponse(packed)); } catch {}
+      }
+    });
+    prefetches.set(entry.url, pending);
+    const release = () => { if (prefetches.get(entry.url) === pending) prefetches.delete(entry.url); };
+    pending.then(release, release);
+    pendingDownloads.push(pending); previous = pending;
+  }
+  await Promise.all(pendingDownloads);
+}
+
 export async function loadHashedCampusModel(loader, url, onProgress) {
   const started = clock(), data = await manifest();
   const requested = assetURL(url, location.href);
   const entry = data.assets.find(row => new URL(row.url).pathname === requested.pathname);
   if (!entry) throw failure('MODEL_ASSET', 'This model is not in the current verified release.');
+  activeModelLoads.set(entry.url, (activeModelLoads.get(entry.url) || 0) + 1);
+  try {
+  // Reuse an early mobile download if the visitor opens 3D mid-transfer.
+  // A failed/blocked prefetch never prevents the normal verified load path.
+  await prefetches.get(entry.url)?.catch(() => {});
   const metrics = {networkBytes: 0, readAndDecodeMs: 0, hashMs: 0, parseMs: 0, cacheWriteMs: 0, cacheHit: false, cacheStored: false};
   const cache = await openCache(metrics);
   let result, source = 'network', encoding = 'raw', transport = entry;
@@ -280,4 +319,9 @@ export async function loadHashedCampusModel(loader, url, onProgress) {
   metrics.totalMs = clock() - started;
   return {gltf, sha256: entry.sha256, byteLength: bytes.byteLength,
     transport: {encoding, source, url: encoding === 'raw' ? requested.href : transport.url, bytes: transport.bytes}, metrics};
+  } finally {
+    const remaining = activeModelLoads.get(entry.url) - 1;
+    if (remaining > 0) activeModelLoads.set(entry.url, remaining);
+    else activeModelLoads.delete(entry.url);
+  }
 }
