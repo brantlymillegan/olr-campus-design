@@ -438,16 +438,21 @@ export function createCampusBird({scene}) {
   function setActive(value) {
     enabled=!!value;if(!enabled){flock.visible=false;previousRunning=false;state.visible=false;state.paused=true;state.active=false;}
   }
-  function setPhase(value) {
-    if(disposed||!['new','phase1','phase2'].includes(value)||state.constructionPhase===value)return;
+  function setPhase(value, currentHabitats) {
+    if(disposed||!['new','current','phase1','phase2'].includes(value)||state.constructionPhase===value)return;
     state.constructionPhase=value;
     for(const bird of birds) {
-      const home=bird.originalHabitat;if(bird.behavior!=='roof-perch'||!home||home.at[0]<42||home.at[0]>153)continue;
-      bird.habitat=value==='phase1'?{...home,at:home.at[0]===95?[-16,160,36.5]:[-16,240,34.815943]}:home;
+      const home=bird.originalHabitat;if(!home)continue;
+      const supports=currentHabitats?.[bird.behavior];
+      if(value==='current'&&supports?.length) {
+        bird.habitat=supports[bird.index%supports.length];
+      }else if(value==='phase1'&&bird.behavior==='roof-perch'&&home.at[0]>=42&&home.at[0]<=153) {
+        bird.habitat={...home,at:home.at[0]===95?[-16,160,36.5]:[-16,240,34.815943]};
+      }else bird.habitat=home;
+      individuals[bird.index].support=bird.habitat.support;
       individuals[bird.index].supportFeet=bird.habitat.at;
     }
-    // Repack/rewrite once after a habitat move; next visible frame selects LOD
-    // from its real camera. Phase changes never restart the flock clock.
+    // Repack once after changing supports; retain every bird and flock clock.
     renderAll(null,true);lastLOD=-Infinity;
   }
   function dispose() {

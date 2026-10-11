@@ -236,7 +236,7 @@ export function createCampusAmbience({ camera } = {}) {
     const matrix = camera?.matrixWorld?.elements;
     const pan = matrix ? clamp((dx * matrix[0] + dz * matrix[2]) / Math.max(1, Math.hypot(dx, dz)), -.9, .9) : 0;
     const rolloff = (1 - smooth(180, 430, distance)) / Math.sqrt(1 + (distance / 28) ** 2);
-    bellMix = { gain: wanted() ? volume * rolloff * (1 - indoors * .3) : 0,
+    bellMix = { gain: wanted() && view.phase !== 'current' ? volume * rolloff * (1 - indoors * .3) : 0,
       distanceFeet: distance / FEET, pan, cutoff: Math.max(900, (7800 - indoors * 4800) / (1 + distance / 240)) };
     param(bellGain.gain, bellMix.gain, .18); param(bellPan.pan, pan, .12);
     param(bellFilter.frequency, bellMix.cutoff, .2);
@@ -270,7 +270,7 @@ export function createCampusAmbience({ camera } = {}) {
   }
 
   function mixChant() {
-    chantPresence = chapelPresence(view.position || camera?.position);
+    chantPresence = view.phase === 'current' ? 0 : chapelPresence(view.position || camera?.position);
     if (!wanted() || !chantPresence) { stopChant(); return; }
     // Independent loading/bus: neither failed outdoor recordings nor their
     // interior low-pass filter may silence or muffle the chapel recording.
@@ -438,7 +438,7 @@ export function createCampusAmbience({ camera } = {}) {
     const pan = matrix && distance > .01 ? clamp((dx * matrix[0] + dz * matrix[2]) / Math.max(1, Math.hypot(dx, dz)), -.8, .8) : 0;
     targets = {
       master: wanted() ? volume * (1 - indoors * .94) : 0,
-      birds: weatherEnabled ? 0 : .75 * birds, children: weatherEnabled ? 0 : .55 * day * nearby,
+      birds: weatherEnabled ? 0 : .75 * birds, children: weatherEnabled || view.phase === 'current' ? 0 : .55 * day * nearby,
       wind: .075 * (1 + .12 * Math.sin(elapsed * .19) + .07 * Math.sin(elapsed * .071)),
       rain: weatherEnabled ? .62 * (1 + .025 * Math.sin(context.currentTime * .083) + .015 * Math.sin(context.currentTime * .137)) : 0,
       thunder: weatherEnabled ? .90 : 0,

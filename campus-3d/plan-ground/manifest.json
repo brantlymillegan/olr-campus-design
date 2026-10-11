@@ -3,9 +3,10 @@
   "phases": [
     "new",
     "phase1",
-    "phase2"
+    "phase2",
+    "current"
   ],
-  "revision": "87c4ab389c3e9815",
+  "revision": "bb124c54c4eb8278",
   "boundsFeet": [
     -500,
     -275,
@@ -64,7 +65,19 @@
     "phase1-2-light-0": "plan-phase1-2-light-0.svg",
     "phase1-2-dark-0": "plan-phase1-2-dark-0.svg",
     "phase1-2-light-1": "plan-phase1-2-light-1.svg",
-    "phase1-2-dark-1": "plan-phase1-2-dark-1.svg"
+    "phase1-2-dark-1": "plan-phase1-2-dark-1.svg",
+    "current-0-light-0": "plan-current-0-light-0.svg",
+    "current-0-light-1": "plan-current-0-light-0.svg",
+    "current-1-light-0": "plan-current-0-light-0.svg",
+    "current-1-light-1": "plan-current-0-light-0.svg",
+    "current-2-light-0": "plan-current-0-light-0.svg",
+    "current-2-light-1": "plan-current-0-light-0.svg",
+    "current-0-dark-0": "plan-current-0-dark-0.svg",
+    "current-0-dark-1": "plan-current-0-dark-0.svg",
+    "current-1-dark-0": "plan-current-0-dark-0.svg",
+    "current-1-dark-1": "plan-current-0-dark-0.svg",
+    "current-2-dark-0": "plan-current-0-dark-0.svg",
+    "current-2-dark-1": "plan-current-0-dark-0.svg"
   },
   "files": {
     "plan-0-light-0.svg": {
@@ -329,6 +342,28 @@
       "oldBuildings": true,
       "roomCount": 15,
       "labels": 95,
+      "background": "rgba(24,24,24,1)"
+    },
+    "plan-current-0-light-0.svg": {
+      "sha256": "b207eb492ab65b5b81cebf19f17a19183f828b53df34733d3b08b02230ebcf9a",
+      "bytes": 216574,
+      "phase": "current",
+      "floor": 0,
+      "theme": "light",
+      "oldBuildings": false,
+      "roomCount": 0,
+      "labels": 33,
+      "background": "rgba(255,255,255,1)"
+    },
+    "plan-current-0-dark-0.svg": {
+      "sha256": "f56be14973ad9b3ebbcc14a51e4a21b8c69d8dfb74472073de2691567da266ec",
+      "bytes": 217742,
+      "phase": "current",
+      "floor": 0,
+      "theme": "dark",
+      "oldBuildings": false,
+      "roomCount": 0,
+      "labels": 33,
       "background": "rgba(24,24,24,1)"
     }
   }

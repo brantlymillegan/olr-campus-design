@@ -1,16 +1,16 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=acbc3933ddb9c971';
-import { createCampusDriving } from './campus-driving.js?v=6fb7ca4b999094b6';
-import { createCampusPlanGround } from './campus-plan-ground.js?v=dd2ab117442a0d37';
+import { createCampusDriving } from './campus-driving.js?v=9aafe93a78599b17';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=7b9c26fbf3c77800';
 import * as THREE from 'three';
 import { createCampusSnow } from './campus-snow.js?v=601d49e8139aa567';
-import { createCampusPhases } from './campus-phases.js?v=9a924f12f019c9b9';
+import { createCampusPhases } from './campus-phases.js?v=ee42b1d6c94cbce8';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=4eb1bae727228478';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=da63d5b7a4bca165';
-import { createCampusAmbience } from './campus-ambience.js?v=4692f0a3ce712e5d';
+import { createCampusBird } from './campus-bird.js?v=0e7e1507dfc123a1';
+import { createCampusAmbience } from './campus-ambience.js?v=c45215b916832d35';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
@@ -219,7 +219,7 @@ function requestDraw(ambientFrame = false) {
 function setDragMode(_mode, announce = true) {
   if (!renderer) return;
   renderer.domElement.dataset.dragMode = dragMode;
-  renderer.domElement.setAttribute('aria-label', 'Interactive new campus exterior model. Drag with a mouse or one finger to rotate and tilt. Right-drag, Shift-drag, or drag with two fingers to pan. Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.');
+  renderer.domElement.setAttribute('aria-label', 'Interactive current and proposed campus model. Drag with a mouse or one finger to rotate and tilt. Right-drag, Shift-drag, or drag with two fingers to pan. Two-finger trackpad scrolling pans; pinch or Control-scroll zooms. Twist with two fingers to rotate. Keyboard: arrow keys pan; Shift and arrow keys rotate or tilt; plus and minus zoom; zero resets.');
   if (announce) {
     status.textContent = 'Drag to turn and tilt the campus.';
     publishCamera();
@@ -468,7 +468,7 @@ function setupTimeOfDay() {
 }
 
 function setConstructionPhase(value) {
-  if (!['new', 'phase1', 'phase2'].includes(value)) return;
+  if (!['new', 'current', 'phase1', 'phase2'].includes(value)) return;
   constructionPhase = value; planOptions.phase = value;
   const geometryChanged = campusPhases?.setPhase(value);
   if (geometryChanged) {
@@ -478,7 +478,7 @@ function setConstructionPhase(value) {
     if (renderer) renderer.shadowMap.needsUpdate = true;
     if (sun) sun.shadow.needsUpdate = true;
   }
-  campusBird?.setPhase(value);
+  campusBird?.setPhase(value, campusPhases?.currentHabitats);
   driving?.setPhase(value);
   planGround?.setOptions(planOptions);
   setOldOutlines({ polygons: oldOutlinePolygons });
@@ -493,7 +493,7 @@ function setOldOutlines(value) {
   }
   if (!scene) return;
   if (oldOutlines && (typeof value === 'boolean' || !Array.isArray(value?.polygons))) {
-    oldOutlines.visible = oldOutlineVisible; requestDraw(); return;
+    oldOutlines.visible = oldOutlineVisible && constructionPhase !== 'current'; requestDraw(); return;
   }
   if (oldOutlines) {
     oldOutlines.traverse(object => { object.geometry?.dispose(); object.material?.dispose(); });
@@ -501,8 +501,9 @@ function setOldOutlines(value) {
   }
   oldOutlines = new THREE.Group();
   oldOutlines.name = 'Former building outlines';
-  oldOutlines.visible = oldOutlineVisible;
+  oldOutlines.visible = oldOutlineVisible && constructionPhase !== 'current';
   for (const polygon of oldOutlinePolygons) {
+    if (constructionPhase === 'current') continue;
     if (constructionPhase === 'phase1' && campusPhases?.isRetainedSchoolOutline(polygon)) continue;
     if (!Array.isArray(polygon) || polygon.length < 3 || !polygon.every(p => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))) continue;
     const points = [...polygon, polygon[0]].map(([x, y]) => new THREE.Vector3(x * FEET, 0.05, -y * FEET));
@@ -637,7 +638,7 @@ window.addEventListener('message', event => {
   }
   if (command === 'construction-phase') { setConstructionPhase(value); return; }
   if (command === 'plan-options' && value && typeof value === 'object') {
-    if (['new', 'phase1', 'phase2'].includes(value.phase) && value.phase !== constructionPhase) setConstructionPhase(value.phase);
+    if (['new', 'current', 'phase1', 'phase2'].includes(value.phase) && value.phase !== constructionPhase) setConstructionPhase(value.phase);
     if ([0, 1, 2].includes(value.floor)) planOptions.floor = value.floor;
     if (['light', 'dark'].includes(value.theme)) planOptions.theme = value.theme;
     if (typeof value.oldBuildings === 'boolean') planOptions.oldBuildings = value.oldBuildings;
@@ -769,7 +770,7 @@ function createInteriorLighting(data) {
   function update(activeCamera, firstPerson) {
     const x = activeCamera.position.x / FEET, y = -activeCamera.position.z / FEET, elevation = activeCamera.position.y / FEET;
     const building = firstPerson && buildings.find(b => {
-      if (constructionPhase === 'phase1' && b.id === 'b2') return false;
+      if (constructionPhase === 'current' || (constructionPhase === 'phase1' && b.id === 'b2')) return false;
       const height = Number.isFinite(b.interiorHeightFeet) && b.interiorHeightFeet > 0
         ? b.interiorHeightFeet : (b.floor === 1 ? 14.05 : 13.4);
       return elevation >= b.floorElevationFeet && elevation < b.floorElevationFeet + height && contains(b.polygonWorldFeet, x, y);
@@ -830,7 +831,7 @@ async function loadVehicle() {
 }
 
 async function loadConstructionPhaseConfig() {
-  const response = await fetch('./construction-phases.json?v=8a74374e61a9edfc');
+  const response = await fetch('./construction-phases.json?v=ec166692a1f008d6');
   if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
   return response.json();
 }
@@ -966,7 +967,7 @@ async function init() {
   campusBell = createCampusBell({
     model, config: bellConfig, canvas: renderer.domElement,
     getWalk: () => walk, getDriving: () => driving, getCamera: worldCamera,
-    isActive: () => active, getPresentation: () => walkPresentation,
+    isActive: () => active && constructionPhase !== 'current', getPresentation: () => walkPresentation,
     ambience: campusAmbience, requestDraw
   });
   walk = createCampusWalk({
@@ -1020,7 +1021,7 @@ async function init() {
   applyEmbeddedCamera();
   // BEGIN campus world ambience initialization
   campusBird = createCampusBird({ scene });
-  campusBird.setPhase(constructionPhase);
+  campusBird.setPhase(constructionPhase, campusPhases?.currentHabitats);
   campusWeather = createCampusWeather({
     scene, model, lighting: campusLighting, atmosphere: campusAtmosphere,
     onLightning: event => campusAmbience?.thunder(event)

@@ -2,6 +2,8 @@
 const FT = .3048, MPH = 2.2369362921;
 // Existing east-school parking bay, clear of the retained Phase 1 school.
 const PHASE_ONE_PARK = Object.freeze({x:131.9775,y:232.4285,heading:1.5769727});
+// Existing north lot; align with its measured parking bay.
+const CURRENT_PARK = Object.freeze({x:81.6725,y:328.140227,heading:-3.024316});
 export const DRIVING_LIMITS = Object.freeze({forward: 10.73, reverse: 3.58, acceleration: 3.4, brake: 8, steering: .51, wheelbase: 2.875, maxDt: .1, step: 1 / 120});
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const approach = (a, b, amount) => a < b ? Math.min(b, a + amount) : Math.max(b, a - amount);
@@ -126,12 +128,12 @@ export function createCampusDriving({THREE, scene, canvas, getWalk, requestDraw,
     return surface;
   }
   function setPhase(value) {
-    if (!['new','phase1','phase2'].includes(value) || !vehicle || driving || distance > .01) return false;
+    if (!['new','current','phase1','phase2'].includes(value) || !vehicle || driving || distance > .01) return false;
     const original = config.park;
     if (!original) return false;
     const atPark = p => Math.hypot(position.x-p.x*FT,position.z+p.y*FT)<.1;
-    if (!atPark(original) && !atPark(PHASE_ONE_PARK)) return false;
-    const destination = value==='phase1' ? PHASE_ONE_PARK : original;
+    if (!atPark(original) && !atPark(PHASE_ONE_PARK) && !atPark(CURRENT_PARK)) return false;
+    const destination = value==='current' ? CURRENT_PARK : value==='phase1' ? PHASE_ONE_PARK : original;
     if (atPark(destination)) return false;
     const x=destination.x*FT,z=-destination.y*FT,yaw=destination.heading??0;
     const surface=bodyPlacement(x,z,yaw);

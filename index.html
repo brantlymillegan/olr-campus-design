@@ -5618,7 +5618,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     else if (command === &#x27;snapshot&#x27;) {lastPublished=null;publish(value);return;}
     else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase2&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
     else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
-      if (document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27;) document.getElementById(&#x27;fc-shifted-tab&#x27;).click();
+      if (document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27;) return;
       floors.find(b=&gt;Number(b.dataset.campusFloor) === value)?.click();
     } else if (command === &#x27;zoom&#x27; &amp;&amp; [&#x27;in&#x27;,&#x27;out&#x27;,&#x27;fit&#x27;].includes(value)) window.olrMapZoom?.[value]();
     else if (command === &#x27;north&#x27;) window.olrMapCamera?.north();
@@ -6905,12 +6905,12 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const sendModel = (command, value) => modelFrame?.contentWindow?.postMessage({type:'olr-3d-command', command, value}, location.origin);
   const walkActive = () => driveState.driving||walkState.mode!=='aerial'||walkPending!==null;
   const navigating = () => ['walking','flying'].includes(walkState.mode);
-  const retainedNormalPlan = () => dimension==='2d'&&Boolean(modelCamera?.normalPose)&&!walkActive()&&mapState?.view!=='existing';
+  const retainedNormalPlan = () => dimension==='2d'&&Boolean(modelCamera?.normalPose)&&!walkActive();
   const firstPersonPlan = () => dimension==='2d'&&(navigating()||retainedNormalPlan());
   const captureNormalCamera = () => {
     try { if(modelReady&&!walkActive()&&(dimension==='3d'||retainedNormalPlan()))modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
   };
-  const constructionPhase = () => ['phase1','phase2'].includes(mapState?.view)?mapState.view:'new';
+  const constructionPhase = () => mapState?.view==='existing'?'current':['phase1','phase2'].includes(mapState?.view)?mapState.view:'new';
   const sendPlanOptions = () => sendModel('plan-options',{phase:constructionPhase(),floor:mapState?.floor??1,theme:window.olrThemeState?.().resolved||'light',oldBuildings:mapState?.oldBuildings!==false});
   const sendPlanWalk = () => sendMap('walk-state',{...walkState,presentation:dimension==='list'?'3d':dimension,aerialCamera:walkAerialCamera});
   function renderSurfaces(){
@@ -6944,7 +6944,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=17f58832e240029d';
+      modelFrame.src='./campus-3d/?embedded=1&v=1c1b93c8fdc5337d';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7015,7 +7015,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       walkPending='placing';
       navigationMode=command==='fly-place'?'flying':'walking';
       walkState={...walkState,navigationMode,feedback:''};
-      if(mapState?.view==='existing')sendMap('map','shifted');
       // Keep the original Normal view only for cancellation before placement.
       if(!wasActive){
         try { if(modelReady&&(dimension==='3d'||modelCamera?.normalPose))modelCamera=modelFrame.contentWindow.olr3d.camera; } catch {}
@@ -7208,14 +7207,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       requestAnimationFrame(focusWalk);
       return;
     }
-    if(modelCamera?.normalPose&&mapState?.view!=='existing'){
+    if(modelCamera?.normalPose){
       ensureModel();
       document.body.dataset.campusDimension=next;
       sendPlanWalk();syncModel();renderWalk();
       return;
     }
     if(next==='3d'){
-      if(mapState?.view==='existing')sendMap('map','shifted');
       if(previousDimension!=='list'||listReturnDimension!=='3d'||!modelCamera){
         modelCamera=mapState?.camera || null;
         requestMapCamera();
@@ -7262,10 +7260,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   }
   const connect=()=>{sendMap('connect');sendMap('drag-mode',dragMode);if(dimension==='3d'&&modelNeedsMapCamera)requestMapCamera();};
   maps.forEach(b=>b.addEventListener('click',()=>{
-    if(b.dataset.campusMap==='existing'){
-      if(walkActive())requestWalk('walk-exit');
-      setDimension('2d');
-    }
     sendMap('map',b.dataset.campusMap);
   }));
   oldBuildings?.addEventListener('click',()=>{
@@ -7335,7 +7329,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
         sendPlanWalk();
         if(!wasActive&&s.mode!=='aerial'&&mobile?.matches)expand(false);else renderWalk();
         if(s.mode==='aerial'){
-          if(placementNormalCamera&&mapState?.view!=='existing'){
+          if(placementNormalCamera){
             modelCamera=placementNormalCamera;
             sendModel('camera',modelCamera);
           }
@@ -7347,7 +7341,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
           requestAnimationFrame(focusWalk);
         }
       }
-      else if(s?.type==='olr-3d-state'&&(dimension==='3d'||(dimension==='2d'&&mapState?.view!=='existing'&&(s.camera?.normalPose||modelCamera?.normalPose)))&&validCamera(s.camera)){
+      else if(s?.type==='olr-3d-state'&&(dimension==='3d'||(dimension==='2d'&&(s.camera?.normalPose||modelCamera?.normalPose)))&&validCamera(s.camera)){
         modelCamera=s.camera;
         if(mapState)render({...mapState,...s.camera});
       }else if(s?.type==='olr-3d-key')window.olrCampusView.handleKey(s.key);
@@ -7372,17 +7366,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     if(s?.type!=='olr-tools-state'||!['existing','shifted','phase1','phase2'].includes(s.view)||![0,1,2].includes(s.floor)||![s.zoom,s.minZoom,s.maxZoom,s.bearing].every(Number.isFinite))return;
     const previous=mapState;mapState=s;
-    if(s.view==='existing'&&modelCamera?.normalPose){
-      placementNormalCamera=null;modelCamera=s.camera;
-      sendModel('camera',s.camera);
-      if(dimension==='2d')sendModel('active',false);
-    }
     if(!modelReady&&!walkActive()&&s.camera)sendModel('camera',{...s.camera,oldBuildings:s.oldBuildings});
     if(!previous||previous.view!==s.view)sendModel('construction-phase',constructionPhase());
     if(!previous||previous.view!==s.view||previous.floor!==s.floor||previous.oldBuildings!==s.oldBuildings)sendPlanOptions();
-    // Current campus has no corresponding 3D walking/collision model. Its map
-    // shortcut must leave the new-campus walk just like the Current button.
-    if(s.view==='existing'&&walkActive()&&!queuedWalk&&walkPending!=='exit')requestWalk('walk-exit');
     // A legacy 3D link must wait for the map to boot before requesting its
     // initial camera, otherwise the iframe can miss the snapshot command.
     if(initial3d&&s.camera){setDimension('3d');if(mobile?.matches)expand(true);}

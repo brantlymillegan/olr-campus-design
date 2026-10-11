@@ -1,11 +1,11 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "6541ebf6eb345e66fb346f79ac08bac1287e95b279ef7cac5c1b93bba4eb0324",
+  "revision": "0b0d32daeaedce42e7cd9ff050d3af43d15fb9627bbe95e36a3a20c14eef253d",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-765fb22ecff23f19c243ee7710695d07bebff89546aa5bb286ae05951804018b.json",
-    "sha256": "765fb22ecff23f19c243ee7710695d07bebff89546aa5bb286ae05951804018b",
-    "bytes": 45523,
+    "url": "./pdf-inputs/campus-pdf-inputs-98dc9218f730569e6f5e67ce43f198357f01fb8d88b65d7044b7fe4179a8e1b7.json",
+    "sha256": "98dc9218f730569e6f5e67ce43f198357f01fb8d88b65d7044b7fe4179a8e1b7",
+    "bytes": 45524,
     "mime": "application/json"
   },
   "generator": {
@@ -49,15 +49,15 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=17f58832e240029d",
-    "revision": "17f58832e240029d",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=1c1b93c8fdc5337d",
+    "revision": "1c1b93c8fdc5337d",
     "asset_revision": "06877f7eda392d34",
-    "files_sha256": "8b4588674dab86a5b72a2d26b97dccc37136f1ca1c759b2562b53421bb9849d8",
+    "files_sha256": "73fa6ac24b4daa6ec5edbfd5cb30ffd7759948aab4417a73fc2725efe2634d90",
     "files": [
       {
         "url": "./campus-3d/campus-ambience.js",
-        "sha256": "4692f0a3ce712e5dfbe4e30e9c586ac1bbea06fc6a05fdb888dba56ef38366f0",
-        "bytes": 35614,
+        "sha256": "c45215b916832d351ea14c02a95910dcfc07b7bd128f6e664082528699d10a0f",
+        "bytes": 35701,
         "mime": "text/javascript"
       },
       {
@@ -74,8 +74,8 @@
       },
       {
         "url": "./campus-3d/campus-bird.js",
-        "sha256": "da63d5b7a4bca165367237ac6af1d04a8a95425edb492499376be6cf47d5afdd",
-        "bytes": 33825,
+        "sha256": "0e7e1507dfc123a1863e1d2560379694c2bb0a6f03dabe10e7e18cb9286eeb35",
+        "bytes": 34047,
         "mime": "text/javascript"
       },
       {
@@ -86,8 +86,8 @@
       },
       {
         "url": "./campus-3d/campus-driving.js",
-        "sha256": "6fb7ca4b999094b613c2492e83c1a284527f84f1293347d3d7146ea0e14366af",
-        "bytes": 19267,
+        "sha256": "9aafe93a78599b172b3b8ccacbd3614b21dc697820f77ac6dc3013b659b6de3b",
+        "bytes": 19477,
         "mime": "text/javascript"
       },
       {
@@ -110,14 +110,14 @@
       },
       {
         "url": "./campus-3d/campus-phases.js",
-        "sha256": "9a924f12f019c9b94b61a76ac07bec97ad47d8271e84252e16befbfc3d218165",
-        "bytes": 9573,
+        "sha256": "ee42b1d6c94cbce89a43eefb1db65a25d4bd005014b945dc2ffecd33b3e87994",
+        "bytes": 12730,
         "mime": "text/javascript"
       },
       {
         "url": "./campus-3d/campus-plan-ground.js",
-        "sha256": "dd2ab117442a0d37d4dc38336bc68fcab0a25faeb8ad0559499b9bf8069a7b64",
-        "bytes": 10297,
+        "sha256": "7b9c26fbf3c7780064d76e574cf522b75f1fe238da921b2757be629ccf802607",
+        "bytes": 10308,
         "mime": "text/javascript"
       },
       {
@@ -146,8 +146,8 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "69490ddc1ac6d0629ddf2f0477cd716d213513dc51c64cb3dd6c739914e23dd5",
-        "bytes": 4343,
+        "sha256": "f440aa9a594dea200a7a4b9496f8068dc2656c628ea2d1e7d37800b24410ee9c",
+        "bytes": 4315,
         "mime": "text/html"
       },
       {
@@ -158,8 +158,8 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "bb31a150fe536c72d6bcaf6d17fefdcdaf4e12614bcb0945977aea91cdc65201",
-        "bytes": 60779,
+        "sha256": "32ed1b4d9c5d46bafe3f7d0da3e326cda896e36268c9336d30a0f214aa6621ba",
+        "bytes": 61064,
         "mime": "text/javascript"
       }
     ]
