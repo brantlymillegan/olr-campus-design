@@ -14,7 +14,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=46f2067fe8d4f5cf';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
-import { loadHashedCampusModel } from './campus-model-loader.js?v=0caba3a9d42da42b';
+import { loadHashedCampusModel } from './campus-model-loader.js?v=d8050bfa5304012e';
 import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9ab9f83670763e99';
 
 const EMBEDDED = window.parent !== window;
@@ -30,7 +30,7 @@ let embeddedCamera = { center: { x: 15, y: 85 }, scale: 1, bearing: CAMPUS_BEARI
 let savedEmbeddedCamera = null;
 const dragMode = 'rotate';
 let campusLighting = null, campusAtmosphere = null, campusInteriorLighting = null, timeOfDay = 840, lightingDirty = true;
-const ASSET_REVISION = '06877f7eda392d34';
+const ASSET_REVISION = '57d8eb3689360c64';
 const wrap = document.getElementById('canvas-wrap');
 const status = document.getElementById('status');
 const loading = document.getElementById('loading');
@@ -837,12 +837,12 @@ async function loadVehicle() {
 }
 
 async function loadConstructionPhaseConfig() {
-  const response = await fetch('./construction-phases.json?v=4d6d2c52baac2219');
+  const response = await fetch('./construction-phases.json?v=42b5f19ac323ff60');
   if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
   return response.json();
 }
 async function loadBellConfig() {
-  const url = './bell-config.json?v=9ebfc56f4ae339b2';
+  const url = './bell-config.json?v=2487cfebee5cf909';
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Bell configuration HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
