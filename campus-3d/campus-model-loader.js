@@ -1,5 +1,5 @@
 // Transport compression only: GLTFLoader receives the exact original GLB bytes.
-const TRANSPORT_MANIFEST = './model-transports-d7b3b4821a6f9f2dd6623d0fc534a9338760efd9171f3da3e3e3116bbbb75452.json';
+const TRANSPORT_MANIFEST = './model-transports-907c6d7ad5ae703305bc328dc89d449e63c10ae8a0550b9674e563abf967771c.json';
 const CACHE_NAME = 'olr-campus-model-transport-v1';
 const MAX_MODEL_BYTES = 256 * 1024 * 1024;
 const DIGEST = /^[a-f0-9]{64}$/;
