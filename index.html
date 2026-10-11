@@ -7164,6 +7164,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     startQueuedWalk();
     startSound();
   }
+  function renderFloorControls(view=mapState?.view) {
+    const disabled=dimension==='3d'||view==='existing';
+    floorGroup.setAttribute('aria-disabled',String(disabled));
+    floors.forEach(button=>{button.disabled=disabled;});
+  }
   function setDimension(next) {
     if(!['2d','3d','list'].includes(next)||next===dimension)return;
     // A direct List link can be opened before the plan has painted its first
@@ -7173,6 +7178,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     captureNormalCamera();
     initial3d=false;
     dimension=next;
+    renderFloorControls();
     const route=new URL(location.href);
     if(next==='2d')route.searchParams.delete('view');else route.searchParams.set('view',next);
     history.replaceState(history.state,'',route);
@@ -7282,10 +7288,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     if(!previous||previous.view!==s.view){
       maps.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.campusMap===s.view)));
       floorGroup.hidden=false;
-      floorGroup.setAttribute('aria-disabled',String(s.view==='existing'));
-      floors.forEach(b=>{b.disabled=s.view==='existing';});
       if(oldBuildings)oldBuildings.disabled=s.view==='existing';
     }
+    renderFloorControls(s.view);
     if(!previous||previous.floor!==s.floor)floors.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.campusFloor)===s.floor)));
     if(oldBuildings&&(!previous||previous.oldBuildings!==(s.oldBuildings!==false)))oldBuildings.setAttribute('aria-pressed',String(s.oldBuildings!==false));
     zoom.forEach(b=>{
@@ -7396,7 +7401,10 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       if(dimension!=='3d'&&!firstPersonPlan())return false;
       if(key==='f'&&(driveState.driving||driveState.near)){sendModel('drive-toggle');return true;}
       if(key==='o'){oldBuildings.click();return true;}
-      if(key==='b'||key==='f'){setDimension('2d');sendMap('floor',key==='b'?0:mapState?.floor===1?2:1);return true;}
+      if(key==='b'||key==='f'){
+        if(dimension!=='3d')sendMap('floor',key==='b'?0:mapState?.floor===1?2:1);
+        return true;
+      }
       if(['+','=','-','0','n'].includes(key)){send(key==='n'?'north':'zoom',key==='0'?'fit':key==='-'?'out':'in');return true;}
       return false;
     }

@@ -1,10 +1,10 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "0b9f1ed4856898ebf91a95c1d6b2a35baeda64e5964b83684e69d8951977a347",
+  "revision": "3a35ca7d53d2507b914d305816764c2faa4a764f88b5cc708a19df444c36d703",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-e87689ac12c84d20024f5b0f7644a0518bdf8fbda8e347176b5a5a5059097342.json",
-    "sha256": "e87689ac12c84d20024f5b0f7644a0518bdf8fbda8e347176b5a5a5059097342",
+    "url": "./pdf-inputs/campus-pdf-inputs-e549bbf4354d0766dd32eca8ea103315641332cd2387a523c0fb9d02a56762ab.json",
+    "sha256": "e549bbf4354d0766dd32eca8ea103315641332cd2387a523c0fb9d02a56762ab",
     "bytes": 45524,
     "mime": "application/json"
   },
