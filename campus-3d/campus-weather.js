@@ -144,6 +144,28 @@ void main() {
 }
 `;
 
+// A narrow bright core and soft edge remain readable at a distant sky scale.
+// This single transparent batch replaces platform-dependent one-pixel lines.
+const boltVertex = /* glsl */`
+attribute float aAcross;
+varying float vAcross;
+void main() {
+  vAcross = aAcross;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+const boltFragment = /* glsl */`
+uniform float uOpacity;
+varying float vAcross;
+void main() {
+  float core = 1.0 - smoothstep(.08, .24, abs(vAcross));
+  float halo = exp(-7.0 * vAcross * vAcross);
+  vec3 color = mix(vec3(.46, .64, 1.0), vec3(.94, .97, 1.0), core);
+  gl_FragColor = vec4(color, uOpacity * (.22 * halo + .90 * core));
+  #include <colorspace_fragment>
+}
+`;
+
 /** Transient rain never enters the campus model, collider, or download export.
  * update(nowSeconds, {camera, active}) pauses safely across presentation changes.
  */
@@ -170,8 +192,8 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
   rain.raycast = () => {}; rain.visible = false;
   scene.add(rain);
 
-  // One short, distant fork. Depth testing keeps it behind buildings. A single
-  // smooth pulse every ~20–38s avoids repeated flashes and flicker/strobing.
+  // One distant fork, depth-tested behind buildings, with a single smooth
+  // pulse. There are no repeated sub-flashes or full-screen exposure jumps.
   const boltPoints = [];
   let previous = [0, 24, 0];
   for (let i = 1; i <= 12; i++) {
@@ -181,22 +203,35 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
     previous = next;
   }
   const boltGeometry = new THREE.BufferGeometry();
-  boltGeometry.setAttribute('position', new THREE.Float32BufferAttribute(boltPoints, 3));
-  const boltMaterial = new THREE.LineBasicMaterial({ color: 0xd7e4ff, transparent: true, opacity: 0,
-    depthTest: true, depthWrite: false, toneMapped: false });
-  const bolt = new THREE.LineSegments(boltGeometry, boltMaterial);
+  const ribbons = [], across = [], ribbonIndices = [];
+  for (let i = 0; i < boltPoints.length; i += 6) {
+    const ax = boltPoints[i], ay = boltPoints[i + 1], bx = boltPoints[i + 3], by = boltPoints[i + 4];
+    const dx = bx - ax, dy = by - ay, length = Math.hypot(dx, dy);
+    const halfWidth = .70 * (.55 + .45 * Math.max(ay, by) / 24);
+    const px = -dy / length * halfWidth, py = dx / length * halfWidth, start = ribbons.length / 3;
+    ribbons.push(ax - px, ay - py, 0, ax + px, ay + py, 0, bx - px, by - py, 0, bx + px, by + py, 0);
+    across.push(-1, 1, -1, 1);
+    ribbonIndices.push(start, start + 1, start + 2, start + 2, start + 1, start + 3);
+  }
+  boltGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ribbons, 3));
+  boltGeometry.setAttribute('aAcross', new THREE.Float32BufferAttribute(across, 1));
+  boltGeometry.setIndex(ribbonIndices);
+  const boltMaterial = new THREE.ShaderMaterial({ vertexShader: boltVertex, fragmentShader: boltFragment,
+    uniforms: { uOpacity: { value: 0 } }, transparent: true, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, depthTest: true, depthWrite: false, toneMapped: false, fog: false });
+  const bolt = new THREE.Mesh(boltGeometry, boltMaterial);
   bolt.name = 'Weather • distant sky lightning'; bolt.visible = false; bolt.frustumCulled = false; bolt.raycast = () => {};
   scene.add(bolt);
   const media = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   let prefersReducedMotion = reducedMotion == null ? Boolean(media?.matches) : Boolean(reducedMotion);
-  let enabled = false, active = false, disposed = false, elapsed = 0, lastNow = null;
-  let lightningCount = 0, thunderCount = 0, flashStarted = -Infinity, nextLightning = 9 + random() * 4, flashIntensity = 0;
+  let enabled = false, active = false, disposed = false, elapsed = 0, stormElapsed = 0, lastNow = null;
+  let lightningCount = 0, thunderCount = 0, flashStarted = -Infinity, nextLightning = 2.5 + random() * 1.5, flashIntensity = 0;
   let lastCamera = null;
-  const direction = new THREE.Vector3(), boltTarget = new THREE.Vector3();
+  const direction = new THREE.Vector3(), viewDirection = new THREE.Vector3(), boltTarget = new THREE.Vector3();
 
   function clearFlash() {
     flashStarted = -Infinity; flashIntensity = 0;
-    bolt.visible = false; boltMaterial.opacity = 0;
+    bolt.visible = false; boltMaterial.uniforms.uOpacity.value = 0;
     atmosphere?.setLightning?.(0);
   }
   const onMotionChange = event => {
@@ -215,7 +250,7 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
     lighting?.setWeather?.(enabled);
     atmosphere?.setWeather?.(enabled);
     rain.visible = enabled && active && Boolean(lastCamera);
-    if (enabled) nextLightning = elapsed + 9 + random() * 4;
+    if (enabled) nextLightning = stormElapsed + 2.5 + random() * 1.5;
     return true;
   }
   function setActive(value) {
@@ -232,33 +267,51 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
     setActive(Boolean(visibility) && !globalThis.document?.hidden);
     if (camera?.isCamera) lastCamera = camera;
     if (!enabled || !active || !lastCamera || !Number.isFinite(now)) { lastNow = null; rain.visible = false; return false; }
-    const dt = lastNow == null ? 0 : clamp(now - lastNow, 0, .08);
-    lastNow = now; elapsed += dt;
+    // Keep particle motion bounded after a slow frame, but schedule weather
+    // against real active seconds. A low frame rate must not postpone storms.
+    const activeDelta = lastNow == null ? 0 : Math.max(0, now - lastNow);
+    lastNow = now; elapsed += Math.min(activeDelta, .08); stormElapsed += activeDelta;
     lastCamera.getWorldPosition(uniforms.uCenter.value);
     uniforms.uTime.value = elapsed;
     uniforms.uOpacity.value = THREE.MathUtils.lerp(.24, .46, lighting?.state?.daylight ?? 1);
     rain.visible = true;
-    if (elapsed >= nextLightning) {
-      nextLightning = elapsed + 20 + random() * 18;
-      lastCamera.getWorldDirection(direction); direction.y = 0;
+    if (stormElapsed >= nextLightning) {
+      // Schedule from this event rather than catching up missed events in a
+      // burst after a long frame. Hidden/inactive time never advances this clock.
+      nextLightning = stormElapsed + 12 + random() * 10;
+      lastCamera.getWorldDirection(viewDirection); direction.copy(viewDirection); direction.y = 0;
       if (direction.lengthSq() < .001) direction.set(0, 0, -1); else direction.normalize();
-      direction.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (random() - .5) * 1.1);
+      // Keep the event within even a narrow portrait view. Previously a
+      // +/-31 degree offset often put the only bolt outside the mobile frame.
+      const halfFov = Math.atan(Math.tan((lastCamera.fov || 50) * Math.PI / 360) * (lastCamera.aspect || 1));
+      const yawSpread = Math.min(.32, halfFov * .55);
+      direction.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (random() - .5) * 2 * yawSpread);
       if (!prefersReducedMotion) {
-        flashStarted = elapsed; lightningCount++;
-        bolt.position.copy(uniforms.uCenter.value).addScaledVector(direction, 175);
-        bolt.position.y = Math.max(18, uniforms.uCenter.value.y + 10);
+        flashStarted = stormElapsed; lightningCount++;
+        let distance = 175, baseHeight = Math.max(18, uniforms.uCenter.value.y + 10);
+        if (uniforms.uCenter.value.y > 30 && viewDirection.y < -.2) {
+          // A downward aerial view cannot see a bolt placed above its camera.
+          // Place the same vertical stroke farther along the visible ground,
+          // with a cloud-to-ground altitude instead of raising it with the eye.
+          const centerHeight = clamp(uniforms.uCenter.value.y * .22, 12, 30);
+          const slope = -viewDirection.y / Math.max(.01, Math.hypot(viewDirection.x, viewDirection.z));
+          distance = clamp((uniforms.uCenter.value.y - centerHeight) / slope, 35, 175);
+          baseHeight = Math.max(.5, centerHeight - 12);
+        }
+        bolt.position.copy(uniforms.uCenter.value).addScaledVector(direction, distance);
+        bolt.position.y = baseHeight;
         boltTarget.copy(uniforms.uCenter.value); boltTarget.y = bolt.position.y;
         bolt.lookAt(boltTarget);
       }
       // Reduced motion suppresses the visual flash, while quiet distant
       // thunder still follows the visitor's existing sound/mute preference.
       thunderCount++;
-      onLightning?.({ strength: .48, delaySeconds: .65 + random() * .8, pan: clamp(direction.x * .45, -.6, .6) });
+      onLightning?.({ strength: .70 + random() * .15, delaySeconds: 1 + random(), pan: clamp(direction.x * .45, -.6, .6) });
     }
-    const phase = (elapsed - flashStarted) / .48;
-    flashIntensity = !prefersReducedMotion && phase >= 0 && phase < 1 ? Math.sin(phase * Math.PI) * .42 : 0;
+    const phase = stormElapsed - flashStarted;
+    flashIntensity = !prefersReducedMotion && phase >= 0 && phase < 1 ? Math.sin(phase * Math.PI) * .62 : 0;
     bolt.visible = flashIntensity > .001;
-    boltMaterial.opacity = flashIntensity * 1.7;
+    boltMaterial.uniforms.uOpacity.value = flashIntensity * 1.5;
     atmosphere?.setLightning?.(flashIntensity);
     return true;
   }
@@ -281,7 +334,9 @@ export function createCampusWeather({ scene, model, lighting, atmosphere, onLigh
     shelterHeightAt: (x, z) => roof.sample(x, z),
     get state() { return Object.freeze({ enabled, active, visible: rain.visible, flashIntensity, lightningCount, thunderCount,
       rainDropCount: RAIN_DROPS, roofMapReady: true, roofMap: roof.diagnostics,
-      elapsedSeconds: elapsed, nextLightningInSeconds: Math.max(0, nextLightning - elapsed),
+      elapsedSeconds: elapsed, stormElapsedSeconds: stormElapsed, nextLightningInSeconds: Math.max(0, nextLightning - stormElapsed),
+      lightningPulseSeconds: 1, lightningBoltTriangles: ribbonIndices.length / 3,
+      lightningBoltPositionMeters: bolt.position.toArray(), lightningBoltMaximumWidthMeters: 1.4,
       cameraPosition: uniforms.uCenter.value.toArray(),
       cameraUnderRoof: roof.sample(uniforms.uCenter.value.x, uniforms.uCenter.value.z) > uniforms.uCenter.value.y,
       reducedMotion: prefersReducedMotion, disposed, modelGeometryChanged: false,

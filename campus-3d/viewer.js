@@ -6,10 +6,10 @@ import { createCampusPlanGround } from './campus-plan-ground.js?v=dd2ab117442a0d
 import * as THREE from 'three';
 import { createCampusPhases } from './campus-phases.js?v=9a924f12f019c9b9';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
-import { createCampusWeather } from './campus-weather.js?v=80bf5a4e96e057f8';
+import { createCampusWeather } from './campus-weather.js?v=4eb1bae727228478';
 // BEGIN campus world ambience imports
 import { createCampusBird } from './campus-bird.js?v=2f0c0894e83e3c06';
-import { createCampusAmbience } from './campus-ambience.js?v=119101d784830062';
+import { createCampusAmbience } from './campus-ambience.js?v=4692f0a3ce712e5d';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';

@@ -83,7 +83,8 @@ export function chapelPresence(position) {
 
 export function createCampusAmbience({ camera } = {}) {
   let context, master, lowpass, birdGain, childrenGain, childPan, windGain, windFilter;
-  let rainGain, rainFilter, thunderGain, thunderFilter, rainSource = null;
+  let rainGain, rainFilter, thunderGain, thunderFilter;
+  let rainSources = [];
   let bellGain, bellFilter, bellPan, bellLimiter, bellStrikes = 0, lastBellStrike = -Infinity;
   let bellPosition = { x: 261.5 * FEET, y: 63.6 * FEET, z: -104.5 * FEET };
   let bellMix = { gain: 0, distanceFeet: 0, pan: 0, cutoff: 7800 };
@@ -135,23 +136,35 @@ export function createCampusAmbience({ camera } = {}) {
     rainFilter.frequency.value = 6200; rainFilter.Q.value = .35; rainFilter.connect(rainGain);
     thunderGain = context.createGain(); thunderGain.gain.value = 0; thunderGain.connect(lowpass);
     thunderFilter = context.createBiquadFilter(); thunderFilter.type = 'lowpass';
-    thunderFilter.frequency.value = 340; thunderFilter.Q.value = .45; thunderFilter.connect(thunderGain);
-    // Generated once per context; no sound files or per-frame audio allocation.
-    const rain = context.createBuffer(2, context.sampleRate * 6, context.sampleRate);
-    for (let channel = 0; channel < 2; channel++) {
-      const data = rain.getChannelData(channel); let soft = 0;
-      for (let i = 0; i < data.length; i++) {
+    thunderFilter.frequency.value = 850; thunderFilter.Q.value = .45; thunderFilter.connect(thunderGain);
+    // Two independent continuous beds have no shared short repeat. The last
+    // quarter-second used to converge to one constant sample, which removed
+    // the hiss at every six-second boundary. Here each join overlaps actual
+    // noise with equal-power weights; its energy never fades toward silence.
+    // 24 kHz comfortably covers the rain filter and keeps both beds under 4 MiB.
+    const rainRate = Math.min(context.sampleRate, 24000);
+    function rainBed(seconds) {
+      const buffer = context.createBuffer(1, Math.round(rainRate * seconds), rainRate);
+      const data = buffer.getChannelData(0), edge = Math.round(rainRate * .6);
+      const tail = new Float32Array(edge); let soft = 0;
+      const smoothing = Math.exp(-2 * Math.PI * 420 / rainRate);
+      for (let i = 0; i < data.length + edge; i++) {
         const white = Math.random() * 2 - 1;
-        soft = .92 * soft + .08 * white;
-        data[i] = white * .18 + soft * .44;
+        soft = smoothing * soft + (1 - smoothing) * white;
+        const sample = white * .18 + soft * .44;
+        if (i < data.length) data[i] = sample;
+        else tail[i - data.length] = sample;
       }
-      const edge = Math.round(context.sampleRate * .25);
+      // At the wrap, the tail continues the preceding noise sample. Blend
+      // back to the original head without losing uncorrelated-noise power.
       for (let i = 0; i < edge; i++) {
-        const mix = i / (edge - 1);
-        data[data.length - edge + i] = data[data.length - edge + i] * (1 - mix) + data[0] * mix;
+        const angle = i / (edge - 1) * Math.PI / 2;
+        data[i] = tail[i] * Math.cos(angle) + data[i] * Math.sin(angle);
       }
+      return buffer;
     }
-    buffers.rain = rain;
+    buffers.rain = rainBed(19);
+    buffers.rainDetail = rainBed(23);
     const thunder = context.createBuffer(1, context.sampleRate * 8, context.sampleRate);
     const data = thunder.getChannelData(0); let low = 0, deep = 0, peak = 0;
     for (let i = 0; i < data.length; i++) {
@@ -367,7 +380,7 @@ export function createCampusAmbience({ camera } = {}) {
   function cleanup(record) {
     sources.delete(record); record.node.onended = null;
     record.node.disconnect(); record.gain.disconnect(); record.panner?.disconnect();
-    if (rainSource === record) rainSource = null;
+    if (record.kind === 'rain') rainSources = rainSources.filter(source => source !== record);
     if (chantSource === record) chantSource = null;
     if (record.interiorTrack?.source === record) record.interiorTrack.source = null;
   }
@@ -381,11 +394,16 @@ export function createCampusAmbience({ camera } = {}) {
     if (!context || !running) return;
     if (weatherEnabled) {
       weatherGraph();
-      if (rainSource?.stopping) stopSource(rainSource);
-      if (!rainSource) rainSource = source(buffers.rain, rainFilter, { loop: true, fade: 1.2, kind: 'rain' });
-    } else if (rainSource && !rainSource.stopping) {
-      rainSource.stopping = true;
-      rainSource.node.stop(context.currentTime + 1.8);
+      for (const record of [...rainSources]) if (record.stopping) stopSource(record);
+      if (!rainSources.length) {
+        rainSources.push(source(buffers.rain, rainFilter, { loop: true, pan: -.65, fade: 1.2, kind: 'rain' }));
+        rainSources.push(source(buffers.rainDetail, rainFilter, { loop: true, pan: .65, fade: 1.2, kind: 'rain' }));
+      }
+    } else {
+      for (const record of rainSources) if (!record.stopping) {
+        record.stopping = true;
+        record.node.stop(context.currentTime + 1.8);
+      }
     }
   }
 
@@ -422,7 +440,8 @@ export function createCampusAmbience({ camera } = {}) {
       master: wanted() ? volume * (1 - indoors * .94) : 0,
       birds: weatherEnabled ? 0 : .75 * birds, children: weatherEnabled ? 0 : .55 * day * nearby,
       wind: .075 * (1 + .12 * Math.sin(elapsed * .19) + .07 * Math.sin(elapsed * .071)),
-      rain: weatherEnabled ? .62 : 0, thunder: weatherEnabled ? .65 : 0,
+      rain: weatherEnabled ? .62 * (1 + .025 * Math.sin(context.currentTime * .083) + .015 * Math.sin(context.currentTime * .137)) : 0,
+      thunder: weatherEnabled ? .90 : 0,
       cutoff: 16000 * (1 - indoors) + 850 * indoors, pan
     };
     param(master.gain, targets.master, 1.1); param(birdGain.gain, targets.birds, 1.5);
@@ -564,7 +583,8 @@ export function createCampusAmbience({ camera } = {}) {
       enabled, volume, unlocked, ready: ready || indoorReady || Boolean(weatherEnabled && buffers.rain), loading: indoorTracks.length ? indoorTracks.some(track => track.loading) : Boolean(loading), active: Boolean(view.active),
       playing: (running || indoorPlaying) && context?.state === 'running', contextState: context?.state || 'locked',
       sourceCount: sources.size, error: chantPresence > 0 && chantError ? chantError : indoorTracks.length ? indoorTracks.find(track => track.error)?.error || null : weatherEnabled && running ? null : error, interior: view.interior,
-      weatherEnabled, rainPlaying: Boolean(rainSource && !rainSource.stopping && running && context?.state === 'running'),
+      weatherEnabled, rainPlaying: Boolean(rainSources.some(source => !source.stopping) && running && context?.state === 'running'),
+      rainSourceCount: rainSources.length, rainLoopSeconds: buffers.rain ? [buffers.rain.duration, buffers.rainDetail.duration] : [],
       thunderSourceCount: [...sources].filter(record => record.kind === 'thunder').length,
       bell: { strikeCount: bellStrikes, activeVoices: [...sources].filter(record => record.kind.startsWith('bell')).length,
         enabled: enabled && volume > 0, ready: Boolean(buffers.bell), position: { ...bellPosition }, ...bellMix },
