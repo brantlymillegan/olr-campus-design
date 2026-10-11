@@ -1,17 +1,17 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "921fa0c0bced78edc43f44641b7a67942949bad29fd9a54fd1a2899e15600b38",
+  "revision": "6541ebf6eb345e66fb346f79ac08bac1287e95b279ef7cac5c1b93bba4eb0324",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-3bbfb8bdb9e2a4cd58c29de4b0200515aca13ab18d24bafc52487fa9422577d7.json",
-    "sha256": "3bbfb8bdb9e2a4cd58c29de4b0200515aca13ab18d24bafc52487fa9422577d7",
-    "bytes": 45274,
+    "url": "./pdf-inputs/campus-pdf-inputs-765fb22ecff23f19c243ee7710695d07bebff89546aa5bb286ae05951804018b.json",
+    "sha256": "765fb22ecff23f19c243ee7710695d07bebff89546aa5bb286ae05951804018b",
+    "bytes": 45523,
     "mime": "application/json"
   },
   "generator": {
-    "url": "./pdf-inputs/pdf-compose-03eb7ceda483f62eabe1209816bfeca6e19b73baf4bde3cc3057de36f134f39c.js",
-    "sha256": "03eb7ceda483f62eabe1209816bfeca6e19b73baf4bde3cc3057de36f134f39c",
-    "bytes": 31433,
+    "url": "./pdf-inputs/pdf-compose-5ed20a654e845b505a92d6027975d1d21528844393fc3136354f029f06c57a29.js",
+    "sha256": "5ed20a654e845b505a92d6027975d1d21528844393fc3136354f029f06c57a29",
+    "bytes": 31667,
     "mime": "text/javascript"
   },
   "libraries": {
@@ -49,10 +49,10 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=c976b51762b3bf03",
-    "revision": "c976b51762b3bf03",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=17f58832e240029d",
+    "revision": "17f58832e240029d",
     "asset_revision": "06877f7eda392d34",
-    "files_sha256": "34b77518fa4707985d363181e4fff9c55e4c025e59b3d0e81c435526455fb6e4",
+    "files_sha256": "8b4588674dab86a5b72a2d26b97dccc37136f1ca1c759b2562b53421bb9849d8",
     "files": [
       {
         "url": "./campus-3d/campus-ambience.js",
@@ -98,14 +98,14 @@
       },
       {
         "url": "./campus-3d/campus-model-loader.js",
-        "sha256": "33b52783cb46fcd803d6dd1f0ae313ae5fa8ce8ab3a448b5273fc24122e7dde9",
-        "bytes": 13220,
+        "sha256": "0caba3a9d42da42b6df522e987beb410b17a1b30bfdaedaa27655a7dcbfcc29e",
+        "bytes": 14325,
         "mime": "text/javascript"
       },
       {
         "url": "./campus-3d/campus-pdf-capture.js",
-        "sha256": "9790fdeed1e179596dfbc8986002bc9c9e54f5fa46aa2958d7eb2d4b13dcdf68",
-        "bytes": 15366,
+        "sha256": "9ab9f83670763e9943146e48ef8cc4fd61e65dd5a349ec9950efdab5153ee097",
+        "bytes": 15617,
         "mime": "text/javascript"
       },
       {
@@ -134,8 +134,8 @@
       },
       {
         "url": "./campus-3d/campus-walk.js",
-        "sha256": "0f0ef5bd65504899d674ed7b058032a6194c8f109c2be3608d3ab02c8e84175d",
-        "bytes": 48919,
+        "sha256": "acbc3933ddb9c9719a3c243e4561dbdf70ac5c6fb81ff05f0dd66b9f5218b71c",
+        "bytes": 49350,
         "mime": "text/javascript"
       },
       {
@@ -146,7 +146,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "ac77b6932b3ac65feb1b942d702a43480fd12fd7c42a8434e93e5637ab2708c3",
+        "sha256": "69490ddc1ac6d0629ddf2f0477cd716d213513dc51c64cb3dd6c739914e23dd5",
         "bytes": 4343,
         "mime": "text/html"
       },
@@ -158,22 +158,22 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "33642bc247e752c0fac0609269e475871380d50f2abb617546808c7ae38e22ef",
-        "bytes": 60583,
+        "sha256": "bb31a150fe536c72d6bcaf6d17fefdcdaf4e12614bcb0945977aea91cdc65201",
+        "bytes": 60779,
         "mime": "text/javascript"
       }
     ]
   },
   "camera_config": {
-    "url": "./pdf-inputs/cameras-9986035235e825f242c79b3b1727ba6187e520a58ea916bdfaf455f86fdb672d.json",
-    "sha256": "9986035235e825f242c79b3b1727ba6187e520a58ea916bdfaf455f86fdb672d",
-    "bytes": 10807,
+    "url": "./pdf-inputs/cameras-343a959fb5e975e9c9d39557606ceff4c066cc238e757c8f16ed754c9a78c454.json",
+    "sha256": "343a959fb5e975e9c9d39557606ceff4c066cc238e757c8f16ed754c9a78c454",
+    "bytes": 11470,
     "mime": "application/json"
   },
   "cover_view_id": "playground-gardens",
   "specifications_room_count": 63,
   "map_count": 4,
-  "perspective_count": 14,
+  "perspective_count": 15,
   "perspective_page_count": 10,
   "download_date": {
     "version": 2,

@@ -216,17 +216,36 @@ export async function loadHashedCampusModel(loader, url, onProgress) {
   let result, source = 'network', encoding = 'raw', transport = entry;
   for (const format of ['brotli', 'gzip']) {
     if (!entry[format]) continue;
-    let codec;
-    try { codec = await decoder(format); }
-    catch { metrics[`${format}FallbackReason`] = 'DECODER_UNAVAILABLE'; continue; }
-    if (!codec) { metrics[`${format}FallbackReason`] = 'GZIP_UNAVAILABLE'; continue; }
     const candidate = entry[format];
-    let cached;
-    try { cached = cache ? await cache.match(candidate.url) : null; }
-    catch { metrics.cacheUnavailable = true; }
-    if (cached) {
+    // Decoder imports/WASM initialization and model I/O are independent. Start
+    // both now, while retaining the cache lookup before any network request.
+    const request = new AbortController();
+    const preparing = decoder(format).then(codec => {
+      if (!codec) request.abort();
+      return codec;
+    }, error => { request.abort(); throw error; });
+    const receiving = (async () => {
+      let cached;
+      try { cached = cache ? await cache.match(candidate.url) : null; }
+      catch { metrics.cacheUnavailable = true; }
+      if (cached) return {response: cached, source: 'cache'};
+      return {response: await fetch(candidate.url, {cache: 'force-cache', signal: request.signal}), source: 'network'};
+    })();
+    const [prepared, received] = await Promise.allSettled([preparing, receiving]);
+    let codec = prepared.status === 'fulfilled' ? prepared.value : null;
+    if (!codec) {
+      if (received.status === 'fulfilled') await received.value.response.body?.cancel().catch(() => {});
+      metrics[`${format}FallbackReason`] = prepared.status === 'rejected' ? 'DECODER_UNAVAILABLE' : 'GZIP_UNAVAILABLE';
+      continue;
+    }
+    if (received.status === 'rejected') {
+      codec.dispose();
+      metrics[`${format}FallbackReason`] = received.reason.code || received.reason.name || 'MODEL_COMPRESSED';
+      continue;
+    }
+    if (received.value.source === 'cache') {
       try {
-        result = await decodeCompressed(cached, entry, candidate, codec, onProgress, metrics, 'cache');
+        result = await decodeCompressed(received.value.response, entry, candidate, codec, onProgress, metrics, 'cache');
         source = 'cache'; metrics.cacheHit = true;
       } catch {
         metrics.invalidCacheRemoved = true;
@@ -238,7 +257,8 @@ export async function loadHashedCampusModel(loader, url, onProgress) {
     }
     if (!result) {
       try {
-        const response = await fetch(candidate.url, {cache: 'force-cache'});
+        const response = received.value.source === 'network' ? received.value.response
+          : await fetch(candidate.url, {cache: 'force-cache'});
         result = await decodeCompressed(response, entry, candidate, codec, onProgress, metrics, 'network');
       } catch (error) { metrics[`${format}FallbackReason`] = error.code || error.name || 'MODEL_COMPRESSED'; }
     }

@@ -1,6 +1,6 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
-import { createCampusWalk } from './campus-walk.js?v=0f0ef5bd65504899';
+import { createCampusWalk } from './campus-walk.js?v=acbc3933ddb9c971';
 import { createCampusDriving } from './campus-driving.js?v=6fb7ca4b999094b6';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=dd2ab117442a0d37';
 import * as THREE from 'three';
@@ -14,8 +14,8 @@ import { createCampusAmbience } from './campus-ambience.js?v=4692f0a3ce712e5d';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
-import { loadHashedCampusModel } from './campus-model-loader.js?v=33b52783cb46fcd8';
-import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9790fdeed1e17959';
+import { loadHashedCampusModel } from './campus-model-loader.js?v=0caba3a9d42da42b';
+import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9ab9f83670763e99';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;
@@ -797,8 +797,11 @@ async function warmModel() {
     }
   });
   try {
-    await renderer.compileAsync(scene, camera);
+    // Shader compilation can run in parallel with texture uploads. Await both
+    // before the full-scene preparation render so walking never inherits work.
+    const compilation = renderer.compileAsync(scene, camera);
     for (const texture of textures) renderer.initTexture(texture);
+    await compilation;
     preparedTextures = textures.size;
     campusAtmosphere?.updateCamera(camera);
     renderer.render(scene, camera);

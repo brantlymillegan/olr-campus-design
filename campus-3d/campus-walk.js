@@ -77,24 +77,32 @@ function makeSurfaceIndex(model) {
     const positions = object.geometry.attributes.position;
     const indices = object.geometry.index;
     const count = indices ? indices.count : positions.count;
+    const canSupport = !/fascia|glazing|window.frames|Fountain.water/i.test(names);
+    // Indexed triangles share immutable world vertices. Transform each unique
+    // vertex once, retaining the identical double-precision coordinates used
+    // by collision, roof placement, birds, and driving queries.
+    const vertices = new Array(positions.count);
+    const vertex = index => vertices[index] || (vertices[index] = new THREE.Vector3()
+      .fromBufferAttribute(positions, index).applyMatrix4(object.matrixWorld));
     for (let i = 0; i + 2 < count; i += 3) {
       if (materials.length > 1) {
         const group = object.geometry.groups.find(group => i >= group.start && i < group.start + group.count);
         if (walkThroughMaterial(materials[group?.materialIndex ?? 0])) { walkThroughTriangles++; continue; }
       }
-      const vertices = [0, 1, 2].map(k => new THREE.Vector3().fromBufferAttribute(positions, indices ? indices.getX(i + k) : i + k).applyMatrix4(object.matrixWorld));
-      const triangle = new THREE.Triangle(...vertices);
+      const a = vertex(indices ? indices.getX(i) : i);
+      const b = vertex(indices ? indices.getX(i + 1) : i + 1);
+      const c = vertex(indices ? indices.getX(i + 2) : i + 2);
+      const triangle = new THREE.Triangle(a, b, c);
       if (triangle.getArea() < 1e-10) continue;
       const normal = triangle.getNormal(new THREE.Vector3());
       const record = {
-        triangle, normal, name,
-        canSupport: !/fascia|glazing|window.frames|Fountain.water/i.test(names),
-        minX: Math.min(...vertices.map(v => v.x)), maxX: Math.max(...vertices.map(v => v.x)),
-        minY: Math.min(...vertices.map(v => v.y)), maxY: Math.max(...vertices.map(v => v.y)),
-        minZ: Math.min(...vertices.map(v => v.z)), maxZ: Math.max(...vertices.map(v => v.z))
+        triangle, normal, name, canSupport,
+        minX: Math.min(a.x, b.x, c.x), maxX: Math.max(a.x, b.x, c.x),
+        minY: Math.min(a.y, b.y, c.y), maxY: Math.max(a.y, b.y, c.y),
+        minZ: Math.min(a.z, b.z, c.z), maxZ: Math.max(a.z, b.z, c.z)
       };
       triangleCount++;
-      if (isTerrain) { add(terrain, record); vertices.forEach(v => terrainBounds.expandByPoint(v)); }
+      if (isTerrain) { add(terrain, record); terrainBounds.expandByPoint(a); terrainBounds.expandByPoint(b); terrainBounds.expandByPoint(c); }
       if (isGround && normal.y >= SLOPE_COS) { add(ground, record); groundCount++; }
       else if (!isGround) {
         add(solids, record); solidCount++;

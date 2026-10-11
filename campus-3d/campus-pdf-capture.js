@@ -27,7 +27,8 @@ export const PDF_PERSPECTIVES = Object.freeze([
   {"id": "conference-room-corner-a", "title": "Conference room \u00b7 Building 1, second floor \u2014 northwest corner", "filename": "conference-room-corner-a.jpg", "width": 2400, "height": 1800, "position": [-20.5, 261.5, 20.25], "target": [10, 238, 18.8], "lens": 20, "shiftX": 0, "shiftY": 0},
   {"id": "conference-room-corner-b", "title": "Conference room \u00b7 Building 1, second floor \u2014 southeast corner", "filename": "conference-room-corner-b.jpg", "width": 2400, "height": 1800, "position": [21.5, 233, 20.25], "target": [-13, 253, 18.8], "lens": 20, "shiftX": 0, "shiftY": 0},
   {"id": "library-corner-a", "title": "Library \u00b7 Building 2, second floor \u2014 northwest corner", "filename": "library-corner-a.jpg", "width": 2400, "height": 1800, "position": [64.2, 192.0, 20.45], "target": [106, 184, 18.7], "lens": 20, "shiftX": 0, "shiftY": 0},
-  {"id": "library-corner-b", "title": "Library \u00b7 Building 2, second floor \u2014 southeast corner", "filename": "library-corner-b.jpg", "width": 2400, "height": 1800, "position": [131.5, 189.0, 20.45], "target": [78, 191, 18.7], "lens": 20, "shiftX": 0, "shiftY": 0}
+  {"id": "library-corner-b", "title": "Library \u00b7 Building 2, second floor \u2014 southeast corner", "filename": "library-corner-b.jpg", "width": 2400, "height": 1800, "position": [131.5, 189.0, 20.45], "target": [78, 191, 18.7], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "skybridge-interior", "title": "New campus: inside the glass skybridge", "filename": "skybridge-interior.jpg", "width": 3072, "height": 2105, "position": [25, 160, 20.25], "target": [55, 153.5, 17.8], "lens": 18.5, "shiftX": 0, "shiftY": 0}
 ]);
 
 export function normalizePdfViews(input) {
