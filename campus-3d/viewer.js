@@ -837,7 +837,7 @@ async function loadVehicle() {
 }
 
 async function loadConstructionPhaseConfig() {
-  const response = await fetch('./construction-phases.json?v=3fa0ab0edc0582a6');
+  const response = await fetch('./construction-phases.json?v=4d6d2c52baac2219');
   if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
   return response.json();
 }

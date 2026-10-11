@@ -1,10 +1,10 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "a564045723ddacc0c6aa20027afbcf16017741ebea77957dc8da52e25c73ebc0",
+  "revision": "e35792fe5f433566bc93b0a35be2ceddb802f6e307c31e3b80f692a412099c5d",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-91941d35a5f196f2c4c8bb65c47203e7c0fbaf662f8c3e9333a295e1ff00f7cb.json",
-    "sha256": "91941d35a5f196f2c4c8bb65c47203e7c0fbaf662f8c3e9333a295e1ff00f7cb",
+    "url": "./pdf-inputs/campus-pdf-inputs-340c45e53eae6835ee9fdd02caae4d120fc65cccf720ac8158900be55728ccb0.json",
+    "sha256": "340c45e53eae6835ee9fdd02caae4d120fc65cccf720ac8158900be55728ccb0",
     "bytes": 45524,
     "mime": "application/json"
   },
@@ -49,10 +49,10 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=3d9113bb33c13aaf",
-    "revision": "3d9113bb33c13aaf",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=97887c59ac239372",
+    "revision": "97887c59ac239372",
     "asset_revision": "06877f7eda392d34",
-    "files_sha256": "138daa9bae969f74b43fb65571d232505be7611a5d593275cb2d818c3b30c009",
+    "files_sha256": "57b963df3d705a9a225b8570199dac7d169325cde15f47a4e0008d0ce9c7f56b",
     "files": [
       {
         "url": "./campus-3d/campus-ambience.js",
@@ -146,7 +146,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "142349439f0e41ddac7f7ffda37b6e548f9137e551930c8709b29d112905b685",
+        "sha256": "f400e0502411c770e60f4f9ff480b33b1803e557c4747e49620ba7004aea8556",
         "bytes": 4315,
         "mime": "text/html"
       },
@@ -158,7 +158,7 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "434ad8ce1566e94ee388a448efb9ca30539546024c8bd49314cc8893f4ebfdaf",
+        "sha256": "db72650854c304f3ef0ed642b3fd297cc81f4762c03124ac7aff50b826427607",
         "bytes": 61316,
         "mime": "text/javascript"
       }
