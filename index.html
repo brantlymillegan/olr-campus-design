@@ -1623,14 +1623,10 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
 </style>
 <script id="olr-theme-shell">
 (() => {
-  const key = 'olr-campus-theme';
   const valid = value => ['system', 'light', 'dark'].includes(value);
   const media = window.matchMedia('(prefers-color-scheme: dark)');
+  // Start in System on every visit; manual choices last for this page only.
   let preference = 'system';
-  try {
-    const saved = window.localStorage.getItem(key);
-    if (valid(saved)) preference = saved;
-  } catch { /* Theme selection still works when storage is unavailable. */ }
 
   const state = () => ({preference, resolved: preference === 'system' ? (media.matches ? 'dark' : 'light') : preference});
   window.olrThemeState = state;
@@ -1652,18 +1648,12 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
   // Apply before the first paint and before the sandbox's bootstrap is created.
   apply();
   media.addEventListener('change', () => { if (preference === 'system') apply(); });
-  window.addEventListener('storage', event => {
-    if (event.key !== key && event.key !== null) return;
-    preference = valid(event.newValue) ? event.newValue : 'system';
-    apply();
-  });
   document.addEventListener('DOMContentLoaded', () => {
     const select = document.getElementById('campus-theme');
     const frame = document.getElementById('codex-visualization');
     select?.addEventListener('change', () => {
       if (!valid(select.value)) return;
       preference = select.value;
-      try { window.localStorage.setItem(key, preference); } catch { /* Keep session choice. */ }
       apply();
     });
     frame?.addEventListener('load', apply);
@@ -6302,6 +6292,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   } catch {
     storage = null;
   }
+  state = {modelContent: {
+    campusWithTheaterView: 'shifted', campusSingleMapView: 'shifted',
+    campusPlanSection: 'combined', campusOverlayFloor: 1,
+    lastCampusOverlayFloor: 1, campusOldBuildingsVisible: true
+  }};
   const initialGlobals = {
     olrTheme: globalThis.olrThemeState(),
     widgetState: state,
@@ -6903,7 +6898,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   let navigationMode = 'normal';
   let walkPending = null, queuedWalk = null, walkAerialCamera = null, focusAfterWalkExit = false;
   let placementNormalCamera = null;
-  let initial3d = new URL(location.href).searchParams.get('view') === '3d';
+  // Always open the 2D plan. This flag is only for an early 3D button click.
+  let initial3d = false;
   const normalizeTime = value => Number.isFinite(Number(value)) ? Math.max(0,Math.min(1439,Math.round(Number(value)))) : 840;
   let timeOfDay = 840;
   try { const saved=localStorage.getItem(timeStorageKey); if(saved!==null)timeOfDay=normalizeTime(saved); } catch {}
@@ -7415,7 +7411,6 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   compass.addEventListener('click',event=>{if(moved){moved=false;event.preventDefault();return;}send('compass');});
   frame.addEventListener('load',connect);
   window.addEventListener('pageshow',connect);
-  if(new URL(location.href).searchParams.get('view')==='list')setDimension('list');
   connect();
   // Begin loading and GPU preparation immediately, without changing the view.
   // The same iframe stays alive for later 3D and first-person transitions.
