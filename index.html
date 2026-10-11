@@ -1439,6 +1439,8 @@ body.olr-campus-app #codex-visualization { height:0 !important; flex:1 1 0; }
 #campus-sound-volume:focus-visible, #campus-sound-toggle:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 
 .campus-weather-panel { grid-area:weather; display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding:5px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px; font-weight:600; }
+.campus-weather-choices { display:flex; flex:1; gap:3px; min-width:0; }
+.campus-weather-choices .btn { flex:1; min-width:0; padding-inline:7px; }
 @media (pointer:coarse) { .campus-weather-panel .btn { min-height:44px; min-width:44px; } }
 
 /* The schedule is a document view, with the same mode and display controls. */
@@ -1744,7 +1746,12 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
     </div>
   </details>
   <section class="campus-weather-panel" id="campus-weather-panel" aria-label="Weather" hidden>
-    <span>Rain</span><button type="button" class="btn" id="campus-rain-toggle" aria-pressed="false" aria-label="Turn rain on">Off</button>
+    <span>Weather</span>
+    <div class="campus-weather-choices" role="group" aria-label="Weather mode">
+      <button type="button" class="btn" data-campus-weather="normal" aria-pressed="true">Normal</button>
+      <button type="button" class="btn" data-campus-weather="rain" aria-pressed="false">Rain</button>
+      <button type="button" class="btn" data-campus-weather="snow" aria-pressed="false">Snow</button>
+    </div>
   </section>
   <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Campus sounds" hidden>
     <div class="campus-ambience-heading"><label for="campus-sound-volume">Campus sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="true" aria-label="Mute campus sounds">On</button></div>
@@ -6864,10 +6871,9 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   const modelDownloads = document.getElementById('campus-model-downloads');
   const timeStorageKey = 'olr-campus-time-of-day';
   const weatherPanel = document.getElementById('campus-weather-panel');
-  const rainToggle = document.getElementById('campus-rain-toggle');
-  const rainStorageKey = 'olr-campus-rain';
-  let rainEnabled = false;
-  try { rainEnabled = localStorage.getItem(rainStorageKey) === 'on'; } catch {}
+  const weatherChoices = [...weatherPanel.querySelectorAll('[data-campus-weather]')];
+  // Weather is a page-local choice: every fresh visit begins with clear skies.
+  let weatherMode = 'normal', rainEnabled = false;
   const ambiencePanel = document.getElementById('campus-ambience-panel');
   const soundToggle = document.getElementById('campus-sound-toggle');
   const soundVolume = document.getElementById('campus-sound-volume');
@@ -6938,7 +6944,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=051dded5453d702b';
+      modelFrame.src='./campus-3d/?embedded=1&v=25241456ded84db7';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7062,25 +7068,20 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   });
   renderTime();
   function renderWeather() {
-    rainToggle.textContent = rainEnabled ? 'On' : 'Off';
-    rainToggle.setAttribute('aria-pressed', String(rainEnabled));
-    rainToggle.setAttribute('aria-label', rainEnabled ? 'Turn rain off' : 'Turn rain on');
+    weatherChoices.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.campusWeather === weatherMode)));
   }
-  function setRain(enabled, persist = false) {
-    rainEnabled = Boolean(enabled);
-    if (persist) { try { localStorage.setItem(rainStorageKey, rainEnabled ? 'on' : 'off'); } catch {} }
+  function setWeather(mode) {
+    if (!['normal', 'rain', 'snow'].includes(mode)) return;
+    weatherMode = mode;
+    rainEnabled = mode === 'rain';
     renderWeather();
     renderSound();
-    sendModel('weather-rain', rainEnabled);
+    sendModel('weather-mode', weatherMode);
   }
-  rainToggle.addEventListener('click', () => { setRain(!rainEnabled, true); startSound(true); });
-  window.addEventListener('storage', event => {
-    if (event.key === rainStorageKey || event.key === null) {
-      let enabled = false;
-      try { enabled = localStorage.getItem(rainStorageKey) === 'on'; } catch {}
-      setRain(enabled);
-    }
-  });
+  weatherChoices.forEach(button => button.addEventListener('click', () => {
+    setWeather(button.dataset.campusWeather);
+    startSound(true);
+  }));
   renderWeather();
   function renderSound() {
     const on=soundOptions.enabled&&soundOptions.volume>0;
@@ -7151,7 +7152,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     sendModel('oldBuildings',{visible:mapState?.oldBuildings!==false,polygons:oldBuildingPolygons});
     sendModel('time-of-day',timeOfDay);
-    sendModel('weather-rain',rainEnabled);
+    sendModel('weather-mode',weatherMode);
     sendModel('ambience-options',soundOptions);
     if(dimension!=='list')sendModel('walk-presentation',dimension);
     sendModel('active',dimension!=='list'&&(dimension==='3d'||walkActive()||retainedNormalPlan()));
