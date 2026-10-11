@@ -7,9 +7,9 @@
     "heading": 0
   },
   "dimensions_ft": {
-    "length": 15.494760096542478,
-    "width": 6.856955098980681,
-    "height": 4.723077527494255
+    "length": 15.495268778216788,
+    "width": 6.854280242876873,
+    "height": 4.633134874348229
   },
   "driver_eye_m": [
     -0.385,
@@ -23,11 +23,11 @@
       "spin_node": "Wheel_FL",
       "front": true,
       "center_m": [
-        -0.792,
-        0.3375,
-        -1.4375
+        -0.7985593489256396,
+        0.34536185566554944,
+        -1.4375161781665677
       ],
-      "radius_m": 0.3375,
+      "radius_m": 0.3453163802623749,
       "steer_axis": [
         0,
         1,
@@ -45,11 +45,11 @@
       "spin_node": "Wheel_FR",
       "front": true,
       "center_m": [
-        0.792,
-        0.3375,
-        -1.4375
+        0.799303560661447,
+        0.34531620639276994,
+        -1.437483821833432
       ],
-      "radius_m": 0.3375,
+      "radius_m": 0.34531617164611816,
       "steer_axis": [
         0,
         1,
@@ -67,11 +67,11 @@
       "spin_node": "Wheel_RL",
       "front": false,
       "center_m": [
-        -0.792,
-        0.3375,
+        -0.8071672586978532,
+        0.34531620639276994,
         1.4375
       ],
-      "radius_m": 0.3375,
+      "radius_m": 0.34531617164611816,
       "steer_axis": [
         0,
         1,
@@ -89,11 +89,11 @@
       "spin_node": "Wheel_RR",
       "front": false,
       "center_m": [
-        0.792,
-        0.3375,
+        0.8064230469620458,
+        0.34531620639276994,
         1.4375
       ],
-      "radius_m": 0.3375,
+      "radius_m": 0.34531617164611816,
       "steer_axis": [
         0,
         1,
@@ -107,13 +107,13 @@
     }
   ],
   "model": {
-    "url": "./vehicles/model3-0328532e74aab2066b8d8139939a8800354712b106c71cb58c20f1b08cfbda4a.glb",
-    "sha256": "0328532e74aab2066b8d8139939a8800354712b106c71cb58c20f1b08cfbda4a",
-    "bytes": 4294248
+    "url": "./vehicles/model3-7d88b75f207342bd7d3ffabf32eb8da3a194e7498ef692400714c7ce3590a05d.glb",
+    "sha256": "7d88b75f207342bd7d3ffabf32eb8da3a194e7498ef692400714c7ce3590a05d",
+    "bytes": 7641592
   },
   "native": {
-    "url": "./vehicles/model3-b444d299e5a2cf614dfea1a94467abe919ce2341c1c66f5de79ef721e920aa75.blend",
-    "sha256": "b444d299e5a2cf614dfea1a94467abe919ce2341c1c66f5de79ef721e920aa75",
-    "bytes": 1168657
+    "url": "./vehicles/model3-ab39a4e3b63aab88d4d2503ce4a5c0976df2c300953fc437924e8c9fb21a1471.blend",
+    "sha256": "ab39a4e3b63aab88d4d2503ce4a5c0976df2c300953fc437924e8c9fb21a1471",
+    "bytes": 8106974
   }
 }

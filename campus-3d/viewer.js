@@ -14,7 +14,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=4692f0a3ce712e5d';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
-import { loadHashedCampusModel } from './campus-model-loader.js?v=5b1fcad94bac0738';
+import { loadHashedCampusModel } from './campus-model-loader.js?v=33b52783cb46fcd8';
 import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9790fdeed1e17959';
 
 const EMBEDDED = window.parent !== window;
@@ -810,7 +810,7 @@ async function warmModel() {
 }
 
 async function loadVehicle() {
-  const url = './vehicle-config.json?v=e944a480319412a8';
+  const url = './vehicle-config.json?v=f1cd3df7bb686b9b';
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Vehicle metadata HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();

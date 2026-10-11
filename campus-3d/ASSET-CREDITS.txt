@@ -166,26 +166,18 @@ Rubberized Track — https://polyhaven.com/a/rubberized_track
 Adapted: calibrated color and roughness, resized/compressed maps, physical-scale mapping.
 
 
-MODEL 3 CAMPUS DRIVING VEHICLE
+TESLA MODEL 3 HIGHLAND — LICENSED VEHICLE MODEL
 
-Original task-authored geometric interpretation of a current Tesla Model 3,
-created specifically for the OLR campus visualization. Red multilayer exterior,
-white upholstery, detailed cabin, glass roof, and animated wheel pivots are
-modeled from scratch. No downloaded third-party 3D model, image, texture, or
-Tesla promotional artwork is embedded in the GLB or editable Blender asset.
-The vehicle is an architectural visualization, not a manufacturer CAD model.
-Tesla and Model 3 identify the depicted vehicle; this is not an official Tesla asset.
+“2024 Tesla Model 3” by RBLXSupercars (https://sketchfab.com/RBLXSupercars), shared by brandonleong28.
+Original source: https://sketchfab.com/3d-models/2024-tesla-model-3-fd22be415215453693d67e33aa7812d0
+Current download listing: https://sketchfab.com/3d-models/tesla-model-3-2024-36c52f3f89f6439c90310f14e8ff33f2
+Source copy: https://github.com/erictfree/Carbon-Footprint-AI-Visualizer/tree/af4bef33ca371b24c1f043486f09a13571f4919b/models/tesla-model-3-2024
+License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+Legal terms and warranty disclaimer: https://creativecommons.org/licenses/by/4.0/legalcode.en
 
-Official visual/dimensional reference sources (viewed October 10, 2026):
-https://www.tesla.com/model3
-https://www.tesla.com/ownersmanual/model3/en_us/GUID-56562137-FC31-4110-A13C-9A9FC6657BF0.html
-https://www.tesla.com/ownersmanual/model3/en_us/GUID-6C6C3944-9674-4E81-A0E8-94D60B6D87B9.html
-https://www.tesla.com/ownersmanual/model3/en_us/GUID-A5F2B9D0-E7C8-40F5-9642-58F3657B123E.html
-
-Nominal current Model 3 dimensions: 4.720 m length, 1.850 m body width,
-2.089 m mirror width, 1.440 m height, 2.875 m wheelbase, 1.584 m track.
-Small artistic details may extend slightly beyond nominal manufacturer bounds;
-vehicle-spec.json records measured complete-mesh bounds.
+Adapted for the OLR campus app: coordinate and scale normalization, red exterior and white upholstery materials, wheel steering/spin pivots, and driver-camera placement. Original model attribution is retained in the vehicle asset. The adapted vehicle remains available under CC BY 4.0.
+Tesla and Model 3 are trademarks of Tesla, Inc. This model and campus project are not endorsed by Tesla or the model creators.
 
 
 CAMPUS AMBIENCE — RECORDINGS AND LICENSES
