@@ -4481,7 +4481,10 @@ html&gt;body{padding:0}&lt;/style&gt;
     else {svg.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);svg.setAttribute(&#x27;height&#x27;,height);}
   }
   tabs.forEach(tab=&gt;tab.addEventListener(&#x27;click&#x27;,()=&gt;select(tab.dataset.view,true)));
-  function toggleMap(){select(lastSingleView===&#x27;shifted&#x27;?&#x27;existing&#x27;:&#x27;shifted&#x27;,true);}
+  function toggleMap(){
+    const sequence=[&#x27;shifted&#x27;,&#x27;existing&#x27;,&#x27;phase1&#x27;,&#x27;phase15&#x27;,&#x27;phase2&#x27;];
+    select(sequence[(sequence.indexOf(view)+1)%sequence.length],true);
+  }
   root.querySelector(&#x27;#fc-toggle-map&#x27;).addEventListener(&#x27;click&#x27;,toggleMap);
   document.addEventListener(&#x27;keydown&#x27;,event=&gt;{
     if(document.getElementById(&#x27;olr-campus-section&#x27;).hidden)return;
@@ -5612,6 +5615,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     }
     else if (command === &#x27;drag-mode&#x27;) window.olrMapCamera?.setDragMode(value);
     else if (command === &#x27;snapshot&#x27;) {lastPublished=null;publish(value);return;}
+    else if (command === &#x27;cycle-map&#x27;) document.getElementById(&#x27;fc-toggle-map&#x27;).click();
     else if (command === &#x27;map&#x27; &amp;&amp; [&#x27;existing&#x27;,&#x27;shifted&#x27;,&#x27;phase1&#x27;,&#x27;phase15&#x27;,&#x27;phase2&#x27;].includes(value)) document.getElementById(`fc-${value}-tab`).click();
     else if (command === &#x27;floor&#x27; &amp;&amp; [0,1,2].includes(value)) {
       if (document.getElementById(&#x27;fc-existing-tab&#x27;).getAttribute(&#x27;aria-selected&#x27;) === &#x27;true&#x27;) return;
@@ -6825,8 +6829,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
 (() => {
   const frame = document.getElementById('codex-visualization');
   document.addEventListener('keydown', event => {
-    if (globalThis.olrCampusView?.dimension === 'list') return;
     const key=event.key.toLowerCase();
+    if (globalThis.olrCampusView?.dimension === 'list' && key !== 't') return;
     if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || (event.shiftKey&&key!=='+') || !['t','f','b','o','n','+','=','-','0'].includes(key)) return;
     if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
     const data=key==='t'?{type:'olr-toggle-active-view'}:key==='f'?{type:'olr-toggle-story'}:key==='b'?{type:'olr-toggle-buildings'}:key==='o'?{type:'olr-toggle-old-buildings'}:
@@ -6946,7 +6950,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=305c0449c9e68ed1';
+      modelFrame.src='./campus-3d/?embedded=1&v=3d9113bb33c13aaf';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7385,12 +7389,13 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     get constructionPhase(){return constructionPhase();},get dimension(){return dimension;},get camera(){return dimension==='3d'||retainedNormalPlan()?modelCamera:mapState?.camera;},get walk(){return {...walkState,pending:walkPending};},setDimension,
     get driving(){return {...driveState};},
     handleKey(key){
+      // The map owns the cycle so rapid key presses advance its latest state.
+      if(key==='t'){sendMap('cycle-map');return true;}
       if(dimension==='list')return true;
       if(key==='Escape'&&walkActive()){escapeWalk();return true;}
       if(dimension!=='3d'&&!firstPersonPlan())return false;
       if(key==='f'&&(driveState.driving||driveState.near)){sendModel('drive-toggle');return true;}
       if(key==='o'){oldBuildings.click();return true;}
-      if(key==='t'){setDimension('2d');sendMap('map','existing');return true;}
       if(key==='b'||key==='f'){setDimension('2d');sendMap('floor',key==='b'?0:mapState?.floor===1?2:1);return true;}
       if(['+','=','-','0','n'].includes(key)){send(key==='n'?'north':'zoom',key==='0'?'fit':key==='-'?'out':'in');return true;}
       return false;

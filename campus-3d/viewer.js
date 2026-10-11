@@ -590,6 +590,12 @@ function installEmbeddedNavigation() {
   canvas.addEventListener('keydown', event => {
     if (!active) return;
     if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input, textarea, select, [contenteditable=true]')) return;
+    if (event.key.toLowerCase() === 't') {
+      if (!event.repeat && !event.isComposing && !event.shiftKey) {
+        event.preventDefault(); post({ type: 'olr-3d-key', key: 't' });
+      }
+      return;
+    }
     // F belongs to the car only when the visitor is near it or seated inside.
     if (driving?.state.driving || (event.code === 'KeyF' && driving?.state.near)) return;
     if (walk && walk.mode !== 'aerial') {
