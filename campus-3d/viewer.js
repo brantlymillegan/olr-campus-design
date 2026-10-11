@@ -2,10 +2,10 @@ import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=acbc3933ddb9c971';
 import { createCampusDriving } from './campus-driving.js?v=859fb8688c394449';
-import { createCampusPlanGround } from './campus-plan-ground.js?v=cefbecea902832b9';
+import { createCampusPlanGround } from './campus-plan-ground.js?v=33972dd4d392dfac';
 import * as THREE from 'three';
 import { createCampusSnow } from './campus-snow.js?v=601d49e8139aa567';
-import { createCampusPhases } from './campus-phases.js?v=a0e01e89076de6c3';
+import { createCampusPhases } from './campus-phases.js?v=75ff38c51eeffc60';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=4eb1bae727228478';
 // BEGIN campus world ambience imports
@@ -837,7 +837,7 @@ async function loadVehicle() {
 }
 
 async function loadConstructionPhaseConfig() {
-  const response = await fetch('./construction-phases.json?v=42b5f19ac323ff60');
+  const response = await fetch('./construction-phases.json?v=0ed8f06668cc0d79');
   if (!response.ok) throw new Error(`Construction phase configuration HTTP ${response.status}`);
   return response.json();
 }

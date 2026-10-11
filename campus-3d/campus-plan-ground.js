@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 const FT = .3048;
-const PLAN_REVISION = 'a66c99e5b43c51d6';
+const PLAN_REVISION = '42050d2e3316516f';
 const DETAIL_FEET = 128, DETAIL_STEP_FEET = 32;
 
 // Only these two textures are resident: a campus overview and one sharp local

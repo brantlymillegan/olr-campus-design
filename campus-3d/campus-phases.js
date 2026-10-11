@@ -95,13 +95,13 @@ export function createCampusPhases({ model, config, modelSha256 }) {
     } else throw new Error('Unknown phase-only geometry.');
     const material = materials.get(definition.material);
     if (!material) throw new Error(`Missing phase finish: ${definition.material}`);
-    if (target === currentGroup || definition.material === 'Warm red brick • running bond') {
+    if (target === currentGroup || definition.material === 'Warm red brick • running bond' || definition.uv_repeat_m) {
       // The authored brick is world-projected at a 1.4-metre repeat. Original
       // material variants can use uv, uv1 or uv2 after native consolidation.
       // Match both its physical scale and every channel used by the finish.
       const positions = geometry.getAttribute('position'), normals = geometry.getAttribute('normal');
       const uv = new Float32Array(positions.count * 2);
-      const repeat = definition.material === 'Warm red brick • running bond' ? 1.4 : definition.material === 'Warm gray asphalt' ? 7 : definition.material === 'Campus lawn' ? 8 : 2.4;
+      const repeat = definition.uv_repeat_m || (definition.material === 'Warm red brick • running bond' ? 1.4 : definition.material === 'Warm gray asphalt' ? 7 : definition.material === 'Campus lawn' ? 8 : 2.4);
       for (let i = 0; i < positions.count; i++) {
         const nx = Math.abs(normals.getX(i)), ny = Math.abs(normals.getY(i)), nz = Math.abs(normals.getZ(i));
         if (ny >= nx && ny >= nz) { uv[i * 2] = positions.getX(i) / repeat; uv[i * 2 + 1] = -positions.getZ(i) / repeat; }
@@ -113,7 +113,7 @@ export function createCampusPhases({ model, config, modelSha256 }) {
       }
     }
     const mesh = new THREE.Mesh(geometry, material); mesh.name = definition.name;
-    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.castShadow = definition.cast_shadow !== false; mesh.receiveShadow = true;
     mesh.userData.constructionPhaseOnly = true; target.add(mesh);
     return mesh;
   }
