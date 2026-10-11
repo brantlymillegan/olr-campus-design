@@ -14,7 +14,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=9ad31705727def26';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
 import { loadHashedCampusModel } from './campus-model-loader.js?v=9fc39978cacb0221';
-import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=deac4af484104cf0';
+import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9790fdeed1e17959';
 
 const EMBEDDED = window.parent !== window;
 const FEET = 0.3048;

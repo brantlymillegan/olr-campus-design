@@ -6938,7 +6938,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=4d809cc6624aaa10';
+      modelFrame.src='./campus-3d/?embedded=1&v=5f1a808999970e7c';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7482,7 +7482,8 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const response = await fetch(url, {cache: 'no-store', signal});
     if (!response.ok) throw new Error('Could not check the current campus.');
     const value = await response.json();
-    if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || !Number.isSafeInteger(value.perspective_count) || value.perspective_count < 1 || value.perspective_count > 8 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
+    if (value.version !== 2 || value.mode !== 'on-demand' || !/^[a-f0-9]{64}$/.test(value.revision) || value.map_count !== 4 || !Number.isSafeInteger(value.perspective_count) || value.perspective_count < 1 || value.perspective_count > 16 || !Number.isSafeInteger(value.specifications_room_count)) throw new Error('Invalid PDF generation information.');
+    if (value.perspective_page_count !== undefined && (!Number.isSafeInteger(value.perspective_page_count) || value.perspective_page_count < 1 || value.perspective_page_count > value.perspective_count)) throw new Error('Invalid PDF perspective page information.');
     for (const item of [value.inputs, value.generator, value.libraries?.jspdf, value.libraries?.svg2pdf]) descriptor(item);
     descriptor(value.model, MAX_MODEL_BYTES);
     assetUrl(value.viewer?.url); return value;
@@ -7520,6 +7521,17 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
   async function inputs(manifest, signal) {
     const data = JSON.parse(new TextDecoder().decode(await verifiedBytes(manifest.inputs, signal)));
     if (data.version !== 2 || data.maps?.length !== 4 || data.perspectives?.length !== manifest.perspective_count || new Set(data.perspectives.map(view => view.id)).size !== manifest.perspective_count || data.specs?.rooms?.length !== manifest.specifications_room_count || data.model?.sha256 !== manifest.model.sha256) throw new Error('Campus PDF inputs do not match.');
+    if (data.perspective_pages !== undefined) {
+      const pages=data.perspective_pages, ids=data.perspectives.map(view=>view.id);
+      if (!Array.isArray(pages) || pages.length < 1 || pages.length !== manifest.perspective_page_count
+        || new Set(pages.map(page=>page?.id)).size !== pages.length
+        || pages.some(page=>!page || typeof page.id!=='string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(page.id)
+          || typeof page.title!=='string' || !page.title.trim() || page.title.length>180
+          || !Array.isArray(page.view_ids) || page.view_ids.length<1 || page.view_ids.length>2
+          || page.view_ids.some(id=>!ids.includes(id)))) throw new Error('Campus PDF view pages do not match.');
+      const assigned=pages.flatMap(page=>page.view_ids);
+      if (assigned.length!==ids.length || new Set(assigned).size!==ids.length) throw new Error('Campus PDF view pages do not cover every view exactly once.');
+    } else if (manifest.perspective_page_count !== undefined && manifest.perspective_page_count !== data.perspectives.length) throw new Error('Campus PDF view page information is missing.');
     const results = await Promise.all([verifiedBytes(data.cover.logo, signal), ...data.maps.map(map => verifiedBytes(map, signal))]);
     return {data, logo: new Uint8Array(results[0]), maps: new Map(data.maps.map((map, i) => [map.id, new TextDecoder().decode(results[i + 1])]))};
   }

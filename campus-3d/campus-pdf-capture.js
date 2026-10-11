@@ -19,7 +19,15 @@ export const PDF_PERSPECTIVES = Object.freeze([
   { id: 'school-entrance', title: "New campus: school entrance and Our Lady of the Rosary shrine", filename: 'school-entrance.jpg', width: 3072, height: 2375,
     position: [60.55218874111797, 239.22310213689184, 14.342909533308847], target: [6.328173969816433, 214.07853095876254, 9.098220567348882], lens: 21.587585914514698, shiftX: -0.056741573033707866, shiftY: -0.015730337078651686 },
   { id: 'playground-gardens', title: 'New campus: 3D playground and Guardian Angel garden', filename: 'playground-gardens.jpg', width: 3072, height: 2098,
-    position: [-167.57064655521947, -73.21889425522475, 41.3084195067391], target: [154.29633742522594, 163.54001268431819, 22.684117959444393], lens: 26.84434019653985, shiftX: -.15158583245140705, shiftY: -.03922722973372845 }
+    position: [-167.57064655521947, -73.21889425522475, 41.3084195067391], target: [154.29633742522594, 163.54001268431819, 22.684117959444393], lens: 26.84434019653985, shiftX: -.15158583245140705, shiftY: -.03922722973372845 },
+  {"id": "classroom-corner-a", "title": "Grade 4 classroom \u00b7 Building 1, first floor \u2014 southwest corner", "filename": "classroom-corner-a.jpg", "width": 2400, "height": 1800, "position": [-6.4, 101.2, 6.2], "target": [17, 125, 4.7], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "classroom-corner-b", "title": "Grade 4 classroom \u00b7 Building 1, first floor \u2014 northeast corner", "filename": "classroom-corner-b.jpg", "width": 2400, "height": 1800, "position": [21.8, 128.8, 6.2], "target": [-2, 105, 4.7], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "teachers-lounge-corner-a", "title": "Teachers\u2019 lounge \u00b7 Building 2, first floor \u2014 northwest corner", "filename": "teachers-lounge-corner-a.jpg", "width": 2400, "height": 1800, "position": [64.2, 196.5, 6.2], "target": [88, 183, 4.5], "lens": 19, "shiftX": 0, "shiftY": 0},
+  {"id": "teachers-lounge-corner-b", "title": "Teachers\u2019 lounge \u00b7 Building 2, first floor \u2014 southeast corner", "filename": "teachers-lounge-corner-b.jpg", "width": 2400, "height": 1800, "position": [109.0, 190.0, 6.2], "target": [75, 187.5, 4.5], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "conference-room-corner-a", "title": "Conference room \u00b7 Building 1, second floor \u2014 northwest corner", "filename": "conference-room-corner-a.jpg", "width": 2400, "height": 1800, "position": [-20.5, 261.5, 20.25], "target": [10, 238, 18.8], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "conference-room-corner-b", "title": "Conference room \u00b7 Building 1, second floor \u2014 southeast corner", "filename": "conference-room-corner-b.jpg", "width": 2400, "height": 1800, "position": [21.5, 233, 20.25], "target": [-13, 253, 18.8], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "library-corner-a", "title": "Library \u00b7 Building 2, second floor \u2014 northwest corner", "filename": "library-corner-a.jpg", "width": 2400, "height": 1800, "position": [64.2, 192.0, 20.45], "target": [106, 184, 18.7], "lens": 20, "shiftX": 0, "shiftY": 0},
+  {"id": "library-corner-b", "title": "Library \u00b7 Building 2, second floor \u2014 southeast corner", "filename": "library-corner-b.jpg", "width": 2400, "height": 1800, "position": [131.5, 189.0, 20.45], "target": [78, 191, 18.7], "lens": 20, "shiftX": 0, "shiftY": 0}
 ]);
 
 export function normalizePdfViews(input) {
@@ -181,7 +189,7 @@ export function createCampusPdfCapture({ getModel, getSourceScene, getModelSha25
         check();
         views.push({ id: view.id, title: view.title, filename: view.filename, width, height, mimeType: 'image/jpeg', buffer: await blob.arrayBuffer() });
         check();
-        onProgress({ requestId, completed: views.length, total: PDF_PERSPECTIVES.length, viewId: view.id });
+        onProgress({ requestId, completed: views.length, total: requestedViews.length, viewId: view.id });
       }
       completed++;
       return { requestId, modelSha256, assetRevision, minutes: 720, cameraSource: options.views === undefined ? 'bundled' : 'request', views };
