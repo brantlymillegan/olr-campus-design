@@ -9,7 +9,7 @@ import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=80bf5a4e96e057f8';
 // BEGIN campus world ambience imports
 import { createCampusBird } from './campus-bird.js?v=2f0c0894e83e3c06';
-import { createCampusAmbience } from './campus-ambience.js?v=9ad31705727def26';
+import { createCampusAmbience } from './campus-ambience.js?v=119101d784830062';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
@@ -119,7 +119,7 @@ function updateWorldAmbience(now = performance.now() / 1000) {
   campusWeather?.update(now, { camera: worldCamera(), active: visible });
   if (!visible) campusBell?.update(now);
   campusAmbience?.update(now, { active: visible, minutes: timeOfDay,
-    interior: campusInteriorLighting?.state.active ? 1 : 0, position: worldCamera()?.position });
+    interior: campusInteriorLighting?.state.active ? 1 : 0, position: worldCamera()?.position, phase: constructionPhase });
 }
 function setRain(enabled) {
   rainEnabled = Boolean(enabled);
@@ -707,6 +707,28 @@ Object.defineProperty(window, 'olr3d', { value: Object.freeze({
   }
 }), writable: false });
 
+function configureSchoolAudio(data) {
+  // Reuse the actual occupied footprints, including halls and the entry bay.
+  // The repeated B1 upper-floor volume is the bridge; Phase 1 omits it.
+  const seen = new Set();
+  const zones = (data.buildings || []).filter(b => b.id === 'b1' || b.id === 'b2').map(b => {
+    const key = `${b.id}-f${b.floor}`, bridge = seen.has(key);
+    seen.add(key);
+    return { id: `${key}-${bridge ? 'bridge' : 'school'}`,
+      buildingId: bridge || b.id === 'b2' ? 'building-2' : 'building-1',
+      floor: b.floor, kind: 'school', polygon_ft: b.polygonWorldFeet,
+      floor_ft: b.floorElevationFeet,
+      // Acoustic volumes end at the ceiling underside, below the floor void.
+      ceiling_ft: bridge ? 26.65 : b.floor === 1 ? 12.65 : 26.75 };
+  });
+  for (const room of data.rooms || []) {
+    if (!['b1-f1-O3', 'b1-f1-O1', 'b1-f1-R'].includes(room.id)) continue;
+    zones.push({ id: room.id, buildingId: 'building-1', floor: 1, kind: 'office',
+      polygon_ft: room.polygonWorldFeet, floor_ft: room.floorElevationFeet, ceiling_ft: 12.65 });
+  }
+  campusAmbience.configureInteriorAudio({ version: 1, zones, tracks: [{"id":"school-indoor","kind":"school","url":"./audio/school-indoor-f43bb4322575fa4b.mp3","sha256":"f43bb4322575fa4bd3488f5d5829125a1f4a2aa71e2ac669ceb7930f725f708e","bytes":480924,"gain":0.8},{"id":"office-indoor","kind":"office","url":"./audio/office-indoor-c669ad23eed04384.mp3","sha256":"c669ad23eed0438435d65aad0c9408b266480c6058437ba95a9457738de3c8ef","bytes":480917,"gain":0.9}] });
+}
+
 function createInteriorLighting(data) {
   const polygonValid = p => Array.isArray(p) && p.length >= 3 && p.every(v => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite));
   const buildings = (data.buildings || []).filter(b => typeof b.id === 'string' && Number.isFinite(b.floor) && Number.isFinite(b.floorElevationFeet) && polygonValid(b.polygonWorldFeet));
@@ -896,7 +918,10 @@ async function init() {
   model.traverse(object => { if (object.isLight) importedLights.push(object); });
   importedLights.forEach(light => light.removeFromParent());
   scene.add(model);
-  if (interiorData) campusInteriorLighting = createInteriorLighting(interiorData);
+  if (interiorData) {
+    campusInteriorLighting = createInteriorLighting(interiorData);
+    configureSchoolAudio(interiorData);
+  }
   if (boundaryData) await loadCampusBoundary(scene, model, null, boundaryData).catch(error => console.warn(error));
   const bounds = new THREE.Box3().setFromObject(model, true);
   modelBounds = bounds;

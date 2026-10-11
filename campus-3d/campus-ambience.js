@@ -15,6 +15,57 @@ const ASSETS = Object.freeze({
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
 
+// Zones use the actual clear school outlines and floor/ceiling elevations.
+// The optional output object lets the live audio update avoid allocating.
+export function schoolPresence(position, phase = 'new', config, out = {}) {
+  out.school = 0; out.office = 0; out.buildingId = null; out.floor = null; out.zoneId = null;
+  if (!config || phase === 'current' || !position || !Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return out;
+  const x = position.x / FEET, y = -position.z / FEET, height = position.y / FEET;
+  let officeZone = null;
+  for (const zone of config.zones) {
+    if (phase === 'phase1' && zone.buildingId === 'building-2') continue;
+    if (height < zone.floor_ft - 1e-8 || height >= zone.ceiling_ft - 1e-8) continue;
+    let inside = false, distanceSquared = Infinity;
+    const polygon = zone.polygon_ft;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[j], b = polygon[i], dx = b[0] - a[0], dy = b[1] - a[1];
+      if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+      const lengthSquared = dx * dx + dy * dy;
+      const t = lengthSquared ? clamp(((x - a[0]) * dx + (y - a[1]) * dy) / lengthSquared) : 0;
+      distanceSquared = Math.min(distanceSquared, (x - a[0] - t * dx) ** 2 + (y - a[1] - t * dy) ** 2);
+    }
+    if (!inside || distanceSquared < 1e-12) continue;
+    const presence = smooth(0, 1.5, Math.sqrt(distanceSquared)) * smooth(0, .5, zone.ceiling_ft - height);
+    if (zone.kind === 'office') {
+      if (presence > out.office) { out.office = presence; officeZone = zone; }
+    } else if (presence > out.school) {
+      out.school = presence; out.buildingId = zone.buildingId; out.floor = zone.floor; out.zoneId = zone.id;
+    }
+  }
+  // An office overlay must be contained by an active occupied school volume.
+  if (!out.school) { out.office = 0; return out; }
+  out.office = Math.min(out.office, out.school);
+  if (officeZone && out.office > 0) out.zoneId = officeZone.id;
+  out.school *= 1 - out.office;
+  return out;
+}
+
+function prepareInteriorAudio(config) {
+  if (!config || config.version !== 1 || !Array.isArray(config.zones) || !Array.isArray(config.tracks) || config.zones.length > 128 || config.tracks.length > 3) throw new Error('Invalid school audio configuration.');
+  const zoneIds = new Set(), trackIds = new Set();
+  const zones = config.zones.map(zone => {
+    if (!zone || typeof zone.id !== 'string' || zoneIds.has(zone.id) || !['building-1', 'building-2'].includes(zone.buildingId) || ![1, 2].includes(zone.floor) || !['school', 'office'].includes(zone.kind) || !Number.isFinite(zone.floor_ft) || !Number.isFinite(zone.ceiling_ft) || zone.ceiling_ft <= zone.floor_ft || zone.ceiling_ft - zone.floor_ft > 30 || Math.abs(zone.floor_ft) > 100 || !Array.isArray(zone.polygon_ft) || zone.polygon_ft.length < 3 || zone.polygon_ft.length > 128 || zone.polygon_ft.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(v => Number.isFinite(v) && Math.abs(v) < 2000))) throw new Error('Invalid school audio zone.');
+    zoneIds.add(zone.id);
+    return { id: zone.id, buildingId: zone.buildingId, floor: zone.floor, kind: zone.kind, floor_ft: zone.floor_ft, ceiling_ft: zone.ceiling_ft, polygon_ft: zone.polygon_ft.map(p => p.slice()) };
+  });
+  const tracks = config.tracks.map(track => {
+    if (!track || typeof track.id !== 'string' || !/^[a-z0-9-]+$/.test(track.id) || trackIds.has(track.id) || !['school', 'office'].includes(track.kind) || typeof track.url !== 'string' || !/^\.\/audio\/[a-z0-9.-]+\.(mp3|ogg|wav)$/.test(track.url) || !/^[a-f0-9]{64}$/.test(track.sha256) || !Number.isInteger(track.bytes) || track.bytes < 1 || track.bytes > 4 * 1024 * 1024) throw new Error('Invalid school audio recording.');
+    trackIds.add(track.id);
+    return { id: track.id, kind: track.kind, url: new URL(track.url, import.meta.url).href, sha256: track.sha256, bytes: track.bytes, level: Number.isFinite(track.gain) ? clamp(track.gain) : .48, gain: null, target: 0, source: null, buffer: null, loading: null, error: null, offset: 0, startedAt: 0 };
+  });
+  return { zones, tracks };
+}
+
 export function chapelPresence(position) {
   if (!position || !['x', 'y', 'z'].every(key => Number.isFinite(position[key]))) return 0;
   const x = position.x / FEET, y = -position.z / FEET, height = position.y / FEET;
@@ -39,10 +90,12 @@ export function createCampusAmbience({ camera } = {}) {
   let weatherEnabled = false;
   let chantGain, chantSource = null, chantLoading = null, chantError = null;
   let chantOffset = 0, chantStartedAt = 0, chantTarget = 0, chantPresence = 0;
+  let interiorAudio = null;
+  const indoorPresence = { school: 0, office: 0, buildingId: null, floor: null, zoneId: null };
   let enabled = true, volume = .25, unlocked = false, disposed = false, ready = false;
   let running = false, loading = null, resumePending = null, timer = null, error = null;
   let nextBird = 0, nextChildren = 0, lastMix = -1, elapsed = 0;
-  let view = { active: false, minutes: 840, interior: false, position: null };
+  let view = { active: false, minutes: 840, interior: false, position: null, phase: 'new' };
   let targets = { master: 0, birds: 0, children: 0, wind: 0, rain: 0, thunder: 0, cutoff: 16000, pan: 0 };
   const sources = new Set(), buffers = {}, abort = new AbortController();
   const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
@@ -222,6 +275,60 @@ export function createCampusAmbience({ camera } = {}) {
     if (Math.abs(target - chantTarget) > .00001) { chantTarget = target; param(chantGain.gain, target, .1); }
   }
 
+  async function loadInteriorTrack(track) {
+    if (track.buffer || track.loading || track.error || !context || disposed) return track.loading;
+    track.loading = (async () => {
+      const response = await fetch(track.url, { signal: abort.signal, credentials: 'same-origin' });
+      if (!response.ok) throw new Error(`Interior sound HTTP ${response.status}`);
+      const bytes = await response.arrayBuffer();
+      if (disposed) return;
+      if (bytes.byteLength !== track.bytes) throw new Error('Interior sound size mismatch.');
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+      const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      if (hash !== track.sha256) throw new Error('Interior sound identity mismatch.');
+      if (disposed) return;
+      const buffer = await context.decodeAudioData(bytes);
+      if (!disposed && interiorAudio?.tracks.includes(track)) { track.buffer = buffer; track.error = null; sync(); }
+    })().catch(e => {
+      if (!disposed && e.name !== 'AbortError') track.error = `${track.kind === 'office' ? 'Office' : 'School'} sound could not load. Toggle sound to retry.`;
+    }).finally(() => { track.loading = null; });
+    return track.loading;
+  }
+
+  function stopInteriorTrack(track) {
+    if (!track.source && track.target === 0) return;
+    if (track.gain) {
+      track.gain.gain.cancelScheduledValues(context.currentTime);
+      track.gain.gain.setValueAtTime(0, context.currentTime);
+    }
+    track.target = 0;
+    if (track.source) {
+      track.offset = (track.offset + Math.max(0, context.currentTime - track.startedAt)) % track.buffer.duration;
+      stopSource(track.source);
+    }
+  }
+
+  function mixInterior() {
+    schoolPresence(view.position || camera?.position, view.phase, interiorAudio, indoorPresence);
+    if (!interiorAudio) return;
+    for (const track of interiorAudio.tracks) {
+      const presence = indoorPresence[track.kind];
+      if (!wanted() || presence <= 0) { stopInteriorTrack(track); continue; }
+      // This independent bus shares the unlocked context and user volume, but
+      // bypasses the outdoor low-pass/master that deliberately muffles indoors.
+      if (!track.buffer) { if (!track.loading && !track.error) void loadInteriorTrack(track); continue; }
+      if (context.state !== 'running') continue;
+      if (!track.gain) { track.gain = context.createGain(); track.gain.gain.value = 0; track.gain.connect(context.destination); }
+      if (!track.source) {
+        track.startedAt = context.currentTime;
+        track.source = source(track.buffer, track.gain, { loop: true, offset: track.offset, fade: .65, kind: 'interior' });
+        track.source.interiorTrack = track;
+      }
+      const target = volume * track.level * presence;
+      if (Math.abs(target - track.target) > .00001) { track.target = target; param(track.gain.gain, target, .12); }
+    }
+  }
+
   async function load() {
     if (ready || loading || !context || disposed) return loading;
     loading = Promise.all(Object.entries(ASSETS).map(async ([id, url]) => {
@@ -262,6 +369,7 @@ export function createCampusAmbience({ camera } = {}) {
     record.node.disconnect(); record.gain.disconnect(); record.panner?.disconnect();
     if (rainSource === record) rainSource = null;
     if (chantSource === record) chantSource = null;
+    if (record.interiorTrack?.source === record) record.interiorTrack.source = null;
   }
 
   function stopSource(record) {
@@ -286,6 +394,7 @@ export function createCampusAmbience({ camera } = {}) {
     if (timer != null) { clearInterval(timer); timer = null; }
     running = false;
     stopChant();
+    if (interiorAudio) for (const track of interiorAudio.tracks) stopInteriorTrack(track);
     master.gain.cancelScheduledValues(context.currentTime);
     master.gain.setValueAtTime(0, context.currentTime);
     if (bellGain) { bellGain.gain.cancelScheduledValues(context.currentTime); bellGain.gain.setValueAtTime(0, context.currentTime); }
@@ -322,6 +431,7 @@ export function createCampusAmbience({ camera } = {}) {
     if (rainGain) { param(rainGain.gain, targets.rain, .3); param(thunderGain.gain, targets.thunder, .2); }
     mixBell();
     mixChant();
+    mixInterior();
   }
 
   function schedule() {
@@ -356,12 +466,13 @@ export function createCampusAmbience({ camera } = {}) {
     if (!wanted()) { stop(); return; }
     if (!context) return;
     mixChant();
+    mixInterior();
     // An unlock can finish before the asynchronous 3D activation message.
     // Complete that pending intent when the view becomes active, once only.
     if (!ready && !weatherEnabled && !loading && !error) void load();
     if (context.state === 'running') { start(); return; }
     if (!resumePending) {
-      resumePending = context.resume().then(() => { if (wanted()) { start(); mixChant(); } else stop(); })
+      resumePending = context.resume().then(() => { if (wanted()) { start(); mixChant(); mixInterior(); } else stop(); })
         .catch(() => { error = 'Tap the scene to enable sound.'; })
         .finally(() => { resumePending = null; });
     }
@@ -374,11 +485,13 @@ export function createCampusAmbience({ camera } = {}) {
       if (disposed || !enabled || volume <= 0) return false;
       error = null;
       chantError = null;
+      if (interiorAudio) for (const track of interiorAudio.tracks) track.error = null;
       graph(); if (!context) return false;
       unlocked = true;
       // Invoke resume immediately in the user gesture, before awaiting downloads.
       try { await context.resume(); } catch { error = 'Tap the scene to enable sound.'; return false; }
       if (!wanted()) { stop(); return false; }
+      mixInterior();
       // Another concurrent resume may have already finished a failed load.
       // Keep that error until a later, explicit retry instead of fetching twice.
       if (error) return false;
@@ -388,7 +501,14 @@ export function createCampusAmbience({ camera } = {}) {
     setEnabled(value) {
       enabled = Boolean(value);
       if (enabled) chantError = null;
+      if (enabled && interiorAudio) for (const track of interiorAudio.tracks) track.error = null;
       sync();
+    },
+    configureInteriorAudio(config) {
+      if (disposed) return false;
+      const prepared = prepareInteriorAudio(config);
+      if (interiorAudio) for (const track of interiorAudio.tracks) { stopInteriorTrack(track); track.gain?.disconnect(); }
+      interiorAudio = prepared; sync(); return true;
     },
     setVolume(value) { volume = clamp(Number.isFinite(Number(value)) ? Number(value) : .25); sync(); if (running) mix(); else mixBell(); },
     setBellPosition(position) {
@@ -433,13 +553,17 @@ export function createCampusAmbience({ camera } = {}) {
     },
     update(time, state = {}) {
       elapsed = Number.isFinite(time) ? time : elapsed;
-      view = { ...view, ...state }; sync();
+      Object.assign(view, state); sync();
       if ((running || bellGain) && context.currentTime - lastMix >= .12) { lastMix = context.currentTime; if (running) mix(); else mixBell(); }
     },
-    get state() { return {
-      enabled, volume, unlocked, ready: ready || Boolean(weatherEnabled && buffers.rain), loading: Boolean(loading), active: Boolean(view.active),
-      playing: running && context?.state === 'running', contextState: context?.state || 'locked',
-      sourceCount: sources.size, error: chantPresence > 0 && chantError ? chantError : weatherEnabled && running ? null : error, interior: view.interior,
+    get state() {
+      const indoorTracks = interiorAudio?.tracks.filter(track => indoorPresence[track.kind] > 0) || [];
+      const indoorPlaying = indoorTracks.some(track => track.source) && wanted() && context?.state === 'running';
+      const indoorReady = indoorTracks.length > 0 && indoorTracks.every(track => track.buffer);
+      return {
+      enabled, volume, unlocked, ready: ready || indoorReady || Boolean(weatherEnabled && buffers.rain), loading: indoorTracks.length ? indoorTracks.some(track => track.loading) : Boolean(loading), active: Boolean(view.active),
+      playing: (running || indoorPlaying) && context?.state === 'running', contextState: context?.state || 'locked',
+      sourceCount: sources.size, error: chantPresence > 0 && chantError ? chantError : indoorTracks.length ? indoorTracks.find(track => track.error)?.error || null : weatherEnabled && running ? null : error, interior: view.interior,
       weatherEnabled, rainPlaying: Boolean(rainSource && !rainSource.stopping && running && context?.state === 'running'),
       thunderSourceCount: [...sources].filter(record => record.kind === 'thunder').length,
       bell: { strikeCount: bellStrikes, activeVoices: [...sources].filter(record => record.kind.startsWith('bell')).length,
@@ -448,7 +572,12 @@ export function createCampusAmbience({ camera } = {}) {
         loading: Boolean(chantLoading), playing: Boolean(chantSource && wanted() && context?.state === 'running'),
         gain: chantTarget, error: chantError, sourceCount: [...sources].filter(record => record.kind === 'chant').length,
         url: CHANT_URL },
-      gains: { ...targets }, assets: [...Object.keys(ASSETS), 'chant']
+      interiorAudio: { configured: Boolean(interiorAudio), ...indoorPresence, phase: view.phase,
+        sourceCount: interiorAudio?.tracks.reduce((sum, track) => sum + Number(Boolean(track.source)), 0) || 0,
+        tracks: interiorAudio?.tracks.map(track => ({ id: track.id, kind: track.kind, ready: Boolean(track.buffer),
+          loading: Boolean(track.loading), error: track.error, gain: track.target,
+          playing: Boolean(track.source && wanted() && context?.state === 'running'), url: track.url })) || [] },
+      gains: { ...targets }, assets: [...Object.keys(ASSETS), 'chant', ...(interiorAudio?.tracks.map(track => track.id) || [])]
     }; },
     dispose() {
       if (disposed) return;
@@ -456,6 +585,7 @@ export function createCampusAmbience({ camera } = {}) {
       globalThis.document?.removeEventListener('visibilitychange', visibility);
       if (context && context.state !== 'closed') context.close().catch(() => {});
       for (const id of Object.keys(buffers)) delete buffers[id];
+      if (interiorAudio) for (const track of interiorAudio.tracks) { track.buffer = null; track.gain?.disconnect(); }
     }
   };
 }

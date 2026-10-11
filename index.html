@@ -1746,10 +1746,10 @@ body[data-campus-dimension="list"] #campus-3d-frame { visibility:hidden; pointer
   <section class="campus-weather-panel" id="campus-weather-panel" aria-label="Weather" hidden>
     <span>Rain</span><button type="button" class="btn" id="campus-rain-toggle" aria-pressed="false" aria-label="Turn rain on">Off</button>
   </section>
-  <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Outdoor sounds" hidden>
-    <div class="campus-ambience-heading"><label for="campus-sound-volume">Outdoor sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="true" aria-label="Mute outdoor sounds">On</button></div>
+  <section class="campus-ambience-panel" id="campus-ambience-panel" aria-label="Campus sounds" hidden>
+    <div class="campus-ambience-heading"><label for="campus-sound-volume">Campus sounds</label><button type="button" class="btn" id="campus-sound-toggle" aria-pressed="true" aria-label="Mute campus sounds">On</button></div>
     <input id="campus-sound-volume" type="range" min="0" max="100" step="1" value="25" aria-label="Outdoor sound volume" aria-describedby="campus-sound-status">
-    <p id="campus-sound-status" role="status" aria-live="polite">Soft birdsong, wind & distant play.</p>
+    <p id="campus-sound-status" role="status" aria-live="polite">Sounds change as you move around campus.</p>
   </section>
   <div class="campus-model-downloads" id="campus-model-downloads" role="group" aria-label="3D model downloads" hidden>
     <a class="btn" href="./campus-3d/OLR-New-Campus.blend?v=451b9118cc5cd08b" download="OLR-New-Campus.blend" aria-label="Download Blender model (.blend)">Blender .blend</a>
@@ -6938,7 +6938,7 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
       modelFrame.inert=true;
       modelFrame.setAttribute('aria-hidden','true');
       modelFrame.tabIndex=-1;
-      modelFrame.src='./campus-3d/?embedded=1&v=5f1a808999970e7c';
+      modelFrame.src='./campus-3d/?embedded=1&v=7c846954b63851a3';
       modelFrame.addEventListener('load',()=>{
         if(!modelReady)modelFrame.dataset.preloading='true';
         renderSurfaces();syncModel();
@@ -7087,11 +7087,11 @@ body:has(.olr-fit-viewer[data-layout=&quot;width&quot;]) { height:auto; margin:0
     const failed=Boolean(soundState.error)&&!(rainEnabled&&soundState.rainPlaying);
     soundToggle.textContent=on&&failed?'Retry':on?'On':'Off';
     soundToggle.setAttribute('aria-pressed',String(on));
-    soundToggle.setAttribute('aria-label',on&&failed?'Retry outdoor sounds':on?'Mute outdoor sounds':'Unmute outdoor sounds');
+    soundToggle.setAttribute('aria-label',on&&failed?'Retry campus sounds':on?'Mute campus sounds':'Unmute campus sounds');
     soundToggle.disabled=false;
     soundVolume.value=String(Math.round(soundOptions.volume*100));
     soundVolume.setAttribute('aria-valuetext',`${Math.round(soundOptions.volume*100)} percent`);
-    soundStatus.textContent=!on?'Outdoor sounds muted.':rainEnabled&&soundState.rainPlaying?'Rain & distant thunder.':failed?'Sounds could not load. Tap Retry.':soundState.loading?'Loading outdoor sounds…':!soundState.playing?'Sound is on. Click or tap in 3D to start.':rainEnabled?'Rain & distant thunder.':'Soft birdsong, wind & distant play.';
+    soundStatus.textContent=!on?'Campus sounds muted.':rainEnabled&&soundState.rainPlaying?'Rain & distant thunder.':failed?'Sounds could not load. Tap Retry.':soundState.loading?'Loading campus sounds…':!soundState.playing?'Sound is on. Click or tap in 3D to start.':rainEnabled?'Rain & distant thunder.':'Sounds change as you move around campus.';
   }
   function startSound(retry=false) {
     if(dimension!=='3d'||!soundOptions.enabled||soundOptions.volume<=0||(!retry&&soundState.error))return;

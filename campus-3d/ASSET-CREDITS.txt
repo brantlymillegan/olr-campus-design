@@ -236,3 +236,27 @@ reverberation tail. Six seconds of trailing digital silence were removed;
 the entire sung performance is retained, without mid-phrase edits.
 No synthetic voices or added accompaniment. The adapted audio is distributed
 under CC BY-SA 3.0, as is the original recording.
+
+
+SCHOOL AND OFFICE — INDOOR AMBIENCE
+
+kindergarden ambience.mp3 — Cheney777
+https://freesound.org/people/Cheney777/sounds/544117/
+Original recording published November 12, 2020. The uploader describes
+children talking and laughing, a teacher talking to children, and papers.
+
+Office Ambience.wav — 170026
+https://freesound.org/people/170026/sounds/407735/
+Original recording published November 4, 2017. The uploader describes a
+quiet office with a fan, distant conversation, and nearby typing.
+
+Both recordings: CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Public high-quality previews supplied by Freesound were used.
+Campus adaptations: selected excerpts, equal stereo-to-mono mix, gentle
+high/low-pass filtering, restrained loudness and transient-peak control,
+four-second circular crossfades, and very short anti-click endpoint fades.
+Each is a 60-second, 24 kHz / 64 kbps MP3 ambience loop.
+No synthetic voices, altered pitch, or invented spoken dialogue.
+These sounds are illustrative ambience, not recordings made at OLR.
+No endorsement by the uploaders or recorded people is implied.
