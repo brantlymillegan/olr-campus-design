@@ -228,9 +228,9 @@ vec3 campusBirdWing(vec3 point, bool normalOnly) {
   material.customProgramCacheKey=()=> 'campus-bird-distant-wing-v1';return material;
 }
 
-/** Ambient scene sibling: exactly800 birds, with48 close-detail birds at most.
- * All original40 routes/habitats remain;720 new birds form24 cohesive flocks,
- * and40 additional independent fliers use separate, higher flight bands.
+/** Ambient scene sibling: 264 birds, 33% of the previous population.
+ * Preserve the original 40 mixed-habitat birds and 40 independent high fliers,
+ * with the remaining 184 birds in two cohesive flocks.
  */
 export function createCampusBird({scene}) {
   if(!scene?.isScene)throw new TypeError('createCampusBird requires a THREE.Scene');
@@ -256,15 +256,15 @@ export function createCampusBird({scene}) {
   CAMPUS_BIRD_HABITATS.ground.forEach((habitat,i)=>bird(['robin','sparrow','dove','blue-jay'][i%4],'ground',{habitat}));
   CAMPUS_BIRD_HABITATS.tree.forEach(habitat=>bird(habitat.species,'tree-perch',{habitat}));
   CAMPUS_BIRD_HABITATS.roof.forEach((habitat,i)=>bird(i%2?'dove':'crow','roof-perch',{habitat}));
-  const flockTypes=['sparrow','dove','robin','crow','blue-jay','sparrow','dove','robin'];
-  for(let i=0;i<24;i++) {
+  const flockTypes=['sparrow'];
+  for(let i=0;i<2;i++) {
     const routeIndex=i%4,band=Math.floor(i/4),route=CAMPUS_FLOCK_ROUTES[routeIndex];
-    const group={id:'campus-flock-'+(i+1),species:flockTypes[i%flockTypes.length],count:30,routeIndex,route,
+    const group={id:'campus-flock-'+(i+1),species:flockTypes[i%flockTypes.length],count:92,routeIndex,route,
       phase:band*TAU/6+.31+routeIndex*.67,direction:routeIndex%2?-1:1,altitudeOffsetFeet:band%2?6:-6,
       position:new THREE.Vector3(),positionMeters:[0,0,0],heading:0,pitch:0,radiusFeet:routeIndex===2?15:20};
     flocks.push(group);
-    for(let member=0;member<30;member++) {
-      const radius=(routeIndex===2?14:17.6)*Math.sqrt((member+.5)/30),angle=member*2.399963229728653;
+    for(let member=0;member<group.count;member++) {
+      const radius=(routeIndex===2?14:17.6)*Math.sqrt((member+.5)/group.count),angle=member*2.399963229728653;
       bird(group.species,'flock-flight',{route,routeIndex,flock:group,flockId:group.id,member,
         formationX:radius*Math.cos(angle),formationZ:radius*Math.sin(angle)});
     }
@@ -294,7 +294,7 @@ export function createCampusBird({scene}) {
     support:b.habitat?.support||null,supportFeet:b.habitat?.at||null,headingRadians:0,walking:false,pecking:false,wingSpanMeters:1.26*b.scale}));
   const counts=key=>Object.fromEntries([...new Set(individuals.map(b=>b[key]))].map(k=>[k,individuals.filter(b=>b[key]===k).length]));
   const state={active:false,visible:false,daylight:false,paused:true,flightSeconds:0,laps:0,constructionPhase:'new',
-    birdCount:birds.length,originalBirdCount:40,flockCount:flocks.length,flockBirdCount:720,routeCount:CAMPUS_BIRD_ROUTES.length+CAMPUS_FLOCK_ROUTES.length,speciesCount:species.length,
+    birdCount:birds.length,originalBirdCount:40,flockCount:flocks.length,flockBirdCount:flocks.reduce((sum,group)=>sum+group.count,0),routeCount:CAMPUS_BIRD_ROUTES.length+CAMPUS_FLOCK_ROUTES.length,speciesCount:species.length,
     species:counts('species'),behaviors:counts('behavior'),individuals,
     flocks:flocks.map(f=>({id:f.id,species:f.species,count:f.count,routeIndex:f.routeIndex,positionMeters:f.positionMeters,radiusFeet:f.radiusFeet,verticalRadiusFeet:3})),
     triangles:0,meshCount,visibleMeshes:0,detailedBirdCount:0,distantBirdCount:birds.length,detailLimit:DETAIL_LIMIT,instanceMatricesPerFrame:0,

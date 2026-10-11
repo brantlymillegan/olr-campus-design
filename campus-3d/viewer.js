@@ -9,7 +9,7 @@ import { createCampusPhases } from './campus-phases.js?v=9a924f12f019c9b9';
 import { createCampusBell } from './campus-bell.js?v=d0643ba6ee1cf6d6';
 import { createCampusWeather } from './campus-weather.js?v=4eb1bae727228478';
 // BEGIN campus world ambience imports
-import { createCampusBird } from './campus-bird.js?v=2f0c0894e83e3c06';
+import { createCampusBird } from './campus-bird.js?v=da63d5b7a4bca165';
 import { createCampusAmbience } from './campus-ambience.js?v=4692f0a3ce712e5d';
 // END campus world ambience imports
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
