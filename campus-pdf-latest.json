@@ -1,11 +1,11 @@
 {
   "version": 2,
   "mode": "on-demand",
-  "revision": "810b5f685c569700d065667b3a524b839c4d755204034236b718af51b7e62525",
+  "revision": "f79f56bef629132d2c22360af7efc4827132c892f0b796e2a5a4c80ad39516a8",
   "inputs": {
-    "url": "./pdf-inputs/campus-pdf-inputs-6dbc9173040ce48595bf5f027e7b087a49ac5bed30ea64516ac203ce05aeabdf.json",
-    "sha256": "6dbc9173040ce48595bf5f027e7b087a49ac5bed30ea64516ac203ce05aeabdf",
-    "bytes": 45686,
+    "url": "./pdf-inputs/campus-pdf-inputs-0b79c89499204d2fa36454a1506de779c8c8b6c902e5b376a384b70075f9c0b4.json",
+    "sha256": "0b79c89499204d2fa36454a1506de779c8c8b6c902e5b376a384b70075f9c0b4",
+    "bytes": 45681,
     "mime": "application/json"
   },
   "generator": {
@@ -49,10 +49,10 @@
     "mime": "model/gltf-binary"
   },
   "viewer": {
-    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=064d766a148a34df",
-    "revision": "064d766a148a34df",
+    "url": "./campus-3d/?embedded=1&pdf-capture=1&v=d05ea329a55f9037",
+    "revision": "d05ea329a55f9037",
     "asset_revision": "57d8eb3689360c64",
-    "files_sha256": "afe1bbe817eb27063c0e643039ded0bceb5aab16f0a8cb0487ae3847ab9c70c0",
+    "files_sha256": "b64bfc639476757e8b280cb18cd406479e1f1c1cac568f165aa4a72af4dc6734",
     "files": [
       {
         "url": "./campus-3d/campus-ambience.js",
@@ -104,8 +104,8 @@
       },
       {
         "url": "./campus-3d/campus-pdf-capture.js",
-        "sha256": "9ab9f83670763e9943146e48ef8cc4fd61e65dd5a349ec9950efdab5153ee097",
-        "bytes": 15617,
+        "sha256": "b379a25a9c107222767a67cc6288fe85b066c18b29b8d48adf7995b059942465",
+        "bytes": 15614,
         "mime": "text/javascript"
       },
       {
@@ -152,7 +152,7 @@
       },
       {
         "url": "./campus-3d/index.html",
-        "sha256": "e0063da09f9acae0b713314ef0e058edb6ebb983b12eb48f165fad82393d2958",
+        "sha256": "e6355cddf95d37795a8aa3339fe186c57171e91e695d2b0dd803fa8b2f112102",
         "bytes": 4315,
         "mime": "text/html"
       },
@@ -164,16 +164,16 @@
       },
       {
         "url": "./campus-3d/viewer.js",
-        "sha256": "070b75673227a3019241d45425c7cddfddeea9e3c9eeed9499c0a9490b3eaaaa",
+        "sha256": "2ed9e10232fb064b212941f7fb77784dca5392424df52f4a23700a03222fdf0c",
         "bytes": 64286,
         "mime": "text/javascript"
       }
     ]
   },
   "camera_config": {
-    "url": "./pdf-inputs/cameras-343a959fb5e975e9c9d39557606ceff4c066cc238e757c8f16ed754c9a78c454.json",
-    "sha256": "343a959fb5e975e9c9d39557606ceff4c066cc238e757c8f16ed754c9a78c454",
-    "bytes": 11470,
+    "url": "./pdf-inputs/cameras-4776d75b7c6ee0ef420830dcb290d5739ee55551b5d78ac2da6d69547c9b2376.json",
+    "sha256": "4776d75b7c6ee0ef420830dcb290d5739ee55551b5d78ac2da6d69547c9b2376",
+    "bytes": 11566,
     "mime": "application/json"
   },
   "cover_view_id": "playground-gardens",

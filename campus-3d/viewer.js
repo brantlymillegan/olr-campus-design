@@ -16,7 +16,7 @@ import { createCampusAmbience } from './campus-ambience.js?v=46f2067fe8d4f5cf';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCampusAtmosphere } from './campus-atmosphere.js?v=c93c4e7db16e51a1';
 import { loadHashedCampusModel, preloadCampusModelTransports } from './campus-model-loader.js?v=3e776bdd79845c46';
-import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=9ab9f83670763e99';
+import { createCampusPdfCapture, PDF_PERSPECTIVES } from './campus-pdf-capture.js?v=b379a25a9c107222';
 
 const EMBEDDED = window.parent !== window;
 const DEFER_GPU = new URL(location.href).searchParams.get('defer') === '1';
