@@ -1,7 +1,7 @@
 import { loadCampusBoundary } from './campus-boundary.js?v=32cf2a84f44fc0b5';
 import { createCampusLighting, lightingAtTime, normalizeMinutes, applyCampusPalette, CAMPUS_DAYLIGHT } from './campus-lighting.js?v=cddd2d0a3866f339';
 import { createCampusWalk } from './campus-walk.js?v=c64ddc2618616dfe';
-import { createCampusDriving } from './campus-driving.js?v=859fb8688c394449';
+import { createCampusDriving } from './campus-driving.js?v=c78a881f0a33538f';
 import { createCampusPlanGround } from './campus-plan-ground.js?v=33972dd4d392dfac';
 import * as THREE from 'three';
 import { createCampusRenderCulling } from './campus-render-culling.js?v=eed73815dd659e27';
@@ -53,6 +53,7 @@ let campusPhases = null, constructionPhase = 'new';
 let flatBounds = null;
 let campusBell = null;
 let resetAerialInput = () => {};
+let syncDisplayResolution = () => {};
 let target = new THREE.Vector3();
 let normalOrbit = false, normalPlanGroundY = 0;
 const normalTarget = new THREE.Vector3();
@@ -171,6 +172,7 @@ function unlockAmbience(options, selecting3d = false) {
 function draw(timestamp) {
   frame = null; frameHost = null;
   if (!modelReady || !active || document.hidden) return;
+  syncDisplayResolution();
   // BEGIN campus world ambience frame pacing
   // Idle bird animation is capped at 24 fps; input and first-person movement
   // retain the existing responsive frame rate.
@@ -917,16 +919,38 @@ async function init() {
   if (pendingNormalPose) { restoreNormalPose(pendingNormalPose); pendingNormalPose = null; }
   setDragMode(dragMode, false);
   installEmbeddedNavigation();
-  function resize() {
+  function resize(redraw = true) {
     const { width, height } = wrap.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
+    // A desktop window can move between Retina/4K and standard displays
+    // without changing its CSS dimensions. Keep sharpness and GPU cost in
+    // sync with that display while retaining the existing resolution cap.
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
+    if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
     renderer.setSize(Math.max(1, width), Math.max(1, height));
     embeddedCamera.width = Math.max(1, width); embeddedCamera.height = Math.max(1, height);
-    applyEmbeddedCamera(Boolean(model && active));
+    applyEmbeddedCamera(redraw && Boolean(model && active));
     walk?.resize(Math.max(1, width), Math.max(1, height));
     driving?.resize(Math.max(1, width), Math.max(1, height));
   }
+  syncDisplayResolution = () => {
+    // Some browsers miss a resolution event during a monitor or display-scale
+    // change. Check at the existing active frame boundary; resize once only
+    // when the capped density differs, without scheduling another frame.
+    if (renderer.getPixelRatio() !== Math.min(window.devicePixelRatio || 1, 1.75)) resize(false);
+  };
   new ResizeObserver(resize).observe(wrap);
+  let displayResolution = null;
+  function watchDisplayResolution() {
+    displayResolution?.removeEventListener('change', displayResolutionChanged);
+    displayResolution = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    displayResolution.addEventListener('change', displayResolutionChanged);
+  }
+  function displayResolutionChanged() {
+    resize();
+    watchDisplayResolution();
+  }
+  watchDisplayResolution();
   resize();
   const [loadedModel, loadedVehicle, bellConfig, phaseConfig, interiorData, boundaryData] = await Promise.all([loadHashedCampusModel(new GLTFLoader(), `./OLR-New-Campus.glb?v=${ASSET_REVISION}`, event => {
     document.getElementById('loading-text').textContent = event.total ? `Opening the campus… ${Math.min(99, Math.round(event.loaded / event.total * 100))}%` : 'Opening the campus…';
@@ -1084,7 +1108,7 @@ if (EMBEDDED) {
   });
   window.addEventListener('blur', () => { driving?.pause(); walk?.pause(); resetAerialInput(); lastDrawTime = null; });
   if (DEFER_GPU) {
-    // Prepare exact compressed downloads while the phone shows 2D; do not
+    // Prepare exact compressed downloads while the page shows 2D; do not
     // allocate a WebGL context, decode models or upload textures until entry.
     void preloadCampusModelTransports().catch(error => console.warn('Campus preload:', error));
   } else void startInitialization();

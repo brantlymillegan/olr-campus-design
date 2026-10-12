@@ -176,7 +176,7 @@ export function createCampusDriving({THREE, scene, canvas, getWalk, requestDraw,
   },{capture:true});
   listen(document,'keyup',e=>{if(e.target?.closest?.('button'))return;if(driving&&command('drive-input',{kind:'key',code:e.code,down:false}))stop(e);},{capture:true});
   listen(canvas,'pointerdown',e=>{if(!driving||(e.pointerType==='mouse'&&e.button!==0))return;stop(e);canvas.focus({preventScroll:true});pointer={id:e.pointerId,x:e.clientX,y:e.clientY,touch:e.pointerType!=='mouse'};if(e.pointerType==='mouse')requestPointer();else{canvas.setPointerCapture(e.pointerId);captured.add(e.pointerId);}},{capture:true});
-  listen(canvas,'pointermove',e=>{if(!driving||locked()||pointer?.id!==e.pointerId)return;stop(e);look(e.clientX-pointer.x,e.clientY-pointer.y,pointer.touch);pointer.x=e.clientX;pointer.y=e.clientY;},{capture:true});
+  listen(canvas,'pointermove',e=>{if(!driving||locked()||pointer?.id!==e.pointerId)return;stop(e);if(!pointer.touch&&!(e.buttons&1)){pointer=null;return;}look(e.clientX-pointer.x,e.clientY-pointer.y,pointer.touch);pointer.x=e.clientX;pointer.y=e.clientY;},{capture:true});
   for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(canvas,type,e=>{if(pointer?.id===e.pointerId)pointer=null;captured.delete(e.pointerId);},{capture:true});
   listen(document,'mousemove',e=>{if(driving&&locked()&&canFocus()){stop(e);look(e.movementX,e.movementY);}},{capture:true});
   listen(document,'pointerlockchange',()=>{mousePending=false;const now=locked();if(now&&driving&&!wantsPointer){releasePointer();return;}if(wasLocked&&!now&&driving){clearInput();speed=0;}wasLocked=now;if(driving){refresh();requestDraw();}});
